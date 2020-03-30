@@ -74,7 +74,9 @@ namespace PKHeX.Core
         private const uint KTitleScreenTeam = 0xE9BE28BF; // Title Screen Team details
         public const uint KEnteredHallOfFame = 0xE2F6E456; // U64 Unix Timestamp
         private const uint KMyStatus = 0xf25c070e; // Trainer Details
-
+        private const uint KFriendLeagueCards = 0x28e707f5; // League Cards received from other players
+        private const uint KNPCLeagueCards = 0xb1c26fb0; // League Cards received from NPCs
+        
         // Rental Teams - Objects (Blocks) (Incrementing internal names?) 
         private const uint KRentalTeam1 = 0x149A1DD0;
       //private const uint KRentalTeam2 = 0x159A1F63; // does not exist
@@ -108,6 +110,7 @@ namespace PKHeX.Core
         private const uint KBonusRewards = 0xEFCAE04E; // bonus_rewards
 
         // Values
+        public const uint KCurrentBox = 0x017C3CBB; // U32 Box Index
         public const uint KGameLanguage = 0x0BFDEBA1; // U32 Game Language
         public const uint KRepel = 0x9ec079da; // U16 Repel Steps remaining
         public const uint KRotoRally = 0x38548020; // U32 Roto Rally Score (99,999 cap)
@@ -120,5 +123,6 @@ namespace PKHeX.Core
         public const uint KDiggingDuoStreakStamina = 0x066F38F5; // U32
         public const uint KBirthMonth = 0x0D987D50; // U32
         public const uint KBirthDay = 0x355C8314; // U32
+        public const uint KCurrentDexEntry = 0x62743428; // U16 Species ID of last Pokedex entry viewed
     }
 }

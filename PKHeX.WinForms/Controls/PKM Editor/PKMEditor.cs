@@ -491,18 +491,23 @@ namespace PKHeX.WinForms.Controls
         {
             if (pkm.Format < 6)
                 return null;
+
+            // Specific Markings
+            if (pkm.VC)
+                return Properties.Resources.gen_vc;
+            if (pkm.GO)
+                return Properties.Resources.gen_go;
+            if (pkm.GG) // LGP/E -- GO already returned above.
+                return Properties.Resources.gen_gg;
+
+            // Lumped Generations
             if (pkm.Gen6)
                 return Properties.Resources.gen_6;
             if (pkm.Gen7)
                 return Properties.Resources.gen_7;
             if (pkm.Gen8)
                 return Properties.Resources.gen_8;
-            if (pkm.VC)
-                return Properties.Resources.gen_vc;
-            if (pkm.GG)
-                return Properties.Resources.gen_gg;
-            if (pkm.GO)
-                return Properties.Resources.gen_go;
+
             return null;
         }
 
@@ -910,6 +915,12 @@ namespace PKHeX.WinForms.Controls
                 Entity.CurrentFriendship = val;
                 UpdateStats();
             }
+        }
+
+        private void UpdateFormArgument(object sender, EventArgs e)
+        {
+            if (FieldsLoaded && Entity.Species == (int)Species.Alcremie)
+                UpdateSprite();
         }
 
         private void UpdateForm(object sender, EventArgs e)
@@ -1427,7 +1438,9 @@ namespace PKHeX.WinForms.Controls
                     CommonEdits.SetShiny(Entity, ModifierKeys == Keys.Shift);
                     TB_PID.Text = Entity.PID.ToString("X8");
 
-                    if (Entity.GenNumber < 6 && TB_EC.Visible)
+                    int gen = Entity.GenNumber;
+                    bool pre3DS = 1 <= gen && gen < 6;
+                    if (pre3DS && TB_EC.Visible)
                         TB_EC.Text = TB_PID.Text;
                 }
                 else
@@ -1724,6 +1737,7 @@ namespace PKHeX.WinForms.Controls
         {
             Label_EncryptionConstant.Visible = BTN_RerollEC.Visible = TB_EC.Visible = gen >= 6 && !hidden;
             BTN_RerollPID.Visible = Label_PID.Visible = TB_PID.Visible = gen >= 3 && !hidden;
+            TB_HomeTracker.Visible = L_HomeTracker.Visible = gen >= 8 && !hidden;
         }
 
         private void ToggleInterface(int gen)

@@ -25,11 +25,12 @@
 0x10A	Received Wynaut Egg
 0x12A	Received Beldum
 
-0x853	Has Eon Ticket
+0x853	Received Eon Ticket
 
 0x0FF	Lati@s Roaming
 
 0x71	Captured/Defeated Groudon/Kyogre
+0xCE	Captured/Defeated Lati@s (Southern Island)
 
 0x339	Overworld Hidden (Groudon/Kyogre)
 0x305	Overworld Hidden (Rayquaza)
@@ -37,12 +38,16 @@
 0x3A8	Overworld Hidden (Regice)
 0x3A9	Overworld Hidden (Registeel)
 
+0x3D1	Overworld Hidden (Electrode 1 in Hideout)
+0x3D2	Overworld Hidden (Electrode 2 in Hideout)
+
 0x800	Received Starter Pokemon
 0x801	Received Pokedex
 0x802	Received PokeNav
 0x804	Entered Hall of Fame
 0x805	Used Easy Chat
 0x806	Met The Hipster
+0x80D	Magma/Aqua Hideout entrance sealed
 0x830	Watched TV at Home
 0x834	Mixed Records
 0x835	Set Clock

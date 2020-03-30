@@ -149,12 +149,6 @@ namespace PKHeX.Core
 
             ParseLines(lines);
 
-            // Showdown Quirks
-            if (Form == Gmax)
-            {
-                CanGigantamax = true;
-                Form = string.Empty;
-            }
             Form = ConvertFormFromShowdown(Form, Species, Ability);
             // Set Form
             if (Form.Length == 0)
@@ -189,6 +183,8 @@ namespace PKHeX.Core
                     int move = StringUtil.FindIndexIgnoreCase(Strings.movelist, moveString);
                     if (move < 0)
                         InvalidLines.Add($"Unknown Move: {moveString}");
+                    else if (Moves.Contains(move))
+                        InvalidLines.Add($"Duplicate Move: {moveString}");
                     else
                         Moves[movectr++] = move;
 
@@ -283,7 +279,7 @@ namespace PKHeX.Core
             var result = new List<string>();
 
             // First Line: Name, Nickname, Gender, Item
-            var form = CanGigantamax ? Gmax : ConvertFormToShowdown(Form, Species);
+            var form = ConvertFormToShowdown(Form, Species);
             result.Add(GetStringFirstLine(form));
 
             // IVs
@@ -321,6 +317,9 @@ namespace PKHeX.Core
                 specForm = specForm.Replace("♂", "-M");
             else if (Species == (int)Core.Species.NidoranF)
                 specForm = specForm.Replace("♀", "-F");
+
+            if (CanGigantamax)
+                specForm += Gmax;
 
             string result = GetSpeciesNickname(specForm);
             if (Gender.Length != 0)
@@ -497,6 +496,12 @@ namespace PKHeX.Core
         private bool ParseSpeciesForm(string spec)
         {
             spec = spec.Trim();
+            if (spec.EndsWith(Gmax))
+            {
+                CanGigantamax = true;
+                spec = spec.Substring(0, spec.Length - Gmax.Length);
+            }
+
             if ((Species = StringUtil.FindIndexIgnoreCase(Strings.specieslist, spec)) >= 0) // success, nothing else!
                 return true;
 
@@ -626,7 +631,7 @@ namespace PKHeX.Core
         }
 
         private const string Minior = "Meteor";
-        private const string Gmax = "Gmax";
+        private const string Gmax = "-Gmax";
 
         private static string ConvertFormToShowdown(string form, int spec)
         {

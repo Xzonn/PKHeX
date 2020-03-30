@@ -90,7 +90,7 @@ namespace PKHeX.Core
             new EncounterStatic { Gift = true, Species = 882, FlawlessIVCount = 3, Level = 10, Location = 068, }, // Dracovish @ Route 6
             new EncounterStatic { Gift = true, Species = 883, FlawlessIVCount = 3, Level = 10, Location = 068, }, // Arctovish @ Route 6
 
-            new EncounterGift8 { Gift = true, Species = 004, Shiny = Never, Level = 05, Location = 006, FlawlessIVCount = 3, CanGigantamax = true }, // Charmander
+            new EncounterGift8 { Gift = true, Species = 004, Shiny = Never, Level = 05, Location = 006, FlawlessIVCount = 3, CanGigantamax = true, Ability = 1 }, // Charmander
             new EncounterGift8 { Gift = true, Species = 025, Shiny = Never, Level = 10, Location = 156, FlawlessIVCount = 6, CanGigantamax = true }, // Pikachu
             new EncounterGift8 { Gift = true, Species = 133, Shiny = Never, Level = 10, Location = 156, FlawlessIVCount = 6, CanGigantamax = true }, // Eevee
 
@@ -147,7 +147,7 @@ namespace PKHeX.Core
             new EncounterStatic8S { Species = 623, Level = 40, Locations = new[]{126, 130}, }, // Golurk at Watchtower Ruins and West Lake Axewell (in a Wild Area) 
             new EncounterStatic8 { Species = 195, Level = 15, Location = 130, }, // Quagsire at West Lake Axewell (in a Wild Area)
             new EncounterStatic8 { Species = 099, Level = 28, Location = 130, }, // Kingler at West Lake Axewell (in a Wild Area)
-            new EncounterStatic8 { Species = 660, Level = 15, Location = 122, }, // Diggersby in the Rolling Fields (in a Wild Area)
+            new EncounterStatic8S{ Species = 660, Level = 15, Locations = new [] {122, 130}, }, // Diggersby in the Rolling Fields, West Lake Axewell (in a Wild Area)
             new EncounterStatic8S{ Species = 178, Level = 26, Locations = new[] {128, 138}}, // Xatu at East Lake Axewell, North Lake Miloch (in a Wild Area)
             new EncounterStatic8 { Species = 569, Level = 36, Location = 128, }, // Garbodor at East Lake Axewell (in a Wild Area)
             new EncounterStatic8 { Species = 510, Level = 28, Location = 138, }, // Liepard at North Lake Miloch (in a Wild Area)
@@ -160,16 +160,16 @@ namespace PKHeX.Core
             new EncounterStatic8S{ Species = 823, Level = 50, Locations = new[] {138, 150} }, // Corviknight at North Lake Miloch & on the Hammerlocke Hills (in a Wild Area)
             new EncounterStatic8 { Species = 448, Level = 36, Location = 138, }, // Lucario at North Lake Miloch (in a Wild Area)
             new EncounterStatic8S{ Species = 112, Level = 46, Locations = new[] {136, 142}, }, // Rhydon near the Giant’s Seat & in Bridge Field (in a Wild Area)
-            new EncounterStatic8 { Species = 625, Level = 52, Location = 136, }, // Bisharp near the Giant’s Seat (in a Wild Area)
+            new EncounterStatic8S{ Species = 625, Level = 52, Locations = new[] {136, 140} }, // Bisharp near the Giant’s Seat, Motostoke Riverbank (in a Wild Area)
             new EncounterStatic8 { Species = 738, Level = 46, Location = 136, }, // Vikavolt near the Giant’s Seat (in a Wild Area)
             new EncounterStatic8S{ Species = 091, Level = 46, Locations = new[] {128, 130}, }, // Cloyster at East/West Lake Axewell (in a Wild Area)
             new EncounterStatic8S{ Species = 131, Level = 56, Locations = new[] {128, 130, 134, 138, 154 }, }, // Lapras at North/East/South/West Lake Miloch/Axwell, the Lake of Outrage (in a Wild Area)
             new EncounterStatic8S{ Species = 119, Level = 46, Locations = new[] {128, 130, 134, 138, 142, 154 }, }, // Seaking in Bridge Field, at North/East/South/West Lake Miloch/Axwell, at the Lake of Outrage (in a Wild Area)
-            new EncounterStatic8S{ Species = 130, Level = 56, Locations = new[] {128, 146}, }, // Gyarados in East Lake Axewell, Dusty Bowl (in a Wild Area)
+            new EncounterStatic8S{ Species = 130, Level = 56, Locations = new[] {128, 142, 146}, }, // Gyarados in East Lake Axewell, in Bridge Field, Dusty Bowl (in a Wild Area)
             new EncounterStatic8S{ Species = 279, Level = 46, Locations = new[] {128, 142}, }, // Pelipper in East Lake Axewell, Bridge Field (in a Wild Area)
             new EncounterStatic8 { Species = 853, Level = 56, Location = 130, }, // Grapploct at West Lake Axewell (in a Wild Area)
             new EncounterStatic8S{ Species = 593, Level = 46, Locations = new[] {128, 130, 134, 138, 142, 154 }, }, // Jellicent at North/East/South/West Lake Miloch/Axwell, the Lake of Outrage, Bridge Field (in a Wild Area)
-            new EncounterStatic8S{ Species = 171, Level = 46, Locations = new[] {128, 134}, }, // Lanturn at East Lake Axewell & South Lake Miloch (in a Wild Area)
+            new EncounterStatic8S{ Species = 171, Level = 46, Locations = new[] {128,      134,      154 }, }, // Lanturn at East Lake Axewell & South Lake Miloch (in a Wild Area), the Lake of Outrage
             new EncounterStatic8S{ Species = 340, Level = 46, Locations = new[] {128, 130, 134, 138, 154 }, }, // Whiscash at North/East/South/West Lake Miloch/Axwell (in a Wild Area)
             new EncounterStatic8S{ Species = 426, Level = 46, Locations = new[] {128, 130, 134, 138, 154 }, }, // Drifblim at North/East/South/West Lake Miloch/Axwell (in a Wild Area)
             new EncounterStatic8 { Species = 224, Level = 46, Location = 134, }, // Octillery at South Lake Miloch (in a Wild Area)
@@ -221,8 +221,8 @@ namespace PKHeX.Core
             new EncounterStatic8 { Species = 711, Level = 41, Location = 150, }, // Gourgeist on the Hammerlocke Hills (in a Wild Area)
             new EncounterStatic8 { Species = 600, Level = 46, Location = 150, }, // Klang on the Hammerlocke Hills (in a Wild Area)
             new EncounterStatic8 { Species = 045, Level = 41, Location = 148, }, // Vileplume around the Giant’s Mirror (in a Wild Area)
-            new EncounterStatic8 { Species = 823, Level = 38, Location =  -1, }, // Corviknight
-            new EncounterStatic8S { Species = 130, Level = 60, Locations = new[] {128, 130, 134, 138, 154 }, }, // Gyarados at North/East/South/West Lake Miloch/Axwell, the Lake of Outrage (in a Wild Area)
+            new EncounterStatic8 { Species = 823, Level = 38, Location = 150, }, // Corviknight on the Hammerlocke Hills (in a Wild Area)
+            new EncounterStatic8S{ Species = 130, Level = 60, Locations = new[] {128, 130, 134, 138, 154 }, }, // Gyarados at North/East/South/West Lake Miloch/Axwell, the Lake of Outrage (in a Wild Area)
             new EncounterStatic8 { Species = 853, Level = 56, Location = 154, }, // Grapploct at the Lake of Outrage (in a Wild Area)
             new EncounterStatic8 { Species = 282, Level = 60, Location =  -1, }, // Gardevoir
             new EncounterStatic8 { Species = 470, Level = 56, Location = 154, }, // Leafeon at the Lake of Outrage (in a Wild Area)
@@ -259,7 +259,7 @@ namespace PKHeX.Core
             new EncounterStatic8 { Species = 093, Level = 34, Location = 126, }, // Haunter at Watchtower Ruins (in a Wild Area)
             new EncounterStatic8S{ Species = 356, Level = 40, Locations = new[] {126, 130}, }, // Dusclops at Watchtower Ruins (in a Wild Area) & at West Lake Axewell
             new EncounterStatic8S{ Species = 362, Level = 40, Locations = new[] {126, 130}, }, // Glalie at Watchtower Ruins (in a Wild Area) & at West Lake Axewell
-            new EncounterStatic8 { Species = 279, Level = 28, Location = 138, }, // Pelipper at North Lake Miloch (in a Wild Area)
+            new EncounterStatic8S{ Species = 279, Level = 28, Locations = new[] {138, 130}, }, // Pelipper at North Lake Miloch, West Lake Axewell (in a Wild Area)
             new EncounterStatic8 { Species = 536, Level = 28, Location = 130, }, // Palpitoad at West Lake Axewell (in a Wild Area)
             new EncounterStatic8 { Species = 660, Level = 28, Location =  -1, }, // Diggersby
             new EncounterStatic8 { Species = 221, Level = 36, Location = 128, }, // Piloswine at East Lake Axewell (in a Wild Area)
@@ -284,7 +284,7 @@ namespace PKHeX.Core
             new EncounterStatic8 { Species = 518, Level = 46, Location = 136, }, // Musharna near the Giant’s Seat (in a Wild Area)
             new EncounterStatic8 { Species = 362, Level = 46, Location = 136, }, // Glalie near the Giant’s Seat (in a Wild Area)
             new EncounterStatic8S{ Species = 596, Level = 46, Locations = new[] {134, 136}, }, // Galvantula at South Lake Miloch and near the Giant’s Seat (in a Wild Area)
-            new EncounterStatic8S{ Species = 584, Level = 47, Locations = new[] {128, 130, 134, 138 }, }, // Vanilluxe at North/East/South/West Lake Miloch/Axwell (in a Wild Area)
+            new EncounterStatic8S{ Species = 584, Level = 47, Locations = new[] {128, 130, 134, 138, 142}, }, // Vanilluxe at North/East/South/West Lake Miloch/Axwell, Bridge Field (in a Wild Area)
             new EncounterStatic8 { Species = 537, Level = 60, Location = 132, }, // Seismitoad on Axew’s Eye (in a Wild Area)
             new EncounterStatic8 { Species = 460, Level = 60, Location = 132, }, // Abomasnow on Axew’s Eye (in a Wild Area)
             new EncounterStatic8 { Species = 036, Level = 36, Location = 140, }, // Clefable at the Motostoke Riverbank (in a Wild Area)
@@ -346,7 +346,7 @@ namespace PKHeX.Core
         };
 
         private const string tradeSWSH = "tradeswsh";
-        private static readonly string[][] TradeSWSH = Util.GetLanguageStrings10(tradeSWSH);
+        private static readonly string[][] TradeSWSH = Util.GetLanguageStrings10(tradeSWSH, "zh2");
         private static readonly int[] TradeIVs = {15, 15, 15, 15, 15, 15};
 
         internal static readonly EncounterTrade8[] TradeGift_SWSH =
