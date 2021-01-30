@@ -14,7 +14,7 @@ namespace PKHeX.WinForms
         private readonly SAV8SWSH SAV;
         private readonly SCBlockMetadata Metadata;
 
-        private SCBlock CurrentBlock;
+        private SCBlock CurrentBlock = null!;
 
         public SAV_BlockDump8(SaveFile sav)
         {
@@ -29,16 +29,18 @@ namespace PKHeX.WinForms
             CB_Key.InitializeBinding();
             CB_Key.DataSource = Metadata.GetSortedBlockKeyList().ToArray();
 
-            var boolToggle = new[]
+            ComboItem[] boolToggle =
             {
-                new ComboItem(nameof(SCTypeCode.Bool1), (int)SCTypeCode.Bool1),
-                new ComboItem(nameof(SCTypeCode.Bool2), (int)SCTypeCode.Bool2),
-                new ComboItem(nameof(SCTypeCode.Bool3), (int)SCTypeCode.Bool3),
+                new(nameof(SCTypeCode.Bool1), (int)SCTypeCode.Bool1),
+                new(nameof(SCTypeCode.Bool2), (int)SCTypeCode.Bool2),
+                new(nameof(SCTypeCode.Bool3), (int)SCTypeCode.Bool3),
             };
             CB_TypeToggle.InitializeBinding();
             CB_TypeToggle.DataSource = boolToggle;
 
-            CB_TypeToggle.SelectedIndexChanged += CB_TypeToggle_SelectedIndexChanged;
+            CB_TypeToggle.SelectedIndexChanged += (o, args) => CB_TypeToggle_SelectedIndexChanged(CB_TypeToggle, args);
+
+            CB_Key.SelectedIndex = 0;
         }
 
         private void CB_Key_SelectedIndexChanged(object sender, EventArgs e)
@@ -63,7 +65,7 @@ namespace PKHeX.WinForms
             L_Detail_R.Text = GetBlockSummary(block);
             RTB_Hex.Text = string.Join(" ", block.Data.Select(z => $"{z:X2}"));
 
-            string blockName = Metadata.GetBlockName(block, out SaveBlock obj);
+            var blockName = Metadata.GetBlockName(block, out var obj);
             if (blockName != null)
             {
                 L_BlockName.Visible = true;
@@ -101,11 +103,12 @@ namespace PKHeX.WinForms
 
         private void CB_TypeToggle_SelectedIndexChanged(object sender, EventArgs e)
         {
-            var cType = CurrentBlock.Type;
+            var block = CurrentBlock;
+            var cType = block.Type;
             var cValue = (SCTypeCode)WinFormsUtil.GetIndex(CB_TypeToggle);
             if (cType == cValue)
                 return;
-            CurrentBlock.Type = cValue;
+            block.Type = cValue;
             UpdateBlockSummaryControls();
         }
 
@@ -147,8 +150,21 @@ namespace PKHeX.WinForms
             using var sfd = new SaveFileDialog { FileName = "raw.bin" };
             if (sfd.ShowDialog() != DialogResult.OK)
                 return;
+
+            var path = sfd.FileName;
+
             var blocks = SAV.Blocks.BlockInfo;
-            ExportAllBlocksAsSingleFile(blocks, sfd.FileName, CHK_DataOnly.Checked, CHK_Key.Checked, CHK_Type.Checked, CHK_FakeHeader.Checked);
+            var option = SCBlockExportOption.None;
+            if (CHK_DataOnly.Checked)
+                option |= SCBlockExportOption.DataOnly;
+            if (CHK_Key.Checked)
+                option |= SCBlockExportOption.Key;
+            if (CHK_Type.Checked)
+                option |= SCBlockExportOption.TypeInfo;
+            if (CHK_FakeHeader.Checked)
+                option |= SCBlockExportOption.FakeHeader;
+
+            ExportAllBlocksAsSingleFile(blocks, path, option);
         }
 
         private void B_LoadOld_Click(object sender, EventArgs e)
@@ -184,10 +200,10 @@ namespace PKHeX.WinForms
                 return;
 
             var s1 = SaveUtil.GetVariantSAV(p1);
-            if (!(s1 is SAV8SWSH w1))
+            if (s1 is not SAV8SWSH w1)
                 return;
             var s2 = SaveUtil.GetVariantSAV(p2);
-            if (!(s2 is SAV8SWSH w2))
+            if (s2 is not SAV8SWSH w2)
                 return;
 
             var compare = new SCBlockCompare(w1.Blocks, w2.Blocks);

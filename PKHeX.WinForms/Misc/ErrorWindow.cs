@@ -38,7 +38,6 @@ namespace PKHeX.WinForms
         /// For application exceptions, continuing is not possible, so the button should not be shown.</remarks>
         private bool ShowContinue
         {
-            get => B_Continue.Visible;
             set => B_Continue.Visible = value;
         }
 
@@ -53,11 +52,11 @@ namespace PKHeX.WinForms
             set => L_Message.Text = value;
         }
 
-        private Exception _error;
+        private Exception? _error;
 
         public Exception Error
         {
-            get => _error;
+            get => _error ?? throw new ArgumentNullException(nameof(_error));
             set
             {
                 _error = value;
@@ -83,7 +82,9 @@ namespace PKHeX.WinForms
                     details.AppendLine();
                 }
             }
+#pragma warning disable CA1031 // Do not catch general exception types
             catch (Exception ex)
+#pragma warning restore CA1031 // Do not catch general exception types
             {
                 details.AppendLine("An error occurred while listing the Loaded Assemblies:");
                 details.AppendLine(ex.ToString());

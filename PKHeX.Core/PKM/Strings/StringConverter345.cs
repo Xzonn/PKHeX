@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace PKHeX.Core
 {
@@ -26,11 +25,17 @@ namespace PKHeX.Core
 
         public static string TransferGlyphs56(string str)
         {
-            static char translate(char c) => Glyph56.TryGetValue(c, out var result) ? result : c;
-            return string.Concat(str.Select(translate));
+            var result = new char[str.Length];
+            var table = Glyph56;
+            for (int i = 0; i < str.Length; i++)
+            {
+                var c = str[i];
+                result[i] = table.TryGetValue(c, out var translated) ? translated : c;
+            }
+            return new string(result);
         }
 
-        private static readonly Dictionary<char, char> Glyph56 = new Dictionary<char, char>
+        private static readonly Dictionary<char, char> Glyph56 = new()
         {
             {'\u2467', '\u00d7'}, // ×
             {'\u2468', '\u00f7'}, // ÷

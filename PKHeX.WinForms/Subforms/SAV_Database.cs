@@ -56,6 +56,8 @@ namespace PKHeX.WinForms
                 // Enable Click
                 slot.MouseClick += (sender, e) =>
                 {
+                    if (sender == null)
+                        return;
                     switch (ModifierKeys)
                     {
                         case Keys.Control: ClickView(sender, e); break;
@@ -66,7 +68,7 @@ namespace PKHeX.WinForms
 
                 slot.ContextMenuStrip = mnu;
                 if (Settings.Default.HoverSlotShowText)
-                    slot.MouseEnter += ShowHoverTextForSlot;
+                    slot.MouseEnter += (o, args) => ShowHoverTextForSlot(slot, args);
             }
 
             Counter = L_Count.Text;
@@ -77,7 +79,17 @@ namespace PKHeX.WinForms
             // Load Data
             B_Search.Enabled = false;
             L_Count.Text = "Loading...";
-            new Task(LoadDatabase).Start();
+            var task = new Task(LoadDatabase);
+            task.ContinueWith(z =>
+            {
+                if (!z.IsFaulted)
+                    return;
+                Invoke((MethodInvoker)(() => L_Count.Text = "Failed."));
+                if (z.Exception == null)
+                    return;
+                WinFormsUtil.Error("Loading database failed.", z.Exception.InnerException ?? new Exception(z.Exception.Message));
+            });
+            task.Start();
 
             Menu_SearchSettings.DropDown.Closing += (sender, e) =>
             {
@@ -90,17 +102,17 @@ namespace PKHeX.WinForms
 
         private readonly PictureBox[] PKXBOXES;
         private readonly string DatabasePath = Main.DatabasePath;
-        private List<PKM> Results;
-        private List<PKM> RawDB;
+        private List<PKM> Results = new();
+        private List<PKM> RawDB = new();
         private int slotSelected = -1; // = null;
-        private Image slotColor;
+        private Image? slotColor;
         private const int RES_MAX = 66;
         private const int RES_MIN = 6;
         private readonly string Counter;
         private readonly string Viewed;
         private const int MAXFORMAT = PKX.Generation;
         private readonly string EXTERNAL_SAV = new DirectoryInfo(Main.BackupPath).Name + Path.DirectorySeparatorChar;
-        private readonly SummaryPreviewer ShowSet = new SummaryPreviewer();
+        private readonly SummaryPreviewer ShowSet = new();
 
         // Important Events
         private void ClickView(object sender, EventArgs e)
@@ -131,7 +143,7 @@ namespace PKHeX.WinForms
             }
 
             var pk = Results[index];
-            string path = pk.Identifier;
+            var path = pk.Identifier;
 
 #if LOADALL
             if (path.StartsWith(EXTERNAL_SAV))
@@ -140,7 +152,7 @@ namespace PKHeX.WinForms
                 return;
             }
 #endif
-            if (path.Contains(Path.DirectorySeparatorChar))
+            if (path?.Contains(Path.DirectorySeparatorChar) == true)
             {
                 // Data from Database: Delete file from disk
                 if (File.Exists(path))
@@ -188,7 +200,7 @@ namespace PKHeX.WinForms
                 return;
             }
 
-            File.WriteAllBytes(path, pk.Data.Take(pk.SIZE_STORED).ToArray());
+            File.WriteAllBytes(path, pk.DecryptedBoxData);
             pk.Identifier = path;
 
             int pre = RawDB.Count;
@@ -215,7 +227,7 @@ namespace PKHeX.WinForms
             if (index >= RES_MAX)
                 return false;
             index += SCR_Box.Value * RES_MIN;
-            return index < Results?.Count;
+            return index < Results.Count;
         }
 
         private void PopulateComboBoxes()
@@ -261,7 +273,7 @@ namespace PKHeX.WinForms
             }
 
             // Trigger a Reset
-            ResetFilters(null, EventArgs.Empty);
+            ResetFilters(this, EventArgs.Empty);
         }
 
         private void ResetFilters(object sender, EventArgs e)
@@ -288,7 +300,7 @@ namespace PKHeX.WinForms
             MT_ESV.Visible = L_ESV.Visible = false;
             RTB_Instructions.Clear();
 
-            if (sender != null)
+            if (sender != this)
                 System.Media.SystemSounds.Asterisk.Play();
         }
 
@@ -300,7 +312,7 @@ namespace PKHeX.WinForms
             if (this.OpenWindowExists<ReportGrid>())
                 return;
 
-            ReportGrid reportGrid = new ReportGrid();
+            ReportGrid reportGrid = new();
             reportGrid.Show();
             reportGrid.PopulateData(Results.ToArray());
         }
@@ -321,7 +333,9 @@ namespace PKHeX.WinForms
                 while (!IsHandleCreated) { }
                 BeginInvoke(new MethodInvoker(() => SetResults(RawDB)));
             }
+#pragma warning disable CA1031 // Do not catch general exception types
             catch { /* Window Closed? */ }
+#pragma warning restore CA1031 // Do not catch general exception types
         }
 
         private static List<PKM> LoadPKMSaves(string pkmdb, string savdb, string EXTERNAL_SAV, SaveFile SAV)
@@ -342,7 +356,7 @@ namespace PKHeX.WinForms
             var db = bakpkm.Concat(savpkm).Where(pk => pk.ChecksumValid && pk.Sanity == 0);
 
             // when PK7->PK8 conversion is possible (and sprites in new size are available, remove this filter)
-            db = SAV is SAV8SWSH ? db.Where(z => z is PK8 || ((PersonalInfoSWSH)PersonalTable.SWSH.GetFormeEntry(z.Species, z.AltForm)).IsPresentInGame) : db.Where(z => !(z is PK8));
+            db = SAV is SAV8SWSH ? db.Where(z => z is PK8 || ((PersonalInfoSWSH)PersonalTable.SWSH.GetFormEntry(z.Species, z.Form)).IsPresentInGame) : db.Where(z => z is not PK8);
 
             // Finalize the Database
             return new List<PKM>(db);
@@ -357,7 +371,7 @@ namespace PKHeX.WinForms
             var data = File.ReadAllBytes(file);
             var prefer = PKX.GetPKMFormatFromExtension(fi.Extension, dest.Generation);
             var pk = PKMConverter.GetPKMfromBytes(data, prefer);
-            if (!(pk?.Species > 0))
+            if (pk?.Species is not > 0)
                 return;
             pk.Identifier = file;
             dbTemp.Add(pk);
@@ -381,7 +395,7 @@ namespace PKHeX.WinForms
 
             void addPKM(PKM pk)
             {
-                pk.Identifier = Path.Combine(path, pk.Identifier);
+                pk.Identifier = Path.Combine(path, pk.Identifier ?? string.Empty);
                 dbTemp.Add(pk);
             }
         }
@@ -395,7 +409,7 @@ namespace PKHeX.WinForms
 
         private void Menu_Export_Click(object sender, EventArgs e)
         {
-            if (Results == null || Results.Count == 0)
+            if (Results.Count == 0)
             { WinFormsUtil.Alert(MsgDBCreateReportFail); return; }
 
             if (DialogResult.Yes != WinFormsUtil.Prompt(MessageBoxButtons.YesNo, MsgDBExportResultsPrompt))
@@ -436,12 +450,12 @@ namespace PKHeX.WinForms
 
             // pre-filter based on the file path (if specified)
             if (!Menu_SearchBoxes.Checked)
-                res = res.Where(pk => pk.Identifier.StartsWith(DatabasePath + Path.DirectorySeparatorChar, StringComparison.Ordinal));
+                res = res.Where(pk => pk.Identifier?.StartsWith(DatabasePath + Path.DirectorySeparatorChar, StringComparison.Ordinal) == true);
             if (!Menu_SearchDatabase.Checked)
             {
-                res = res.Where(pk => !pk.Identifier.StartsWith(DatabasePath + Path.DirectorySeparatorChar, StringComparison.Ordinal));
+                res = res.Where(pk => pk.Identifier?.StartsWith(DatabasePath + Path.DirectorySeparatorChar, StringComparison.Ordinal) == false);
 #if LOADALL
-                res = res.Where(pk => !pk.Identifier.StartsWith(EXTERNAL_SAV, StringComparison.Ordinal));
+                res = res.Where(pk => pk.Identifier?.StartsWith(EXTERNAL_SAV, StringComparison.Ordinal) == false);
 #endif
             }
 
@@ -549,10 +563,13 @@ namespace PKHeX.WinForms
 
         private void FillPKXBoxes(int start)
         {
-            if (Results == null)
+            if (Results.Count == 0)
             {
                 for (int i = 0; i < RES_MAX; i++)
+                {
                     PKXBOXES[i].Image = null;
+                    PKXBOXES[i].BackgroundImage = null;
+                }
                 return;
             }
             int begin = start*RES_MIN;
@@ -629,14 +646,20 @@ namespace PKHeX.WinForms
                 return;
 
             var deleted = 0;
-            var db = RawDB.Where(pk => pk.Identifier.StartsWith(DatabasePath + Path.DirectorySeparatorChar, StringComparison.Ordinal))
-                .OrderByDescending(file => File.GetLastWriteTimeUtc(file.Identifier));
+            var db = RawDB.Where(pk => pk.Identifier?.StartsWith(DatabasePath + Path.DirectorySeparatorChar, StringComparison.Ordinal) == true)
+                .OrderByDescending(file => File.GetLastWriteTimeUtc(file.Identifier!));
 
             var clones = SearchUtil.GetExtraClones(db);
             foreach (var pk in clones)
             {
-                try { File.Delete(pk.Identifier); ++deleted; }
+                var path = pk.Identifier;
+                if (path == null || !File.Exists(path))
+                    continue;
+
+                try { File.Delete(path); ++deleted; }
+#pragma warning disable CA1031 // Do not catch general exception types
                 catch (Exception ex) { WinFormsUtil.Error(MsgDBDeleteCloneFail + Environment.NewLine + ex.Message + Environment.NewLine + pk.Identifier); }
+#pragma warning restore CA1031 // Do not catch general exception types
             }
 
             if (deleted == 0)

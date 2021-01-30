@@ -1,4 +1,7 @@
-﻿namespace PKHeX.Core
+﻿using System.Collections.Generic;
+using System.Linq;
+
+namespace PKHeX.Core
 {
     public static class ParseSettings
     {
@@ -22,8 +25,19 @@
         public static Severity NicknamedTrade { get; set; } = Severity.Invalid;
         public static Severity NicknamedMysteryGift { get; set; } = Severity.Fishy;
         public static Severity RNGFrameNotFound { get; set; } = Severity.Fishy;
+        public static Severity Gen7TransferStarPID { get; set; } = Severity.Fishy;
         public static Severity Gen8MemoryLocationTextVariable { get; set; } = Severity.Fishy;
         public static Severity Gen8TransferTrackerNotPresent { get; set; } = Severity.Fishy;
+
+        public static IReadOnlyList<string> MoveStrings = Util.GetMovesList(GameLanguage.DefaultLanguage);
+        public static IReadOnlyList<string> SpeciesStrings = Util.GetSpeciesList(GameLanguage.DefaultLanguage);
+        public static IEnumerable<string> GetMoveNames(IEnumerable<int> moves) => moves.Select(m => (uint)m >= MoveStrings.Count ? LegalityCheckStrings.L_AError : MoveStrings[m]);
+
+        public static void ChangeLocalizationStrings(IReadOnlyList<string> moves, IReadOnlyList<string> species)
+        {
+            SpeciesStrings = species;
+            MoveStrings = moves;
+        }
 
         /// <summary>
         /// Checks to see if Crystal is available to visit/originate from.
@@ -60,7 +74,7 @@
             ActiveTrainer = sav;
             if (sav.Generation >= 3)
                 return AllowGBCartEra = false;
-            bool vc = !sav.Exportable || (sav.FileName?.EndsWith("dat") ?? false); // default to true for non-exportable
+            bool vc = !sav.State.Exportable || (sav.Metadata.FileName?.EndsWith("dat") ?? false); // default to true for non-exportable
             return AllowGBCartEra = !vc; // physical cart selected
         }
     }

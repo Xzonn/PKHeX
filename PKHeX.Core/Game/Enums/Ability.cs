@@ -264,6 +264,15 @@
         NeutralizingGas,
         PastelVeil,
         HungerSwitch,
+        QuickDraw,
+        UnseenFist,
+        CuriousMedicine,
+        Transistor,
+        DragonsMaw,
+        ChillingNeigh,
+        GrimNeigh,
+        AsOneI,
+        AsOneG,
         MAX_COUNT,
     }
 }

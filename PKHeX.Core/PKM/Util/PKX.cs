@@ -11,10 +11,10 @@ namespace PKHeX.Core
         internal static readonly PersonalTable Personal = PersonalTable.SWSH;
         public const int Generation = 8;
 
-        private static readonly HashSet<int> Sizes = new HashSet<int>
+        private static readonly HashSet<int> Sizes = new()
         {
             PokeCrypto.SIZE_1JLIST,   PokeCrypto.SIZE_1ULIST,
-            PokeCrypto.SIZE_2ULIST,   PokeCrypto.SIZE_2JLIST,
+            PokeCrypto.SIZE_2ULIST,   PokeCrypto.SIZE_2JLIST,   PokeCrypto.SIZE_2STADIUM,
             PokeCrypto.SIZE_3STORED,  PokeCrypto.SIZE_3PARTY,
             PokeCrypto.SIZE_3CSTORED, PokeCrypto.SIZE_3XSTORED,
             PokeCrypto.SIZE_4STORED,  PokeCrypto.SIZE_4PARTY,
@@ -69,12 +69,12 @@ namespace PKHeX.Core
         {
             if (s.Length != 1)
                 return 2;
-            switch (s[0])
+            return s[0] switch
             {
-                case '♂': case 'M': return 0;
-                case '♀': case 'F': return 1;
-                default: return 2;
-            }
+                '♂' or 'M' => 0,
+                '♀' or 'F' => 1,
+                _ => 2,
+            };
         }
 
         /// <summary>
@@ -109,27 +109,33 @@ namespace PKHeX.Core
         /// </summary>
         /// <param name="rnd">RNG to use</param>
         /// <param name="species">National Dex ID</param>
-        /// <param name="cg">Current Gender</param>
+        /// <param name="gender">Current Gender</param>
         /// <param name="origin">Origin Generation</param>
         /// <param name="nature">Nature</param>
-        /// <param name="form">AltForm</param>
-        /// <param name="OLDPID">Current PID</param>
+        /// <param name="form">Form</param>
+        /// <param name="oldPID">Current PID</param>
         /// <remarks>Used to retain ability bits.</remarks>
         /// <returns>Rerolled PID.</returns>
-        public static uint GetRandomPID(Random rnd, int species, int cg, int origin, int nature, int form, uint OLDPID)
+        public static uint GetRandomPID(Random rnd, int species, int gender, int origin, int nature, int form, uint oldPID)
         {
-            uint bits = OLDPID & 0x00010001;
-            int gt = Personal[species].Gender;
+            // Gen6+ (and VC) PIDs do not tie PID to Nature/Gender/Ability
             if (origin >= 24)
                 return Util.Rand32(rnd);
 
+            // Below logic handles Gen3-5.
+
+            int gt = Personal[species].Gender;
+            bool g34 = origin <= 15;
+            uint abilBitVal = g34 ? oldPID & 0x0000_0001 : oldPID & 0x0001_0000;
+
             bool g3unown = origin <= 5 && species == (int)Species.Unown;
+            bool singleGender = gt is 0 or 254 or 255; // single gender, skip gender check
             while (true) // Loop until we find a suitable PID
             {
                 uint pid = Util.Rand32(rnd);
 
                 // Gen 3/4: Nature derived from PID
-                if (origin <= 15 && pid%25 != nature)
+                if (g34 && pid%25 != nature)
                     continue;
 
                 // Gen 3 Unown: Letter/form derived from PID
@@ -139,16 +145,22 @@ namespace PKHeX.Core
                     if (pidLetter != form)
                         continue;
                 }
-                else if (bits != (pid & 0x00010001)) // keep ability bits
+                else if (g34)
                 {
-                    continue;
+                    if (abilBitVal != (pid & 0x0000_0001)) // keep ability bits
+                        continue;
+                }
+                else
+                {
+                    if (abilBitVal != (pid & 0x0001_0000)) // keep ability bits
+                        continue;
                 }
 
-                if (gt == 255 || gt == 254 || gt == 0) // Set Gender(less)
+                if (singleGender) // Set Gender(less)
                     return pid; // PID can be anything
 
                 // Gen 3/4/5: Gender derived from PID
-                if (cg == GetGenderFromPIDAndRatio(pid, gt))
+                if (gender == GetGenderFromPIDAndRatio(pid, gt))
                     return pid;
             }
         }
@@ -169,25 +181,22 @@ namespace PKHeX.Core
         /// Gets the gender ID of the species based on the Personality ID.
         /// </summary>
         /// <param name="species">National Dex ID.</param>
-        /// <param name="PID">Personality ID.</param>
+        /// <param name="pid">Personality ID.</param>
         /// <returns>Gender ID (0/1/2)</returns>
         /// <remarks>This method should only be used for Generations 3-5 origin.</remarks>
-        public static int GetGenderFromPID(int species, uint PID)
+        public static int GetGenderFromPID(int species, uint pid)
         {
             int gt = Personal[species].Gender;
-            return GetGenderFromPIDAndRatio(PID, gt);
+            return GetGenderFromPIDAndRatio(pid, gt);
         }
 
-        public static int GetGenderFromPIDAndRatio(uint PID, int gr)
+        public static int GetGenderFromPIDAndRatio(uint pid, int gr) => gr switch
         {
-            return gr switch
-            {
-                255 => 2,
-                254 => 1,
-                0 => 0,
-                _ => ((PID & 0xFF) < gr ? 1 : 0)
-            };
-        }
+            255 => 2,
+            254 => 1,
+            0 => 0,
+            _ => (pid & 0xFF) < gr ? 1 : 0
+        };
 
         /// <summary>
         /// Gets an array of valid <see cref="PKM"/> file extensions.
@@ -197,7 +206,7 @@ namespace PKHeX.Core
         public static string[] GetPKMExtensions(int maxGeneration = Generation)
         {
             var result = new List<string>();
-            int min = maxGeneration <= 2 || maxGeneration >= 7 ? 1 : 3;
+            int min = maxGeneration is <= 2 or >= 7 ? 1 : 3;
             for (int i = min; i <= maxGeneration; i++)
                 result.Add($"pk{i}");
 
@@ -235,7 +244,7 @@ namespace PKHeX.Core
         /// <returns>Format hint that the file is.</returns>
         public static int GetPKMFormatFromExtension(char last, int prefer)
         {
-            if ('1' <= last && last <= '9')
+            if (last is >= '1' and <= '9')
                 return last - '0';
             return last == 'x' ? 6 : prefer;
         }

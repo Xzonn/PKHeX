@@ -13,12 +13,12 @@ namespace PKHeX.Core
         public IReadOnlyList<ComboItem> DataSource => (ComboItem[])MoveDataAllowed.Clone();
         public bool CanLearn(int move) => AllowedMoves.Contains(move);
 
-        private readonly HashSet<int> AllowedMoves = new HashSet<int>();
+        private readonly HashSet<int> AllowedMoves = new();
         private ComboItem[] MoveDataAllowed = Array.Empty<ComboItem>();
 
         public void ReloadMoves(IReadOnlyList<int> moves)
         {
-            // check prior movepool to not needlessly refresh the dataset
+            // check prior move-pool to not needlessly refresh the data set
             if (AllowedMoves.Count == moves.Count && AllowedMoves.SetEquals(moves))
                 return;
 
@@ -28,7 +28,7 @@ namespace PKHeX.Core
             Array.Sort(MoveDataAllowed, Compare);
             // MoveDataAllowed = MoveDataAllowed.OrderByDescending(m => AllowedMoves.Contains(m.Value)).ToArray();
 
-            // defer repop until dropdown is opened; handled by dropdown event
+            // defer re-population until dropdown is opened; handled by dropdown event
             for (int i = 0; i < IsMoveBoxOrdered.Count; i++)
                 IsMoveBoxOrdered[i] = false;
         }

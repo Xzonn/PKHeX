@@ -28,11 +28,11 @@ namespace PKHeX.Core
             for (int y = 0; y < 3; y++)
             {
                 for (int x = 0; x < 4; x++)
-                    SetMessage(y, x, (ushort)(x == 1 ? 0 : 0xFFFF));
+                    SetMessage(y, x, x == 1 ? 0 : 0xFFFF);
             }
         }
 
-        public override void CopyTo(PK5 pk5) => pk5.HeldMailData = Data;
+        public override void CopyTo(PK5 pk5) => pk5.SetHeldMailData(Data);
         public override ushort AuthorTID { get => BitConverter.ToUInt16(Data, 0); set => BitConverter.GetBytes(value).CopyTo(Data, 0); }
         public override ushort AuthorSID { get => BitConverter.ToUInt16(Data, 2); set => BitConverter.GetBytes(value).CopyTo(Data, 2); }
         public override byte AuthorGender { get => Data[4]; set => Data[4] = value; }

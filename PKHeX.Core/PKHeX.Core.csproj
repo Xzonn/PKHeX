@@ -10,7 +10,7 @@
     <PackageIconUrl>https://github.com/kwsch/PKHeX/blob/master/PKHeX.WinForms/icon.ico</PackageIconUrl>
     <PackageProjectUrl />
     <RepositoryUrl>https://github.com/kwsch/PKHeX</RepositoryUrl>
-    <LangVersion>8</LangVersion>
+    <LangVersion>9</LangVersion>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
@@ -30,48 +30,40 @@
     <None Remove="Resources\byte\encounter_b.pkl" />
     <None Remove="Resources\byte\encounter_b2.pkl" />
     <None Remove="Resources\byte\encounter_blue.pkl" />
+    <None Remove="Resources\byte\encounter_blue_jp.pkl" />
     <None Remove="Resources\byte\encounter_crystal.pkl" />
-    <None Remove="Resources\byte\encounter_crystal_h.pkl" />
     <None Remove="Resources\byte\encounter_d.pkl" />
     <None Remove="Resources\byte\encounter_e.pkl" />
     <None Remove="Resources\byte\encounter_fr.pkl" />
     <None Remove="Resources\byte\encounter_ge.pkl" />
+    <None Remove="Resources\byte\encounter_go_home.pkl" />
+    <None Remove="Resources\byte\encounter_go_lgpe.pkl" />
     <None Remove="Resources\byte\encounter_gold.pkl" />
-    <None Remove="Resources\byte\encounter_gold_h.pkl" />
     <None Remove="Resources\byte\encounter_gp.pkl" />
-    <None Remove="Resources\byte\encounter_gsc_f.pkl" />
     <None Remove="Resources\byte\encounter_hg.pkl" />
     <None Remove="Resources\byte\encounter_lg.pkl" />
     <None Remove="Resources\byte\encounter_mn.pkl" />
-    <None Remove="Resources\byte\encounter_mn_sos.pkl" />
     <None Remove="Resources\byte\encounter_o.pkl" />
     <None Remove="Resources\byte\encounter_p.pkl" />
     <None Remove="Resources\byte\encounter_pt.pkl" />
     <None Remove="Resources\byte\encounter_r.pkl" />
-    <None Remove="Resources\byte\encounter_rb_f.pkl" />
     <None Remove="Resources\byte\encounter_red.pkl" />
+    <None Remove="Resources\byte\encounter_rse_swarm.pkl" />
     <None Remove="Resources\byte\encounter_s.pkl" />
     <None Remove="Resources\byte\encounter_sh_hidden.pkl" />
     <None Remove="Resources\byte\encounter_sh_symbol.pkl" />
     <None Remove="Resources\byte\encounter_silver.pkl" />
-    <None Remove="Resources\byte\encounter_silver_h.pkl" />
     <None Remove="Resources\byte\encounter_sn.pkl" />
-    <None Remove="Resources\byte\encounter_sn_sos.pkl" />
     <None Remove="Resources\byte\encounter_ss.pkl" />
     <None Remove="Resources\byte\encounter_sw_hidden.pkl" />
     <None Remove="Resources\byte\encounter_sw_symbol.pkl" />
     <None Remove="Resources\byte\encounter_us.pkl" />
-    <None Remove="Resources\byte\encounter_us_sos.pkl" />
     <None Remove="Resources\byte\encounter_um.pkl" />
-    <None Remove="Resources\byte\encounter_um_sos.pkl" />
     <None Remove="Resources\byte\encounter_w.pkl" />
     <None Remove="Resources\byte\encounter_w2.pkl" />
     <None Remove="Resources\byte\encounter_x.pkl" />
     <None Remove="Resources\byte\encounter_y.pkl" />
     <None Remove="Resources\byte\encounter_yellow.pkl" />
-    <None Remove="Resources\byte\encounter_yellow_f.pkl" />
-    <None Remove="Resources\byte\encounter_hb_hg.pkl" />
-    <None Remove="Resources\byte\encounter_hb_ss.pkl" />
     <None Remove="Resources\byte\evos_ao.pkl" />
     <None Remove="Resources\byte\evos_g3.pkl" />
     <None Remove="Resources\byte\evos_g4.pkl" />
@@ -122,7 +114,6 @@
     <None Remove="Resources\byte\personal_xy" />
     <None Remove="Resources\byte\personal_y" />
     <None Remove="Resources\byte\pgf.pkl" />
-    <None Remove="Resources\byte\trees_h_c.pkl" />
     <None Remove="Resources\byte\tutors_g3.pkl" />
     <None Remove="Resources\byte\tutors_g4.pkl" />
     <None Remove="Resources\byte\wc6.pkl" />
@@ -139,6 +130,10 @@
     <None Remove="Resources\text\de\text_bw2_40000_de.txt" />
     <None Remove="Resources\text\de\text_bw2_60000_de.txt" />
     <None Remove="Resources\text\de\text_Character_de.txt" />
+    <None Remove="Resources\text\de\text_dppt_uggoods_de.txt" />
+    <None Remove="Resources\text\de\text_dppt_ugspheres_de.txt" />
+    <None Remove="Resources\text\de\text_dppt_ugtraps_de.txt" />
+    <None Remove="Resources\text\de\text_dppt_ugtreasures_de.txt" />
     <None Remove="Resources\text\de\text_EncounterType_de.txt" />
     <None Remove="Resources\text\de\text_Forms_de.txt" />
     <None Remove="Resources\text\de\text_Games_de.txt" />
@@ -148,6 +143,7 @@
     <None Remove="Resources\text\de\text_hgss_00000_de.txt" />
     <None Remove="Resources\text\de\text_hgss_02000_de.txt" />
     <None Remove="Resources\text\de\text_hgss_03000_de.txt" />
+    <None Remove="Resources\text\de\text_hgss_walkercourses_de.txt" />
     <None Remove="Resources\text\de\text_Items_de.txt" />
     <None Remove="Resources\text\de\text_Mail4_de.txt" />
     <None Remove="Resources\text\de\text_Memories_de.txt" />
@@ -173,6 +169,7 @@
     <None Remove="Resources\text\de\text_tradefrlg_de.txt" />
     <None Remove="Resources\text\de\text_tradegsc_de.txt" />
     <None Remove="Resources\text\de\text_tradehgss_de.txt" />
+    <None Remove="Resources\text\de\text_traderby_de.txt" />
     <None Remove="Resources\text\de\text_traderse_de.txt" />
     <None Remove="Resources\text\de\text_tradesm_de.txt" />
     <None Remove="Resources\text\de\text_tradeswsh_de.txt" />
@@ -193,6 +190,10 @@
     <None Remove="Resources\text\en\text_bw2_40000_en.txt" />
     <None Remove="Resources\text\en\text_bw2_60000_en.txt" />
     <None Remove="Resources\text\en\text_Character_en.txt" />
+    <None Remove="Resources\text\en\text_dppt_uggoods_en.txt" />
+    <None Remove="Resources\text\en\text_dppt_ugspheres_en.txt" />
+    <None Remove="Resources\text\en\text_dppt_ugtraps_en.txt" />
+    <None Remove="Resources\text\en\text_dppt_ugtreasures_en.txt" />
     <None Remove="Resources\text\en\text_EncounterType_en.txt" />
     <None Remove="Resources\text\en\text_Forms_en.txt" />
     <None Remove="Resources\text\en\text_Games_en.txt" />
@@ -202,6 +203,7 @@
     <None Remove="Resources\text\en\text_hgss_00000_en.txt" />
     <None Remove="Resources\text\en\text_hgss_02000_en.txt" />
     <None Remove="Resources\text\en\text_hgss_03000_en.txt" />
+    <None Remove="Resources\text\en\text_hgss_walkercourses_en.txt" />
     <None Remove="Resources\text\en\text_Items_en.txt" />
     <None Remove="Resources\text\en\text_Mail4_en.txt" />
     <None Remove="Resources\text\en\text_Memories_en.txt" />
@@ -227,6 +229,7 @@
     <None Remove="Resources\text\en\text_tradefrlg_en.txt" />
     <None Remove="Resources\text\en\text_tradegsc_en.txt" />
     <None Remove="Resources\text\en\text_tradehgss_en.txt" />
+    <None Remove="Resources\text\en\text_traderby_en.txt" />
     <None Remove="Resources\text\en\text_traderse_en.txt" />
     <None Remove="Resources\text\en\text_tradesm_en.txt" />
     <None Remove="Resources\text\en\text_tradeswsh_en.txt" />
@@ -247,6 +250,10 @@
     <None Remove="Resources\text\es\text_bw2_40000_es.txt" />
     <None Remove="Resources\text\es\text_bw2_60000_es.txt" />
     <None Remove="Resources\text\es\text_Character_es.txt" />
+    <None Remove="Resources\text\es\text_dppt_uggoods_es.txt" />
+    <None Remove="Resources\text\es\text_dppt_ugspheres_es.txt" />
+    <None Remove="Resources\text\es\text_dppt_ugtraps_es.txt" />
+    <None Remove="Resources\text\es\text_dppt_ugtreasures_es.txt" />
     <None Remove="Resources\text\es\text_EncounterType_es.txt" />
     <None Remove="Resources\text\es\text_Forms_es.txt" />
     <None Remove="Resources\text\es\text_Games_es.txt" />
@@ -256,6 +263,7 @@
     <None Remove="Resources\text\es\text_hgss_00000_es.txt" />
     <None Remove="Resources\text\es\text_hgss_02000_es.txt" />
     <None Remove="Resources\text\es\text_hgss_03000_es.txt" />
+    <None Remove="Resources\text\es\text_hgss_walkercourses_es.txt" />
     <None Remove="Resources\text\es\text_Items_es.txt" />
     <None Remove="Resources\text\es\text_Mail4_es.txt" />
     <None Remove="Resources\text\es\text_Memories_es.txt" />
@@ -281,6 +289,7 @@
     <None Remove="Resources\text\es\text_tradefrlg_es.txt" />
     <None Remove="Resources\text\es\text_tradegsc_es.txt" />
     <None Remove="Resources\text\es\text_tradehgss_es.txt" />
+    <None Remove="Resources\text\es\text_traderby_es.txt" />
     <None Remove="Resources\text\es\text_traderse_es.txt" />
     <None Remove="Resources\text\es\text_tradesm_es.txt" />
     <None Remove="Resources\text\es\text_tradeswsh_es.txt" />
@@ -301,6 +310,10 @@
     <None Remove="Resources\text\fr\text_bw2_40000_fr.txt" />
     <None Remove="Resources\text\fr\text_bw2_60000_fr.txt" />
     <None Remove="Resources\text\fr\text_Character_fr.txt" />
+    <None Remove="Resources\text\fr\text_dppt_uggoods_fr.txt" />
+    <None Remove="Resources\text\fr\text_dppt_ugspheres_fr.txt" />
+    <None Remove="Resources\text\fr\text_dppt_ugtraps_fr.txt" />
+    <None Remove="Resources\text\fr\text_dppt_ugtreasures_fr.txt" />
     <None Remove="Resources\text\fr\text_EncounterType_fr.txt" />
     <None Remove="Resources\text\fr\text_Forms_fr.txt" />
     <None Remove="Resources\text\fr\text_Games_fr.txt" />
@@ -310,6 +323,7 @@
     <None Remove="Resources\text\fr\text_hgss_00000_fr.txt" />
     <None Remove="Resources\text\fr\text_hgss_02000_fr.txt" />
     <None Remove="Resources\text\fr\text_hgss_03000_fr.txt" />
+    <None Remove="Resources\text\fr\text_hgss_walkercourses_fr.txt" />
     <None Remove="Resources\text\fr\text_Items_fr.txt" />
     <None Remove="Resources\text\fr\text_Mail4_fr.txt" />
     <None Remove="Resources\text\fr\text_Memories_fr.txt" />
@@ -335,6 +349,7 @@
     <None Remove="Resources\text\fr\text_tradefrlg_fr.txt" />
     <None Remove="Resources\text\fr\text_tradegsc_fr.txt" />
     <None Remove="Resources\text\fr\text_tradehgss_fr.txt" />
+    <None Remove="Resources\text\fr\text_traderby_fr.txt" />
     <None Remove="Resources\text\fr\text_traderse_fr.txt" />
     <None Remove="Resources\text\fr\text_tradesm_fr.txt" />
     <None Remove="Resources\text\fr\text_tradeswsh_fr.txt" />
@@ -379,6 +394,10 @@
     <None Remove="Resources\text\it\text_bw2_40000_it.txt" />
     <None Remove="Resources\text\it\text_bw2_60000_it.txt" />
     <None Remove="Resources\text\it\text_Character_it.txt" />
+    <None Remove="Resources\text\it\text_dppt_uggoods_it.txt" />
+    <None Remove="Resources\text\it\text_dppt_ugspheres_it.txt" />
+    <None Remove="Resources\text\it\text_dppt_ugtraps_it.txt" />
+    <None Remove="Resources\text\it\text_dppt_ugtreasures_it.txt" />
     <None Remove="Resources\text\it\text_EncounterType_it.txt" />
     <None Remove="Resources\text\it\text_Forms_it.txt" />
     <None Remove="Resources\text\it\text_Games_it.txt" />
@@ -388,6 +407,7 @@
     <None Remove="Resources\text\it\text_hgss_00000_it.txt" />
     <None Remove="Resources\text\it\text_hgss_02000_it.txt" />
     <None Remove="Resources\text\it\text_hgss_03000_it.txt" />
+    <None Remove="Resources\text\it\text_hgss_walkercourses_it.txt" />
     <None Remove="Resources\text\it\text_Items_it.txt" />
     <None Remove="Resources\text\it\text_Mail4_it.txt" />
     <None Remove="Resources\text\it\text_Memories_it.txt" />
@@ -413,6 +433,7 @@
     <None Remove="Resources\text\it\text_tradefrlg_it.txt" />
     <None Remove="Resources\text\it\text_tradegsc_it.txt" />
     <None Remove="Resources\text\it\text_tradehgss_it.txt" />
+    <None Remove="Resources\text\it\text_traderby_it.txt" />
     <None Remove="Resources\text\it\text_traderse_it.txt" />
     <None Remove="Resources\text\it\text_tradesm_it.txt" />
     <None Remove="Resources\text\it\text_tradeswsh_it.txt" />
@@ -433,6 +454,10 @@
     <None Remove="Resources\text\ja\text_bw2_40000_ja.txt" />
     <None Remove="Resources\text\ja\text_bw2_60000_ja.txt" />
     <None Remove="Resources\text\ja\text_Character_ja.txt" />
+    <None Remove="Resources\text\ja\text_dppt_uggoods_ja.txt" />
+    <None Remove="Resources\text\ja\text_dppt_ugspheres_ja.txt" />
+    <None Remove="Resources\text\ja\text_dppt_ugtraps_ja.txt" />
+    <None Remove="Resources\text\ja\text_dppt_ugtreasures_ja.txt" />
     <None Remove="Resources\text\ja\text_EncounterType_ja.txt" />
     <None Remove="Resources\text\ja\text_Forms_ja.txt" />
     <None Remove="Resources\text\ja\text_Games_ja.txt" />
@@ -442,6 +467,7 @@
     <None Remove="Resources\text\ja\text_hgss_00000_ja.txt" />
     <None Remove="Resources\text\ja\text_hgss_02000_ja.txt" />
     <None Remove="Resources\text\ja\text_hgss_03000_ja.txt" />
+    <None Remove="Resources\text\ja\text_hgss_walkercourses_ja.txt" />
     <None Remove="Resources\text\ja\text_Items_ja.txt" />
     <None Remove="Resources\text\ja\text_Mail4_ja.txt" />
     <None Remove="Resources\text\ja\text_Memories_ja.txt" />
@@ -467,6 +493,7 @@
     <None Remove="Resources\text\ja\text_tradefrlg_ja.txt" />
     <None Remove="Resources\text\ja\text_tradegsc_ja.txt" />
     <None Remove="Resources\text\ja\text_tradehgss_ja.txt" />
+    <None Remove="Resources\text\ja\text_traderby_ja.txt" />
     <None Remove="Resources\text\ja\text_traderse_ja.txt" />
     <None Remove="Resources\text\ja\text_tradesm_ja.txt" />
     <None Remove="Resources\text\ja\text_tradeswsh_ja.txt" />
@@ -487,6 +514,10 @@
     <None Remove="Resources\text\ko\text_bw2_40000_ko.txt" />
     <None Remove="Resources\text\ko\text_bw2_60000_ko.txt" />
     <None Remove="Resources\text\ko\text_Character_ko.txt" />
+    <None Remove="Resources\text\ko\text_dppt_uggoods_ko.txt" />
+    <None Remove="Resources\text\ko\text_dppt_ugspheres_ko.txt" />
+    <None Remove="Resources\text\ko\text_dppt_ugtraps_ko.txt" />
+    <None Remove="Resources\text\ko\text_dppt_ugtreasures_ko.txt" />
     <None Remove="Resources\text\ko\text_EncounterType_ko.txt" />
     <None Remove="Resources\text\ko\text_Forms_ko.txt" />
     <None Remove="Resources\text\ko\text_Games_ko.txt" />
@@ -496,6 +527,7 @@
     <None Remove="Resources\text\ko\text_hgss_00000_ko.txt" />
     <None Remove="Resources\text\ko\text_hgss_02000_ko.txt" />
     <None Remove="Resources\text\ko\text_hgss_03000_ko.txt" />
+    <None Remove="Resources\text\ko\text_hgss_walkercourses_ko.txt" />
     <None Remove="Resources\text\ko\text_Items_ko.txt" />
     <None Remove="Resources\text\ko\text_Mail4_ko.txt" />
     <None Remove="Resources\text\ko\text_Memories_ko.txt" />
@@ -729,8 +761,10 @@
     <None Remove="Resources\text\script\flags_dp_zh.txt" />
     <None Remove="Resources\text\script\flags_e_en.txt" />
     <None Remove="Resources\text\script\flags_e_es.txt" />
+    <None Remove="Resources\text\script\flags_e_zh.txt" />
     <None Remove="Resources\text\script\flags_frlg_en.txt" />
     <None Remove="Resources\text\script\flags_frlg_es.txt" />
+    <None Remove="Resources\text\script\flags_frlg_zh.txt" />
     <None Remove="Resources\text\script\flags_gg_en.txt" />
     <None Remove="Resources\text\script\flags_gg_es.txt" />
     <None Remove="Resources\text\script\flags_gg_ko.txt" />
@@ -752,6 +786,7 @@
     <None Remove="Resources\text\script\flags_pt_zh.txt" />
     <None Remove="Resources\text\script\flags_rs_en.txt" />
     <None Remove="Resources\text\script\flags_rs_es.txt" />
+    <None Remove="Resources\text\script\flags_rs_zh.txt" />
     <None Remove="Resources\text\script\flags_sm_en.txt" />
     <None Remove="Resources\text\script\flags_sm_es.txt" />
     <None Remove="Resources\text\script\flags_sm_ja.txt" />
@@ -795,6 +830,7 @@
     <None Remove="Resources\text\zh\text_hgss_00000_zh.txt" />
     <None Remove="Resources\text\zh\text_hgss_02000_zh.txt" />
     <None Remove="Resources\text\zh\text_hgss_03000_zh.txt" />
+    <None Remove="Resources\text\zh\text_hgss_walkercourses_zh.txt" />
     <None Remove="Resources\text\zh\text_Items_zh.txt" />
     <None Remove="Resources\text\zh\text_Memories_zh.txt" />
     <None Remove="Resources\text\zh\text_Moves_zh.txt" />
@@ -844,48 +880,40 @@
     <EmbeddedResource Include="Resources\byte\encounter_b.pkl" />
     <EmbeddedResource Include="Resources\byte\encounter_b2.pkl" />
     <EmbeddedResource Include="Resources\byte\encounter_blue.pkl" />
+    <EmbeddedResource Include="Resources\byte\encounter_blue_jp.pkl" />
     <EmbeddedResource Include="Resources\byte\encounter_crystal.pkl" />
-    <EmbeddedResource Include="Resources\byte\encounter_crystal_h.pkl" />
     <EmbeddedResource Include="Resources\byte\encounter_d.pkl" />
     <EmbeddedResource Include="Resources\byte\encounter_e.pkl" />
     <EmbeddedResource Include="Resources\byte\encounter_fr.pkl" />
     <EmbeddedResource Include="Resources\byte\encounter_ge.pkl" />
+    <EmbeddedResource Include="Resources\byte\encounter_go_home.pkl" />
+    <EmbeddedResource Include="Resources\byte\encounter_go_lgpe.pkl" />
     <EmbeddedResource Include="Resources\byte\encounter_gold.pkl" />
-    <EmbeddedResource Include="Resources\byte\encounter_gold_h.pkl" />
-    <EmbeddedResource Include="Resources\byte\encounter_gsc_f.pkl" />
     <EmbeddedResource Include="Resources\byte\encounter_gp.pkl" />
     <EmbeddedResource Include="Resources\byte\encounter_hg.pkl" />
     <EmbeddedResource Include="Resources\byte\encounter_lg.pkl" />
     <EmbeddedResource Include="Resources\byte\encounter_mn.pkl" />
-    <EmbeddedResource Include="Resources\byte\encounter_mn_sos.pkl" />
     <EmbeddedResource Include="Resources\byte\encounter_o.pkl" />
     <EmbeddedResource Include="Resources\byte\encounter_p.pkl" />
     <EmbeddedResource Include="Resources\byte\encounter_pt.pkl" />
     <EmbeddedResource Include="Resources\byte\encounter_r.pkl" />
-    <EmbeddedResource Include="Resources\byte\encounter_rb_f.pkl" />
     <EmbeddedResource Include="Resources\byte\encounter_red.pkl" />
+    <EmbeddedResource Include="Resources\byte\encounter_rse_swarm.pkl" />
     <EmbeddedResource Include="Resources\byte\encounter_s.pkl" />
     <EmbeddedResource Include="Resources\byte\encounter_sh_hidden.pkl" />
     <EmbeddedResource Include="Resources\byte\encounter_sh_symbol.pkl" />
     <EmbeddedResource Include="Resources\byte\encounter_silver.pkl" />
-    <EmbeddedResource Include="Resources\byte\encounter_silver_h.pkl" />
     <EmbeddedResource Include="Resources\byte\encounter_sn.pkl" />
-    <EmbeddedResource Include="Resources\byte\encounter_sn_sos.pkl" />
     <EmbeddedResource Include="Resources\byte\encounter_ss.pkl" />
     <EmbeddedResource Include="Resources\byte\encounter_sw_hidden.pkl" />
     <EmbeddedResource Include="Resources\byte\encounter_sw_symbol.pkl" />
     <EmbeddedResource Include="Resources\byte\encounter_us.pkl" />
-    <EmbeddedResource Include="Resources\byte\encounter_us_sos.pkl" />
     <EmbeddedResource Include="Resources\byte\encounter_um.pkl" />
-    <EmbeddedResource Include="Resources\byte\encounter_um_sos.pkl" />
     <EmbeddedResource Include="Resources\byte\encounter_w.pkl" />
     <EmbeddedResource Include="Resources\byte\encounter_w2.pkl" />
     <EmbeddedResource Include="Resources\byte\encounter_x.pkl" />
     <EmbeddedResource Include="Resources\byte\encounter_y.pkl" />
     <EmbeddedResource Include="Resources\byte\encounter_yellow.pkl" />
-    <EmbeddedResource Include="Resources\byte\encounter_yellow_f.pkl" />
-    <EmbeddedResource Include="Resources\byte\encounter_hb_hg.pkl" />
-    <EmbeddedResource Include="Resources\byte\encounter_hb_ss.pkl" />
     <EmbeddedResource Include="Resources\byte\evos_ao.pkl" />
     <EmbeddedResource Include="Resources\byte\evos_g3.pkl" />
     <EmbeddedResource Include="Resources\byte\evos_g4.pkl" />
@@ -936,7 +964,6 @@
     <EmbeddedResource Include="Resources\byte\personal_xy" />
     <EmbeddedResource Include="Resources\byte\personal_y" />
     <EmbeddedResource Include="Resources\byte\pgf.pkl" />
-    <EmbeddedResource Include="Resources\byte\trees_h_c.pkl" />
     <EmbeddedResource Include="Resources\byte\tutors_g3.pkl" />
     <EmbeddedResource Include="Resources\byte\tutors_g4.pkl" />
     <EmbeddedResource Include="Resources\byte\wc6.pkl" />
@@ -953,6 +980,10 @@
     <EmbeddedResource Include="Resources\text\de\text_bw2_40000_de.txt" />
     <EmbeddedResource Include="Resources\text\de\text_bw2_60000_de.txt" />
     <EmbeddedResource Include="Resources\text\de\text_Character_de.txt" />
+    <EmbeddedResource Include="Resources\text\de\text_dppt_uggoods_de.txt" />
+    <EmbeddedResource Include="Resources\text\de\text_dppt_ugspheres_de.txt" />
+    <EmbeddedResource Include="Resources\text\de\text_dppt_ugtraps_de.txt" />
+    <EmbeddedResource Include="Resources\text\de\text_dppt_ugtreasures_de.txt" />
     <EmbeddedResource Include="Resources\text\de\text_EncounterType_de.txt" />
     <EmbeddedResource Include="Resources\text\de\text_Forms_de.txt" />
     <EmbeddedResource Include="Resources\text\de\text_Games_de.txt" />
@@ -962,6 +993,7 @@
     <EmbeddedResource Include="Resources\text\de\text_hgss_00000_de.txt" />
     <EmbeddedResource Include="Resources\text\de\text_hgss_02000_de.txt" />
     <EmbeddedResource Include="Resources\text\de\text_hgss_03000_de.txt" />
+    <EmbeddedResource Include="Resources\text\de\text_hgss_walkercourses_de.txt" />
     <EmbeddedResource Include="Resources\text\de\text_Items_de.txt" />
     <EmbeddedResource Include="Resources\text\de\text_Mail4_de.txt" />
     <EmbeddedResource Include="Resources\text\de\text_Memories_de.txt" />
@@ -987,6 +1019,7 @@
     <EmbeddedResource Include="Resources\text\de\text_tradefrlg_de.txt" />
     <EmbeddedResource Include="Resources\text\de\text_tradegsc_de.txt" />
     <EmbeddedResource Include="Resources\text\de\text_tradehgss_de.txt" />
+    <EmbeddedResource Include="Resources\text\de\text_traderby_de.txt" />
     <EmbeddedResource Include="Resources\text\de\text_traderse_de.txt" />
     <EmbeddedResource Include="Resources\text\de\text_tradesm_de.txt" />
     <EmbeddedResource Include="Resources\text\de\text_tradeswsh_de.txt" />
@@ -1007,6 +1040,10 @@
     <EmbeddedResource Include="Resources\text\en\text_bw2_40000_en.txt" />
     <EmbeddedResource Include="Resources\text\en\text_bw2_60000_en.txt" />
     <EmbeddedResource Include="Resources\text\en\text_Character_en.txt" />
+    <EmbeddedResource Include="Resources\text\en\text_dppt_uggoods_en.txt" />
+    <EmbeddedResource Include="Resources\text\en\text_dppt_ugspheres_en.txt" />
+    <EmbeddedResource Include="Resources\text\en\text_dppt_ugtraps_en.txt" />
+    <EmbeddedResource Include="Resources\text\en\text_dppt_ugtreasures_en.txt" />
     <EmbeddedResource Include="Resources\text\en\text_EncounterType_en.txt" />
     <EmbeddedResource Include="Resources\text\en\text_Forms_en.txt" />
     <EmbeddedResource Include="Resources\text\en\text_Games_en.txt" />
@@ -1016,6 +1053,7 @@
     <EmbeddedResource Include="Resources\text\en\text_hgss_00000_en.txt" />
     <EmbeddedResource Include="Resources\text\en\text_hgss_02000_en.txt" />
     <EmbeddedResource Include="Resources\text\en\text_hgss_03000_en.txt" />
+    <EmbeddedResource Include="Resources\text\en\text_hgss_walkercourses_en.txt" />
     <EmbeddedResource Include="Resources\text\en\text_Items_en.txt" />
     <EmbeddedResource Include="Resources\text\en\text_Mail4_en.txt" />
     <EmbeddedResource Include="Resources\text\en\text_Memories_en.txt" />
@@ -1041,6 +1079,7 @@
     <EmbeddedResource Include="Resources\text\en\text_tradefrlg_en.txt" />
     <EmbeddedResource Include="Resources\text\en\text_tradegsc_en.txt" />
     <EmbeddedResource Include="Resources\text\en\text_tradehgss_en.txt" />
+    <EmbeddedResource Include="Resources\text\en\text_traderby_en.txt" />
     <EmbeddedResource Include="Resources\text\en\text_traderse_en.txt" />
     <EmbeddedResource Include="Resources\text\en\text_tradesm_en.txt" />
     <EmbeddedResource Include="Resources\text\en\text_tradeswsh_en.txt" />
@@ -1061,6 +1100,10 @@
     <EmbeddedResource Include="Resources\text\es\text_bw2_40000_es.txt" />
     <EmbeddedResource Include="Resources\text\es\text_bw2_60000_es.txt" />
     <EmbeddedResource Include="Resources\text\es\text_Character_es.txt" />
+    <EmbeddedResource Include="Resources\text\es\text_dppt_uggoods_es.txt" />
+    <EmbeddedResource Include="Resources\text\es\text_dppt_ugspheres_es.txt" />
+    <EmbeddedResource Include="Resources\text\es\text_dppt_ugtraps_es.txt" />
+    <EmbeddedResource Include="Resources\text\es\text_dppt_ugtreasures_es.txt" />
     <EmbeddedResource Include="Resources\text\es\text_EncounterType_es.txt" />
     <EmbeddedResource Include="Resources\text\es\text_Forms_es.txt" />
     <EmbeddedResource Include="Resources\text\es\text_Games_es.txt" />
@@ -1070,6 +1113,7 @@
     <EmbeddedResource Include="Resources\text\es\text_hgss_00000_es.txt" />
     <EmbeddedResource Include="Resources\text\es\text_hgss_02000_es.txt" />
     <EmbeddedResource Include="Resources\text\es\text_hgss_03000_es.txt" />
+    <EmbeddedResource Include="Resources\text\es\text_hgss_walkercourses_es.txt" />
     <EmbeddedResource Include="Resources\text\es\text_Items_es.txt" />
     <EmbeddedResource Include="Resources\text\es\text_Mail4_es.txt" />
     <EmbeddedResource Include="Resources\text\es\text_Memories_es.txt" />
@@ -1095,6 +1139,7 @@
     <EmbeddedResource Include="Resources\text\es\text_tradefrlg_es.txt" />
     <EmbeddedResource Include="Resources\text\es\text_tradegsc_es.txt" />
     <EmbeddedResource Include="Resources\text\es\text_tradehgss_es.txt" />
+    <EmbeddedResource Include="Resources\text\es\text_traderby_es.txt" />
     <EmbeddedResource Include="Resources\text\es\text_traderse_es.txt" />
     <EmbeddedResource Include="Resources\text\es\text_tradesm_es.txt" />
     <EmbeddedResource Include="Resources\text\es\text_tradeswsh_es.txt" />
@@ -1115,6 +1160,10 @@
     <EmbeddedResource Include="Resources\text\fr\text_bw2_40000_fr.txt" />
     <EmbeddedResource Include="Resources\text\fr\text_bw2_60000_fr.txt" />
     <EmbeddedResource Include="Resources\text\fr\text_Character_fr.txt" />
+    <EmbeddedResource Include="Resources\text\fr\text_dppt_uggoods_fr.txt" />
+    <EmbeddedResource Include="Resources\text\fr\text_dppt_ugspheres_fr.txt" />
+    <EmbeddedResource Include="Resources\text\fr\text_dppt_ugtraps_fr.txt" />
+    <EmbeddedResource Include="Resources\text\fr\text_dppt_ugtreasures_fr.txt" />
     <EmbeddedResource Include="Resources\text\fr\text_EncounterType_fr.txt" />
     <EmbeddedResource Include="Resources\text\fr\text_Forms_fr.txt" />
     <EmbeddedResource Include="Resources\text\fr\text_Games_fr.txt" />
@@ -1124,6 +1173,7 @@
     <EmbeddedResource Include="Resources\text\fr\text_hgss_00000_fr.txt" />
     <EmbeddedResource Include="Resources\text\fr\text_hgss_02000_fr.txt" />
     <EmbeddedResource Include="Resources\text\fr\text_hgss_03000_fr.txt" />
+    <EmbeddedResource Include="Resources\text\fr\text_hgss_walkercourses_fr.txt" />
     <EmbeddedResource Include="Resources\text\fr\text_Items_fr.txt" />
     <EmbeddedResource Include="Resources\text\fr\text_Mail4_fr.txt" />
     <EmbeddedResource Include="Resources\text\fr\text_Memories_fr.txt" />
@@ -1149,6 +1199,7 @@
     <EmbeddedResource Include="Resources\text\fr\text_tradefrlg_fr.txt" />
     <EmbeddedResource Include="Resources\text\fr\text_tradegsc_fr.txt" />
     <EmbeddedResource Include="Resources\text\fr\text_tradehgss_fr.txt" />
+    <EmbeddedResource Include="Resources\text\fr\text_traderby_fr.txt" />
     <EmbeddedResource Include="Resources\text\fr\text_traderse_fr.txt" />
     <EmbeddedResource Include="Resources\text\fr\text_tradesm_fr.txt" />
     <EmbeddedResource Include="Resources\text\fr\text_tradeswsh_fr.txt" />
@@ -1193,6 +1244,10 @@
     <EmbeddedResource Include="Resources\text\it\text_bw2_40000_it.txt" />
     <EmbeddedResource Include="Resources\text\it\text_bw2_60000_it.txt" />
     <EmbeddedResource Include="Resources\text\it\text_Character_it.txt" />
+    <EmbeddedResource Include="Resources\text\it\text_dppt_uggoods_it.txt" />
+    <EmbeddedResource Include="Resources\text\it\text_dppt_ugspheres_it.txt" />
+    <EmbeddedResource Include="Resources\text\it\text_dppt_ugtraps_it.txt" />
+    <EmbeddedResource Include="Resources\text\it\text_dppt_ugtreasures_it.txt" />
     <EmbeddedResource Include="Resources\text\it\text_EncounterType_it.txt" />
     <EmbeddedResource Include="Resources\text\it\text_Forms_it.txt" />
     <EmbeddedResource Include="Resources\text\it\text_Games_it.txt" />
@@ -1202,6 +1257,7 @@
     <EmbeddedResource Include="Resources\text\it\text_hgss_00000_it.txt" />
     <EmbeddedResource Include="Resources\text\it\text_hgss_02000_it.txt" />
     <EmbeddedResource Include="Resources\text\it\text_hgss_03000_it.txt" />
+    <EmbeddedResource Include="Resources\text\it\text_hgss_walkercourses_it.txt" />
     <EmbeddedResource Include="Resources\text\it\text_Items_it.txt" />
     <EmbeddedResource Include="Resources\text\it\text_Mail4_it.txt" />
     <EmbeddedResource Include="Resources\text\it\text_Memories_it.txt" />
@@ -1227,6 +1283,7 @@
     <EmbeddedResource Include="Resources\text\it\text_tradefrlg_it.txt" />
     <EmbeddedResource Include="Resources\text\it\text_tradegsc_it.txt" />
     <EmbeddedResource Include="Resources\text\it\text_tradehgss_it.txt" />
+    <EmbeddedResource Include="Resources\text\it\text_traderby_it.txt" />
     <EmbeddedResource Include="Resources\text\it\text_traderse_it.txt" />
     <EmbeddedResource Include="Resources\text\it\text_tradesm_it.txt" />
     <EmbeddedResource Include="Resources\text\it\text_tradeswsh_it.txt" />
@@ -1247,6 +1304,10 @@
     <EmbeddedResource Include="Resources\text\ja\text_bw2_40000_ja.txt" />
     <EmbeddedResource Include="Resources\text\ja\text_bw2_60000_ja.txt" />
     <EmbeddedResource Include="Resources\text\ja\text_Character_ja.txt" />
+    <EmbeddedResource Include="Resources\text\ja\text_dppt_uggoods_ja.txt" />
+    <EmbeddedResource Include="Resources\text\ja\text_dppt_ugspheres_ja.txt" />
+    <EmbeddedResource Include="Resources\text\ja\text_dppt_ugtraps_ja.txt" />
+    <EmbeddedResource Include="Resources\text\ja\text_dppt_ugtreasures_ja.txt" />
     <EmbeddedResource Include="Resources\text\ja\text_EncounterType_ja.txt" />
     <EmbeddedResource Include="Resources\text\ja\text_Forms_ja.txt" />
     <EmbeddedResource Include="Resources\text\ja\text_Games_ja.txt" />
@@ -1256,6 +1317,7 @@
     <EmbeddedResource Include="Resources\text\ja\text_hgss_00000_ja.txt" />
     <EmbeddedResource Include="Resources\text\ja\text_hgss_02000_ja.txt" />
     <EmbeddedResource Include="Resources\text\ja\text_hgss_03000_ja.txt" />
+    <EmbeddedResource Include="Resources\text\ja\text_hgss_walkercourses_ja.txt" />
     <EmbeddedResource Include="Resources\text\ja\text_Items_ja.txt" />
     <EmbeddedResource Include="Resources\text\ja\text_Mail4_ja.txt" />
     <EmbeddedResource Include="Resources\text\ja\text_Memories_ja.txt" />
@@ -1281,6 +1343,7 @@
     <EmbeddedResource Include="Resources\text\ja\text_tradefrlg_ja.txt" />
     <EmbeddedResource Include="Resources\text\ja\text_tradegsc_ja.txt" />
     <EmbeddedResource Include="Resources\text\ja\text_tradehgss_ja.txt" />
+    <EmbeddedResource Include="Resources\text\ja\text_traderby_ja.txt" />
     <EmbeddedResource Include="Resources\text\ja\text_traderse_ja.txt" />
     <EmbeddedResource Include="Resources\text\ja\text_tradesm_ja.txt" />
     <EmbeddedResource Include="Resources\text\ja\text_tradeswsh_ja.txt" />
@@ -1301,6 +1364,10 @@
     <EmbeddedResource Include="Resources\text\ko\text_bw2_40000_ko.txt" />
     <EmbeddedResource Include="Resources\text\ko\text_bw2_60000_ko.txt" />
     <EmbeddedResource Include="Resources\text\ko\text_Character_ko.txt" />
+    <EmbeddedResource Include="Resources\text\ko\text_dppt_uggoods_ko.txt" />
+    <EmbeddedResource Include="Resources\text\ko\text_dppt_ugspheres_ko.txt" />
+    <EmbeddedResource Include="Resources\text\ko\text_dppt_ugtraps_ko.txt" />
+    <EmbeddedResource Include="Resources\text\ko\text_dppt_ugtreasures_ko.txt" />
     <EmbeddedResource Include="Resources\text\ko\text_EncounterType_ko.txt" />
     <EmbeddedResource Include="Resources\text\ko\text_Forms_ko.txt" />
     <EmbeddedResource Include="Resources\text\ko\text_Games_ko.txt" />
@@ -1310,6 +1377,7 @@
     <EmbeddedResource Include="Resources\text\ko\text_hgss_00000_ko.txt" />
     <EmbeddedResource Include="Resources\text\ko\text_hgss_02000_ko.txt" />
     <EmbeddedResource Include="Resources\text\ko\text_hgss_03000_ko.txt" />
+    <EmbeddedResource Include="Resources\text\ko\text_hgss_walkercourses_ko.txt" />
     <EmbeddedResource Include="Resources\text\ko\text_Items_ko.txt" />
     <EmbeddedResource Include="Resources\text\ko\text_Mail4_ko.txt" />
     <EmbeddedResource Include="Resources\text\ko\text_Memories_ko.txt" />
@@ -1542,8 +1610,10 @@
     <EmbeddedResource Include="Resources\text\script\flags_dp_zh.txt" />
     <EmbeddedResource Include="Resources\text\script\flags_e_en.txt" />
     <EmbeddedResource Include="Resources\text\script\flags_e_es.txt" />
+    <EmbeddedResource Include="Resources\text\script\flags_e_zh.txt" />
     <EmbeddedResource Include="Resources\text\script\flags_frlg_en.txt" />
     <EmbeddedResource Include="Resources\text\script\flags_frlg_es.txt" />
+    <EmbeddedResource Include="Resources\text\script\flags_frlg_zh.txt" />
     <EmbeddedResource Include="Resources\text\script\flags_gg_en.txt" />
     <EmbeddedResource Include="Resources\text\script\flags_gg_es.txt" />
     <EmbeddedResource Include="Resources\text\script\flags_gg_ko.txt" />
@@ -1565,6 +1635,7 @@
     <EmbeddedResource Include="Resources\text\script\flags_pt_zh.txt" />
     <EmbeddedResource Include="Resources\text\script\flags_rs_en.txt" />
     <EmbeddedResource Include="Resources\text\script\flags_rs_es.txt" />
+    <EmbeddedResource Include="Resources\text\script\flags_rs_zh.txt" />
     <EmbeddedResource Include="Resources\text\script\flags_sm_en.txt" />
     <EmbeddedResource Include="Resources\text\script\flags_sm_es.txt" />
     <EmbeddedResource Include="Resources\text\script\flags_sm_ja.txt" />
@@ -1608,6 +1679,7 @@
     <EmbeddedResource Include="Resources\text\zh\text_hgss_00000_zh.txt" />
     <EmbeddedResource Include="Resources\text\zh\text_hgss_02000_zh.txt" />
     <EmbeddedResource Include="Resources\text\zh\text_hgss_03000_zh.txt" />
+    <EmbeddedResource Include="Resources\text\zh\text_hgss_walkercourses_zh.txt" />
     <EmbeddedResource Include="Resources\text\zh\text_Items_zh.txt" />
     <EmbeddedResource Include="Resources\text\zh\text_Memories_zh.txt" />
     <EmbeddedResource Include="Resources\text\zh\text_Moves_zh.txt" />
@@ -1639,11 +1711,6 @@
     <EmbeddedResource Include="Resources\text\zh\text_xy_30000_zh.txt" />
     <EmbeddedResource Include="Resources\text\zh\text_xy_40000_zh.txt" />
     <EmbeddedResource Include="Resources\text\zh\text_xy_60000_zh.txt" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Properties\" />
-    <Folder Include="Saves\Substructures\Mail\" />
   </ItemGroup>
 
 </Project>

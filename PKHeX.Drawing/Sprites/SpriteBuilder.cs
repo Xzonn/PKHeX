@@ -23,6 +23,7 @@ namespace PKHeX.Drawing
         public abstract Bitmap Delete { get; }
         public abstract Bitmap Transparent { get; }
         public abstract Bitmap Drag { get; }
+        public abstract Bitmap UnknownItem { get; }
 
         private const double UnknownFormTransparency = 0.5;
         private const double ShinyTransparency = 0.7;
@@ -31,8 +32,9 @@ namespace PKHeX.Drawing
         protected virtual string GetSpriteStringSpeciesOnly(int species) => $"_{species}";
         protected virtual string GetSpriteAll(int species, int form, int gender, uint formarg, bool shiny, int generation) => SpriteName.GetResourceStringSprite(species, form, gender, formarg, generation, shiny);
         protected virtual string GetItemResourceName(int item) => $"item_{item}";
-        protected virtual Image Unknown => Resources.unknown;
-        protected virtual Image GetEggSprite(int species) => species == (int)Species.Manaphy ? Resources._490_e : Resources.egg;
+        protected virtual Bitmap Unknown => Resources.unknown;
+        protected virtual Bitmap GetEggSprite(int species) => species == (int)Species.Manaphy ? Resources._490_e : Resources.egg;
+        public abstract Bitmap ShadowLugia { get; }
 
         public void Initialize(SaveFile sav)
         {
@@ -46,16 +48,13 @@ namespace PKHeX.Drawing
 
         private GameVersion Game;
 
-        private static int GetDeoxysForm(GameVersion game)
+        private static int GetDeoxysForm(GameVersion game) => game switch
         {
-            return game switch
-            {
-                GameVersion.FR => 1, // Attack
-                GameVersion.LG => 2, // Defense
-                GameVersion.E => 3, // Speed
-                _ => 0
-            };
-        }
+            GameVersion.FR => 1, // Attack
+            GameVersion.LG => 2, // Defense
+            GameVersion.E => 3, // Speed
+            _ => 0
+        };
 
         public Image GetSprite(int species, int form, int gender, uint formarg, int heldItem, bool isEgg, bool isShiny, int generation = -1, bool isBoxBGRed = false, bool isAltShiny = false)
         {
@@ -82,7 +81,7 @@ namespace PKHeX.Drawing
 
         private Image GetBaseImage(int species, int form, int gender, uint formarg, bool shiny, int generation)
         {
-            var img = FormConverter.IsTotemForm(species, form, generation)
+            var img = FormInfo.IsTotemForm(species, form, generation)
                         ? GetBaseImageTotem(species, form, gender, formarg, shiny, generation)
                         : GetBaseImageDefault(species, form, gender, formarg, shiny, generation);
             return img ?? GetBaseImageFallback(species, form, gender, formarg, shiny, generation);
@@ -90,7 +89,7 @@ namespace PKHeX.Drawing
 
         private Image? GetBaseImageTotem(int species, int form, int gender, uint formarg, bool shiny, int generation)
         {
-            var baseform = FormConverter.GetTotemBaseForm(species, form);
+            var baseform = FormInfo.GetTotemBaseForm(species, form);
             var baseImage = GetBaseImageDefault(species, baseform, gender, formarg, shiny, generation);
             if (baseImage == null)
                 return null;
@@ -121,11 +120,12 @@ namespace PKHeX.Drawing
 
         private Image LayerOverImageItem(Image baseImage, int item, int generation)
         {
-            Image itemimg = (Image?)Resources.ResourceManager.GetObject(GetItemResourceName(item)) ?? Resources.helditem;
-            if (2 <= generation && generation <= 4 && 328 <= item && item <= 419) // gen2/3/4 TM
-                itemimg = Resources.item_tm;
-            else if (generation >= 8 && (1130 <= item && item <= 1229)) // Gen8 TR
-                itemimg = Resources.bitem_tr;
+            Image itemimg = generation switch
+            {
+                <= 4 when item is >=  328 and <=  419 => Resources.item_tm, // gen2/3/4 TM
+                >= 8 when item is >= 1130 and <= 1229 => Resources.bitem_tr, // Gen8 TR
+                _ => (Image?)Resources.ResourceManager.GetObject(GetItemResourceName(item)) ?? UnknownItem,
+            };
 
             // Redraw item in bottom right corner; since images are cropped, try to not have them at the edge
             int x = ItemShiftX + ((ItemMaxSize - itemimg.Width) / 2);
@@ -170,7 +170,7 @@ namespace PKHeX.Drawing
     /// <summary>
     /// 30 high, 40 wide sprite builder
     /// </summary>
-    public class SpriteBuilder3040 : SpriteBuilder
+    public sealed class SpriteBuilder3040 : SpriteBuilder
     {
         public override int Height => 30;
         public override int Width => 40;
@@ -187,27 +187,29 @@ namespace PKHeX.Drawing
         public override Bitmap Delete => Resources.slotDel;
         public override Bitmap Transparent => Resources.slotTrans;
         public override Bitmap Drag => Resources.slotDrag;
+        public override Bitmap UnknownItem => Resources.helditem;
+        public override Bitmap ShadowLugia => Resources._249x;
     }
 
     /// <summary>
     /// 56 high, 68 wide sprite builder
     /// </summary>
-    public class SpriteBuilder5668 : SpriteBuilder
+    public sealed class SpriteBuilder5668 : SpriteBuilder
     {
         public override int Height => 56;
         public override int Width => 68;
 
         protected override int ItemShiftX => 52;
-        protected override int ItemShiftY => 28;
+        protected override int ItemShiftY => 24;
         protected override int ItemMaxSize => 32;
-        protected override int EggItemShiftX => 32;
-        protected override int EggItemShiftY => 26;
+        protected override int EggItemShiftX => 18;
+        protected override int EggItemShiftY => 1;
 
         protected override string GetSpriteStringSpeciesOnly(int species) => 'b' + $"_{species}";
         protected override string GetSpriteAll(int species, int form, int gender, uint formarg, bool shiny, int generation) => 'b' + SpriteName.GetResourceStringSprite(species, form, gender, formarg, generation, shiny);
         protected override string GetItemResourceName(int item) => 'b' + $"item_{item}";
-        protected override Image Unknown => Resources.b_0;
-        protected override Image GetEggSprite(int species) => Resources.egg; // no manaphy egg sprite (yet)
+        protected override Bitmap Unknown => Resources.b_unknown;
+        protected override Bitmap GetEggSprite(int species) => species == (int)Species.Manaphy ? Resources.b_490_e : Resources.b_egg;
 
         public override Bitmap Hover => Resources.slotHover68;
         public override Bitmap View => Resources.slotView68;
@@ -215,5 +217,7 @@ namespace PKHeX.Drawing
         public override Bitmap Delete => Resources.slotDel68;
         public override Bitmap Transparent => Resources.slotTrans68;
         public override Bitmap Drag => Resources.slotDrag68;
+        public override Bitmap UnknownItem => Resources.bitem_unk;
+        public override Bitmap ShadowLugia => Resources.b_249x;
     }
 }

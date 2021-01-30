@@ -28,7 +28,12 @@ namespace PKHeX.WinForms
             LoadUnlockedCount();
 
             LB_BoxSelect.SelectedIndex = box;
-            TB_BoxName.MaxLength = SAV.Generation >= 6 ? 14 : 8;
+            TB_BoxName.MaxLength = SAV.Generation switch
+            {
+                6 or 7 => 14,
+                8 => 16,
+                _ => 8,
+            };
             editing = false;
         }
 
@@ -40,16 +45,14 @@ namespace PKHeX.WinForms
                 case 3 when SAV is SAV3:
                     CB_BG.Items.AddRange(GameInfo.Strings.wallpapernames.Take(16).ToArray());
                     return true;
-                case 4:
-                case 5:
-                case 6:
+                case 4 or 5 or 6:
                     CB_BG.Items.AddRange(GameInfo.Strings.wallpapernames);
                     return true;
                 case 7:
                     CB_BG.Items.AddRange(GameInfo.Strings.wallpapernames.Take(16).ToArray());
                     return true;
                 case 8:
-                    CB_BG.Items.AddRange(GameInfo.Strings.wallpapernames);
+                    CB_BG.Items.AddRange(Enumerable.Range(1, 19).Select(z => $"Wallpaper {z}").ToArray());
                     return true;
                 default:
                     return false;
@@ -80,7 +83,7 @@ namespace PKHeX.WinForms
         private void LoadFlags()
         {
             byte[] flags = SAV.BoxFlags;
-            if (flags == null || flags.Length == 0)
+            if (flags.Length == 0)
             {
                 FLP_Flags.Visible = false;
                 return;
@@ -194,7 +197,7 @@ namespace PKHeX.WinForms
             }
             else
             {
-                ChangeBox(null, EventArgs.Empty);
+                ChangeBox(sender, EventArgs.Empty);
             }
 
             editing = renamingBox = false;

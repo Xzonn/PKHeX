@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Text;
 
 namespace PKHeX.Core
 {
@@ -21,7 +20,7 @@ namespace PKHeX.Core
             }
         }
 
-        private int TotalFestaCoins
+        public int TotalFestaCoins
         {
             get => BitConverter.ToInt32(Data, Offset + 0x50C);
             set
@@ -34,14 +33,8 @@ namespace PKHeX.Core
 
         public string FestivalPlazaName
         {
-            get => Util.TrimFromZero(Encoding.Unicode.GetString(Data, Offset + 0x510, 0x2A));
-            set
-            {
-                const int max = 20;
-                if (value.Length > max)
-                    value = value.Substring(0, max);
-                Encoding.Unicode.GetBytes(value.PadRight(value.Length + 1, '\0')).CopyTo(Data, Offset + 0x510);
-            }
+            get => StringConverter.GetString7(Data, Offset + 0x510, 0x2A);
+            set => StringConverter.SetString7(value, 20, 21).CopyTo(Data, Offset + 0x510);
         }
 
         public ushort FestaRank { get => BitConverter.ToUInt16(Data, Offset + 0x53A); set => BitConverter.GetBytes(value).CopyTo(Data, Offset + 0x53A); }
@@ -52,7 +45,7 @@ namespace PKHeX.Core
         public void SetFestaPhraseUnlocked(int index, bool value)
         {
             if (GetFestaPhraseUnlocked(index) != value)
-                Data[Offset + 0x2A50 + index] = (byte)(value ? 1 : 0);
+                Data[Offset + 0x2A50 + index] = value ? 1 : 0;
         }
 
         public byte GetFestPrizeReceived(int index) => Data[Offset + 0x53C + index];

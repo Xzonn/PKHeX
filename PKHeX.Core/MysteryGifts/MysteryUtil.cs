@@ -59,7 +59,9 @@ namespace PKHeX.Core
                 {
                     AddLinesPKM(gift, strings, result);
                 }
+#pragma warning disable CA1031 // Do not catch general exception types
                 catch { result.Add(MsgMysteryGiftParseFail); }
+#pragma warning restore CA1031 // Do not catch general exception types
             }
             else if (gift.IsBP)
             {
@@ -83,7 +85,7 @@ namespace PKHeX.Core
         private static void AddLinesItem(MysteryGift gift, IBasicStrings strings, ICollection<string> result)
         {
             result.Add($"Item: {strings.Item[gift.ItemID]} (Quantity: {gift.Quantity})");
-            if (!(gift is WC7 wc7))
+            if (gift is not WC7 wc7)
                 return;
 
             for (var ind = 1; wc7.GetItem(ind) != 0; ind++)
@@ -94,7 +96,7 @@ namespace PKHeX.Core
 
         private static void AddLinesPKM(MysteryGift gift, IBasicStrings strings, ICollection<string> result)
         {
-            var id = gift.Format < 7 ? $"{gift.TID:D5}/{gift.SID:D5}" : $"[{gift.TrainerSID7:D4}]{gift.TrainerID7:D6}";
+            var id = gift.Generation < 7 ? $"{gift.TID:D5}/{gift.SID:D5}" : $"[{gift.TrainerSID7:D4}]{gift.TrainerID7:D6}";
 
             var first =
                 $"{strings.Species[gift.Species]} @ {strings.Item[gift.HeldItem]}  --- "
@@ -114,18 +116,18 @@ namespace PKHeX.Core
         /// Checks if the <see cref="MysteryGift"/> data is compatible with the <see cref="SaveFile"/>. Sets appropriate data to the save file in order to receive the gift.
         /// </summary>
         /// <param name="g">Gift data to potentially insert to the save file.</param>
-        /// <param name="SAV">Save file receiving the gift data.</param>
+        /// <param name="sav">Save file receiving the gift data.</param>
         /// <param name="message">Error message if incompatible.</param>
         /// <returns>True if compatible, false if incompatible.</returns>
-        public static bool IsCardCompatible(this MysteryGift g, SaveFile SAV, out string message)
+        public static bool IsCardCompatible(this MysteryGift g, SaveFile sav, out string message)
         {
-            if (g.Format != SAV.Generation)
+            if (g.Generation != sav.Generation)
             {
                 message = MsgMysteryGiftSlotSpecialReject;
                 return false;
             }
 
-            if (!SAV.CanReceiveGift(g))
+            if (!sav.CanReceiveGift(g))
             {
                 message = MsgMysteryGiftTypeDetails;
                 return false;
@@ -133,7 +135,7 @@ namespace PKHeX.Core
 
             if (g is WC6 && g.CardID == 2048 && g.ItemID == 726) // Eon Ticket (OR/AS)
             {
-                if (!(SAV is SAV6AO))
+                if (sav is not SAV6AO)
                 {
                     message = MsgMysteryGiftSlotSpecialReject;
                     return false;
@@ -147,16 +149,16 @@ namespace PKHeX.Core
         /// <summary>
         /// Checks if the gift values are receivable by the game.
         /// </summary>
-        /// <param name="SAV">Save file receiving the gift data.</param>
+        /// <param name="sav">Save file receiving the gift data.</param>
         /// <param name="gift">Gift data to potentially insert to the save file.</param>
         /// <returns>True if compatible, false if incompatible.</returns>
-        public static bool CanReceiveGift(this SaveFile SAV, MysteryGift gift)
+        public static bool CanReceiveGift(this SaveFile sav, MysteryGift gift)
         {
-            if (gift.Species > SAV.MaxSpeciesID)
+            if (gift.Species > sav.MaxSpeciesID)
                 return false;
-            if (gift.Moves.Any(move => move > SAV.MaxMoveID))
+            if (gift.Moves.Any(move => move > sav.MaxMoveID))
                 return false;
-            if (gift.HeldItem > SAV.MaxItemID)
+            if (gift.HeldItem > sav.MaxItemID)
                 return false;
             return true;
         }

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 
 namespace PKHeX.Core
@@ -36,7 +35,7 @@ namespace PKHeX.Core
         private const int DENTRY_SIZE = 0x40;
         private const int NumEntries_Directory = BLOCK_SIZE / DENTRY_SIZE;
 
-        private static readonly HashSet<int> ValidMemoryCardSizes = new HashSet<int>
+        private static readonly HashSet<int> ValidMemoryCardSizes = new()
         {
             0x0080000, // 512KB 59 Blocks Memory Card
             0x0100000, // 1MB
@@ -237,21 +236,22 @@ namespace PKHeX.Core
                 if (FirstBlock + BlockCount > NumBlocks)
                     continue;
 
-                if (SaveUtil.HEADER_COLO.Contains(GameCode))
+                var ver = SaveHandlerGCI.GetGameCode(GameCode);
+                if (ver == GameVersion.COLO)
                 {
                     if (HasCOLO) // another entry already exists
                         return GCMemoryCardState.DuplicateCOLO;
                     EntryCOLO = i;
                     SaveGameCount++;
                 }
-                if (SaveUtil.HEADER_XD.Contains(GameCode))
+                if (ver == GameVersion.XD)
                 {
                     if (HasXD) // another entry already exists
                         return GCMemoryCardState.DuplicateXD;
                     EntryXD = i;
                     SaveGameCount++;
                 }
-                if (SaveUtil.HEADER_RSBOX.Contains(GameCode))
+                if (ver == GameVersion.RSBOX)
                 {
                     if (HasRSBOX) // another entry already exists
                         return GCMemoryCardState.DuplicateRSBOX;

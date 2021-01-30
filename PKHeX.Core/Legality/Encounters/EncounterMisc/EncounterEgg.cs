@@ -6,68 +6,66 @@ namespace PKHeX.Core
     /// <summary>
     /// Egg Encounter Data
     /// </summary>
-    public class EncounterEgg : IEncounterable, IVersion
+    public record EncounterEgg : IEncounterable
     {
         public int Species { get; }
         public int Form { get; }
         public string Name => "Egg";
         public string LongName => "Egg";
+
         public bool EggEncounter => true;
         public int LevelMin => Level;
         public int LevelMax => Level;
         public readonly int Level;
+        public int Generation { get; }
+        public GameVersion Version { get; }
 
-        public EncounterEgg(int species, int form, int level)
+        public EncounterEgg(int species, int form, int level, int gen, GameVersion game)
         {
             Species = species;
             Form = form;
             Level = level;
+            Generation = gen;
+            Version = game;
         }
 
-        public GameVersion Version { get; set; }
+        public PKM ConvertToPKM(ITrainerInfo sav) => ConvertToPKM(sav, EncounterCriteria.Unrestricted);
 
-        public PKM ConvertToPKM(ITrainerInfo SAV) => ConvertToPKM(SAV, EncounterCriteria.Unrestricted);
-
-        public PKM ConvertToPKM(ITrainerInfo SAV, EncounterCriteria criteria)
+        public PKM ConvertToPKM(ITrainerInfo sav, EncounterCriteria criteria)
         {
-            int gen = Version.GetGeneration();
+            int gen = Generation;
             var version = Version;
-            if (gen < 2)
-            {
-                gen = 2;
-                version = GameVersion.C;
-            }
             var pk = PKMConverter.GetBlank(gen, version);
 
-            SAV.ApplyToPKM(pk);
+            sav.ApplyTo(pk);
 
             pk.Species = Species;
-            pk.Nickname = SpeciesName.GetSpeciesNameGeneration(Species, SAV.Language, gen);
+            pk.Nickname = SpeciesName.GetSpeciesNameGeneration(Species, sav.Language, gen);
             pk.CurrentLevel = Level;
             pk.Version = (int)version;
-            pk.Ball = 4;
+            pk.Ball = (int)Ball.Poke;
             pk.OT_Friendship = pk.PersonalInfo.BaseFriendship;
 
             int[] moves = SetEncounterMoves(pk, version);
             SetPINGA(pk, criteria);
 
-            if (pk.Format <= 2 && version != GameVersion.C)
+            if (gen <= 2 && version != GameVersion.C)
                 return pk;
 
             SetMetData(pk);
 
-            if (pk.Format < 3)
+            if (gen < 3)
                 return pk;
 
-            if (pk.GenNumber >= 4)
-                pk.SetEggMetData(version, (GameVersion)SAV.Game);
+            if (gen >= 4)
+                pk.SetEggMetData(version, (GameVersion)sav.Game);
 
-            if (pk.Format < 6)
+            if (gen < 6)
                 return pk;
-            if (pk.Format == 6)
-                pk.SetHatchMemory6();
+            if (pk is PK6 pk6)
+                pk6.SetHatchMemory6();
 
-            SetAltForm(pk, SAV);
+            SetForm(pk, sav);
 
             pk.SetRandomEC();
             pk.RelearnMoves = moves;
@@ -75,17 +73,17 @@ namespace PKHeX.Core
             return pk;
         }
 
-        private void SetAltForm(PKM pk, ITrainerInfo SAV)
+        private void SetForm(PKM pk, ITrainerInfo sav)
         {
             switch (Species)
             {
                 case (int)Core.Species.Minior:
-                    pk.AltForm = Util.Rand.Next(7, 14);
+                    pk.Form = Util.Rand.Next(7, 14);
                     break;
-                case (int)Core.Species.Scatterbug:
-                case (int)Core.Species.Spewpa:
-                case (int)Core.Species.Vivillon:
-                    pk.AltForm = Legal.GetVivillonPattern((byte)SAV.Country, (byte)SAV.SubRegion);
+                case (int)Core.Species.Scatterbug or (int)Core.Species.Spewpa or (int)Core.Species.Vivillon:
+                    if (sav is IRegionOrigin o)
+                        pk.Form = Vivillon3DS.GetPattern((byte)o.Country, (byte)o.Region);
+                    // else 0
                     break;
             }
         }
@@ -114,6 +112,7 @@ namespace PKHeX.Core
                 pk.Gender = gender;
                 pk.RefreshAbility(Util.Rand.Next(2));
             }
+            pk.StatNature = nature;
         }
 
         private static void SetMetData(PKM pk)
@@ -132,21 +131,21 @@ namespace PKHeX.Core
 
         private int[] GetCurrentEggMoves(PKM pk, GameVersion version)
         {
-            var moves = MoveEgg.GetEggMoves(pk, Species, Form, version);
+            var moves = MoveEgg.GetEggMoves(pk.PersonalInfo, Species, Form, version, Generation);
             if (moves.Length == 0)
                 return MoveLevelUp.GetEncounterMoves(pk, Level, version);
             if (moves.Length >= 4 || pk.Format < 6)
                 return moves;
 
             // Sprinkle in some default level up moves
-            var lvl = Legal.GetBaseEggMoves(pk, Species, Form, version, Level);
+            var lvl = MoveList.GetBaseEggMoves(pk, Species, Form, version, Level);
             return lvl.Concat(moves).ToArray();
         }
     }
 
-    public sealed class EncounterEggSplit : EncounterEgg
+    public sealed record EncounterEggSplit : EncounterEgg
     {
         public int OtherSpecies { get; }
-        public EncounterEggSplit(int species, int form, int level, int otherSpecies) : base(species, form, level) => OtherSpecies = otherSpecies;
+        public EncounterEggSplit(int species, int form, int level, int gen, GameVersion game, int otherSpecies) : base(species, form, level, gen, game) => OtherSpecies = otherSpecies;
     }
 }

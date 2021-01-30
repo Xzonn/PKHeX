@@ -9,8 +9,7 @@ namespace PKHeX.Core
     /// </summary>
     public sealed class SAV3XD : SaveFile, IGCSaveFile
     {
-        protected override string BAKText => $"{OT} ({Version}) #{SaveCount:0000}";
-        public override string Filter => this.GCFilter();
+        protected internal override string ShortSummary => $"{OT} ({Version}) #{SaveCount:0000}";
         public override string Extension => this.GCExtension();
         public bool IsMemoryCardSave => MC != null;
         private readonly SAV3GCMemoryCard? MC;
@@ -75,7 +74,7 @@ namespace PKHeX.Core
                     keys[i] = BigEndian.ToUInt16(slot, 8 + (i * 2));
 
                 // Decrypt Slot
-                Data = GCSaveUtil.Decrypt(slot, 0x00010, 0x27FD8, keys);
+                Data = GeniusCrypto.Decrypt(slot, 0x00010, 0x27FD8, keys);
             }
 
             // Get Offset Info
@@ -133,7 +132,7 @@ namespace PKHeX.Core
         private byte[] GetInnerData()
         {
             // Set Memo Back
-            StrategyMemo.Write().CopyTo(Data, Memo);
+            StrategyMemo.Write(); // .CopyTo(Data, Memo);
             ShadowInfo.Write().CopyTo(Data, Shadow);
             SetChecksums();
 
@@ -141,24 +140,23 @@ namespace PKHeX.Core
             ushort[] keys = new ushort[4];
             for (int i = 0; i < keys.Length; i++)
                 keys[i] = BigEndian.ToUInt16(Data, 8 + (i * 2));
-            byte[] newSAV = GCSaveUtil.Encrypt(Data, 0x10, 0x27FD8, keys);
+            byte[] newSAV = GeniusCrypto.Encrypt(Data, 0x10, 0x27FD8, keys);
 
             // Put save slot back in original save data
-            byte[] newFile = MC != null ? MC.SelectedSaveData : (byte[])BAK.Clone();
+            byte[] newFile = MC != null ? MC.SelectedSaveData : (byte[]) State.BAK.Clone();
             Array.Copy(newSAV, 0, newFile, SLOT_START + (SaveIndex * SLOT_SIZE), newSAV.Length);
             return newFile;
         }
 
         // Configuration
-        public override SaveFile Clone()
+        protected override SaveFile CloneInternal()
         {
             var data = GetInnerData();
             var sav = IsMemoryCardSave ? new SAV3XD(data, MC!) : new SAV3XD(data);
-            sav.Header = (byte[]) Header.Clone();
             return sav;
         }
 
-        public override int SIZE_STORED => PokeCrypto.SIZE_3XSTORED;
+        protected override int SIZE_STORED => PokeCrypto.SIZE_3XSTORED;
         protected override int SIZE_PARTY => PokeCrypto.SIZE_3XSTORED; // unused
         public override PKM BlankPKM => new XK3();
         public override Type PKMType => typeof(XK3);
@@ -209,7 +207,7 @@ namespace PKHeX.Core
 
         private static byte[] SetChecksums(byte[] input, int subOffset0)
         {
-            if (input.Length != 0x28000)
+            if (input.Length != SLOT_SIZE)
                 throw new ArgumentException("Input should be a slot, not the entire save binary.");
 
             byte[] data = (byte[])input.Clone();
@@ -289,7 +287,7 @@ namespace PKHeX.Core
 
         protected override void SetPKM(PKM pkm)
         {
-            if (!(pkm is XK3 pk))
+            if (pkm is not XK3 pk)
                 return; // shouldn't ever hit
 
             if (pk.CurrentRegion == 0)
@@ -305,11 +303,17 @@ namespace PKHeX.Core
             entry.Purification = pk.Purification;
             entry.Species = pk.Species;
             entry.PID = pk.PID;
-            entry.IsPurified = pk.Purification == 0;
+            entry.IV_HP  = pk.IV_HP ;
+            entry.IV_ATK = pk.IV_ATK;
+            entry.IV_DEF = pk.IV_DEF;
+            entry.IV_SPA = pk.IV_SPA;
+            entry.IV_SPD = pk.IV_SPD;
+            entry.IV_SPE = pk.IV_SPE;
         }
 
         protected override void SetDex(PKM pkm)
         {
+            /*
             // Dex Related
             var entry = StrategyMemo.GetEntry(pkm.Species);
             if (entry.IsEmpty) // Populate
@@ -325,9 +329,10 @@ namespace PKHeX.Core
                 entry.Owned = true;
             }
             StrategyMemo.SetEntry(entry);
+            */
         }
 
-        public override InventoryPouch[] Inventory
+        public override IReadOnlyList<InventoryPouch> Inventory
         {
             get
             {

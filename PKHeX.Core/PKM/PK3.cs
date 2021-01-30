@@ -18,15 +18,14 @@ namespace PKHeX.Core
 
         public override IReadOnlyList<ushort> ExtraBytes => Unused;
 
-        public override byte[] Data { get; }
-        public PK3() => Data = new byte[PokeCrypto.SIZE_3PARTY];
+        public PK3() : base(PokeCrypto.SIZE_3PARTY) { }
+        public PK3(byte[] data) : base(DecryptParty(data)) { }
 
-        public PK3(byte[] data)
+        private static byte[] DecryptParty(byte[] data)
         {
             PokeCrypto.DecryptIfEncrypted3(ref data);
-            if (data.Length != PokeCrypto.SIZE_3PARTY)
-                Array.Resize(ref data, PokeCrypto.SIZE_3PARTY);
-            Data = data;
+            Array.Resize(ref data, PokeCrypto.SIZE_3PARTY);
+            return data;
         }
 
         public override PKM Clone()
@@ -76,7 +75,7 @@ namespace PKHeX.Core
             }
         }
 
-        public override int SpriteItem => ItemConverter.GetG4Item((ushort)HeldItem);
+        public override int SpriteItem => ItemConverter.GetItemFuture3((ushort)HeldItem);
         public override int HeldItem { get => BitConverter.ToUInt16(Data, 0x22); set => BitConverter.GetBytes((ushort)value).CopyTo(Data, 0x22); }
 
         public override uint EXP { get => BitConverter.ToUInt32(Data, 0x24); set => BitConverter.GetBytes(value).CopyTo(Data, 0x24); }
@@ -107,12 +106,12 @@ namespace PKHeX.Core
         public override int EV_SPE { get => Data[0x3B]; set => Data[0x3B] = (byte)value; }
         public override int EV_SPA { get => Data[0x3C]; set => Data[0x3C] = (byte)value; }
         public override int EV_SPD { get => Data[0x3D]; set => Data[0x3D] = (byte)value; }
-        public override int CNT_Cool { get => Data[0x3E]; set => Data[0x3E] = (byte)value; }
-        public override int CNT_Beauty { get => Data[0x3F]; set => Data[0x3F] = (byte)value; }
-        public override int CNT_Cute { get => Data[0x40]; set => Data[0x40] = (byte)value; }
-        public override int CNT_Smart { get => Data[0x41]; set => Data[0x41] = (byte)value; }
-        public override int CNT_Tough { get => Data[0x42]; set => Data[0x42] = (byte)value; }
-        public override int CNT_Sheen { get => Data[0x43]; set => Data[0x43] = (byte)value; }
+        public override byte CNT_Cool   { get => Data[0x3E]; set => Data[0x3E] = value; }
+        public override byte CNT_Beauty { get => Data[0x3F]; set => Data[0x3F] = value; }
+        public override byte CNT_Cute   { get => Data[0x40]; set => Data[0x40] = value; }
+        public override byte CNT_Smart  { get => Data[0x41]; set => Data[0x41] = value; }
+        public override byte CNT_Tough  { get => Data[0x42]; set => Data[0x42] = value; }
+        public override byte CNT_Sheen  { get => Data[0x43]; set => Data[0x43] = value; }
         #endregion
 
         #region Block D
@@ -190,9 +189,6 @@ namespace PKHeX.Core
         public override int Stat_SPD { get => BitConverter.ToUInt16(Data, 0x62); set => BitConverter.GetBytes((ushort)value).CopyTo(Data, 0x62); }
         #endregion
 
-        // Generated Attributes
-        public override bool Japanese => IsEgg || Language == (int)LanguageID.Japanese;
-
         protected override byte[] Encrypt()
         {
             RefreshChecksum();
@@ -205,9 +201,11 @@ namespace PKHeX.Core
             base.RefreshChecksum();
         }
 
+        protected override ushort CalculateChecksum() => PokeCrypto.GetCHK3(Data);
+
         public PK4 ConvertToPK4()
         {
-            PK4 pk4 = new PK4 // Convert away!
+            PK4 pk4 = new() // Convert away!
             {
                 PID = PID,
                 Species = Species,
@@ -215,7 +213,7 @@ namespace PKHeX.Core
                 SID = SID,
                 EXP = IsEgg ? Experience.GetEXP(5, PersonalInfo.EXPGrowth) : EXP,
                 Gender = PKX.GetGenderFromPID(Species, PID),
-                AltForm = AltForm,
+                Form = Form,
                 // IsEgg = false, -- already false
                 OT_Friendship = 70,
                 Markings = Markings,
@@ -312,7 +310,7 @@ namespace PKHeX.Core
 
             if (HeldItem > 0)
             {
-                ushort item = ItemConverter.GetG4Item((ushort)HeldItem);
+                ushort item = ItemConverter.GetItemFuture3((ushort)HeldItem);
                 if (ItemConverter.IsItemTransferable34(item))
                     pk4.HeldItem = item;
             }

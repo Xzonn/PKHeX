@@ -2,7 +2,7 @@
 
 namespace PKHeX.Core
 {
-    public sealed class Roamer3 : IContestStats
+    public sealed class Roamer3 : IContestStats, IContestStatsMutable
     {
         private readonly SaveFile SAV;
         private readonly int Offset;
@@ -53,13 +53,13 @@ namespace PKHeX.Core
 
         public int Status { get => SAV.Data[Offset + 0x0D]; set => SAV.Data[Offset + 0x0D] = (byte)value; }
 
-        public int CNT_Cool   { get => SAV.Data[Offset + 0x0E]; set => SAV.Data[Offset + 0x0E] = (byte)value; }
-        public int CNT_Beauty { get => SAV.Data[Offset + 0x0F]; set => SAV.Data[Offset + 0x0F] = (byte)value; }
-        public int CNT_Cute   { get => SAV.Data[Offset + 0x10]; set => SAV.Data[Offset + 0x10] = (byte)value; }
-        public int CNT_Smart  { get => SAV.Data[Offset + 0x11]; set => SAV.Data[Offset + 0x11] = (byte)value; }
-        public int CNT_Tough  { get => SAV.Data[Offset + 0x12]; set => SAV.Data[Offset + 0x12] = (byte)value; }
-        public int CNT_Sheen  { get => 0; set { } }
-        public bool Active    { get => SAV.Data[Offset + 0x13] == 1; set => SAV.Data[Offset + 0x13] = (byte)(value ? 1 : 0); }
+        public byte CNT_Cool   { get => SAV.Data[Offset + 0x0E]; set => SAV.Data[Offset + 0x0E] = value; }
+        public byte CNT_Beauty { get => SAV.Data[Offset + 0x0F]; set => SAV.Data[Offset + 0x0F] = value; }
+        public byte CNT_Cute   { get => SAV.Data[Offset + 0x10]; set => SAV.Data[Offset + 0x10] = value; }
+        public byte CNT_Smart  { get => SAV.Data[Offset + 0x11]; set => SAV.Data[Offset + 0x11] = value; }
+        public byte CNT_Tough  { get => SAV.Data[Offset + 0x12]; set => SAV.Data[Offset + 0x12] = value; }
+        public byte CNT_Sheen  { get => 0; set { } }
+        public bool Active    { get => SAV.Data[Offset + 0x13] == 1; set => SAV.Data[Offset + 0x13] = value ? 1 : 0; }
 
         // Derived Properties
         private int IV_HP { get => (int)(IV32 >> 00) & 0x1F; set => IV32 = (uint)((IV32 & ~(0x1F << 00)) | (uint)((value > 31 ? 31 : value) << 00)); }

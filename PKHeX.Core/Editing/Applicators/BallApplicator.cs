@@ -88,7 +88,7 @@ namespace PKHeX.Core
         private static IEnumerable<Ball> GetBallListFromColor(PKM pkm)
         {
             // Gen1/2 don't store color in personal info
-            var pi = pkm.Format >= 3 ? pkm.PersonalInfo : PersonalTable.USUM.GetFormeEntry(pkm.Species, 0);
+            var pi = pkm.Format >= 3 ? pkm.PersonalInfo : PersonalTable.USUM.GetFormEntry(pkm.Species, 0);
             var color = (PersonalColor)pi.Color;
             var balls = BallColors[color];
             var currentBall = (Ball)pkm.Ball;
@@ -116,17 +116,17 @@ namespace PKHeX.Core
             var colors = (PersonalColor[])Enum.GetValues(typeof(PersonalColor));
             foreach (var c in colors)
             {
-                var vals = BallColors[c];
-                var extra = allBalls.Except(vals).ToArray();
+                var matchingColors = BallColors[c];
+                var extra = allBalls.Except(matchingColors).ToArray();
                 Util.Shuffle(extra);
-                BallColors[c] = vals.Concat(extra).Concat(end).ToArray();
+                BallColors[c] = matchingColors.Concat(extra).Concat(end).ToArray();
             }
         }
 
         /// <summary>
         /// Priority Match ball IDs that match the color ID in descending order
         /// </summary>
-        private static readonly Dictionary<PersonalColor, Ball[]> BallColors = new Dictionary<PersonalColor, Ball[]>
+        private static readonly Dictionary<PersonalColor, Ball[]> BallColors = new()
         {
             [PersonalColor.Red] =    new[] { Cherish, Repeat, Fast, Heal, Great, Dream, Lure },
             [PersonalColor.Blue] =   new[] { Dive, Net, Great, Beast, Lure },

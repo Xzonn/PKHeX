@@ -12,9 +12,9 @@ namespace PKHeX.Core
     public class EventBlockDiff
     {
         public string Message { get; protected set; } = string.Empty;
-        public readonly List<int> SetFlags = new List<int>();
-        public readonly List<int> ClearedFlags = new List<int>();
-        public readonly List<string> WorkDiff = new List<string>();
+        public readonly List<int> SetFlags = new();
+        public readonly List<int> ClearedFlags = new();
+        public readonly List<string> WorkDiff = new();
 
         private const int MAX_SAVEFILE_SIZE = 0x10_0000; // 1 MB
         protected EventBlockDiff() { }
@@ -68,10 +68,10 @@ namespace PKHeX.Core
             if (!SanityCheckSaveInfo(s1, s2))
                 return;
 
-            bool[] oldBits = s1.EventFlags;
-            bool[] newBits = s2.EventFlags;
-            var oldConst = s1.EventConsts;
-            var newConst = s2.EventConsts;
+            bool[] oldBits = s1.GetEventFlags();
+            bool[] newBits = s2.GetEventFlags();
+            var oldConst = s1.GetEventConsts();
+            var newConst = s2.GetEventConsts();
 
             for (int i = 0; i < newBits.Length; i++)
             {
@@ -88,7 +88,7 @@ namespace PKHeX.Core
 
     public sealed class EventWorkDiff7b : EventBlockDiff
     {
-        public readonly List<int> WorkChanged = new List<int>();
+        public readonly List<int> WorkChanged = new();
         private SaveFile? S1;
 
         public EventWorkDiff7b(string f1, string f2)

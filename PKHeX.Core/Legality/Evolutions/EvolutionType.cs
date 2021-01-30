@@ -52,11 +52,13 @@ namespace PKHeX.Core
         SpinType, // Alcremie
         LevelUpNatureAmped, // Toxtricity
         LevelUpNatureLowKey, // Toxtricity
+        TowerOfDarkness, // Urshifu
+        TowerOfWaters, // Urshifu
     }
 
     public static class EvolutionTypeExtensions
     {
-        public static bool IsTrade(this EvolutionType t) => t == Trade || t == TradeHeldItem || t == TradeSpecies;
+        public static bool IsTrade(this EvolutionType t) => t is Trade or TradeHeldItem or TradeSpecies;
         public static bool IsLevelUpRequired(this EvolutionType t) => t.ToString().StartsWith("LevelUp"); // don't use this
     }
 }

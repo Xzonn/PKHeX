@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System.Diagnostics;
+using System.IO;
 using System.Media;
 using PKHeX.Core;
 using PKHeX.Drawing;
@@ -7,7 +8,7 @@ namespace PKHeX.WinForms.Controls
 {
     public sealed class CryPlayer
     {
-        private readonly SoundPlayer Sounds = new SoundPlayer();
+        private readonly SoundPlayer Sounds = new();
 
         public void PlayCry(PKM pk)
         {
@@ -20,7 +21,9 @@ namespace PKHeX.WinForms.Controls
 
             Sounds.SoundLocation = path;
             try { Sounds.Play(); }
-            catch { }
+#pragma warning disable CA1031 // Do not catch general exception types
+            catch { Debug.WriteLine("Failed to play sound."); }
+#pragma warning restore CA1031 // Do not catch general exception types
         }
 
         public void Stop() => Sounds.Stop();
@@ -36,8 +39,11 @@ namespace PKHeX.WinForms.Controls
 
         private static string GetCryFileName(PKM pk)
         {
+            if (pk.Species == (int)Species.Urshifu && pk.Form == 1) // same sprite for both forms, but different cries
+                return "892-1";
+
             // don't grab sprite of pkm, no gender specific cries
-            var res = SpriteName.GetResourceStringSprite(pk.Species, pk.AltForm, 0, 0, pk.Format);
+            var res = SpriteName.GetResourceStringSprite(pk.Species, pk.Form, 0, 0, pk.Format);
             return res.Replace('_', '-') // people like - instead of _ file names ;)
                 .Substring(1); // skip leading underscore
         }

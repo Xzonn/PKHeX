@@ -9,21 +9,23 @@ namespace PKHeX.Core
     /// </summary>
     public sealed class SAV2 : SaveFile, ILangDeviantSave
     {
-        protected override string BAKText => $"{OT} ({Version}) - {PlayTimeString}";
-        public override string Filter => "SAV File|*.sav|All Files|*.*";
+        protected internal override string ShortSummary => $"{OT} ({Version}) - {PlayTimeString}";
         public override string Extension => ".sav";
+
+        public int SaveRevision => Japanese ? 0 : !Korean ? 1 : 2;
+        public string SaveRevisionString => Japanese ? "J" : !Korean ? "U" : "K";
         public bool Japanese { get; }
         public bool Korean { get; }
 
         public override PersonalTable Personal { get; }
         public override IReadOnlyList<ushort> HeldItems => Legal.HeldItems_GSC;
 
-        public override string[] PKMExtensions => PKM.Extensions.Where(f =>
+        public override IReadOnlyList<string> PKMExtensions => PKM.Extensions.Where(f =>
         {
             int gen = f.Last() - 0x30;
             if (Korean)
                 return gen == 2;
-            return 1 <= gen && gen <= 2;
+            return gen is 1 or 2;
         }).ToArray();
 
         public SAV2(GameVersion version = GameVersion.C, LanguageID lang = LanguageID.English) : base(SaveUtil.SIZE_G2RAW_J)
@@ -49,7 +51,7 @@ namespace PKHeX.Core
         {
             Version = versionOverride != GameVersion.Any ? versionOverride : SaveUtil.GetIsG2SAV(Data);
             Japanese = SaveUtil.GetIsG2SAVJ(Data) != GameVersion.Invalid;
-            if (!Japanese)
+            if (Version != GameVersion.C && !Japanese)
                 Korean = SaveUtil.GetIsG2SAVK(Data) != GameVersion.Invalid;
 
             Offsets = new SAV2Offsets(this);
@@ -151,7 +153,7 @@ namespace PKHeX.Core
             Array.Copy(Data, offset, ot, 0, ot.Length); offset += ot.Length;
             Array.Copy(Data, offset, pk, 0, pk.Length);
 
-            return new PK2(pk, jp: Japanese) { otname = ot, nick = nick };
+            return new PK2(pk, jp: Japanese) { OT_Trash = ot, Nickname_Trash = nick };
         }
 
         private const int SIZE_RESERVED = 0x8000; // unpacked box data
@@ -244,9 +246,9 @@ namespace PKHeX.Core
         }
 
         // Configuration
-        public override SaveFile Clone() => new SAV2(Write());
+        protected override SaveFile CloneInternal() => new SAV2(Write(), Version);
 
-        public override int SIZE_STORED => Japanese ? PokeCrypto.SIZE_2JLIST : PokeCrypto.SIZE_2ULIST;
+        protected override int SIZE_STORED => Japanese ? PokeCrypto.SIZE_2JLIST : PokeCrypto.SIZE_2ULIST;
         protected override int SIZE_PARTY => Japanese ? PokeCrypto.SIZE_2JLIST : PokeCrypto.SIZE_2ULIST;
         public override PKM BlankPKM => new PK2(jp: Japanese);
         public override Type PKMType => typeof(PK2);
@@ -280,7 +282,7 @@ namespace PKHeX.Core
 
         public override bool HasParty => true;
         public override bool HasNamableBoxes => true;
-        private int StringLength => Japanese ? GBPKM.STRLEN_J : GBPKM.STRLEN_U;
+        private int StringLength => Japanese ? GBPKML.STRLEN_J : GBPKML.STRLEN_U;
 
         // Checksums
         private ushort GetChecksum()
@@ -402,7 +404,7 @@ namespace PKHeX.Core
         public bool SaveFileExists
         {
             get => Data[Offsets.Options + 1] == 1;
-            set => Data[Offsets.Options + 1] = (byte)(value ? 1 : 0);
+            set => Data[Offsets.Options + 1] = value ? 1 : 0;
         }
 
         public int TextBoxFrame // 3bits
@@ -430,7 +432,7 @@ namespace PKHeX.Core
         public bool MenuAccountOn
         {
             get => Data[Offsets.Options + 5] == 1;
-            set => Data[Offsets.Options + 5] = (byte)(value ? 1 : 0);
+            set => Data[Offsets.Options + 5] = value ? 1 : 0;
         }
 
         public override uint Money
@@ -458,7 +460,7 @@ namespace PKHeX.Core
         private static ushort[] LegalBalls => Legal.Pouch_Ball_GSC;
         private static ushort[] LegalTMHMs => Legal.Pouch_TMHM_GSC;
 
-        public override InventoryPouch[] Inventory
+        public override IReadOnlyList<InventoryPouch> Inventory
         {
             get
             {
@@ -652,23 +654,23 @@ namespace PKHeX.Core
 
         /// <summary>All Event Constant values for the save file</summary>
         /// <remarks>These are all bytes</remarks>
-        public override ushort[] EventConsts
+        public override ushort[] GetEventConsts()
         {
-            get
-            {
-                ushort[] Constants = new ushort[EventConstMax];
-                for (int i = 0; i < Constants.Length; i++)
-                    Constants[i] = Data[EventConst + i];
-                return Constants;
-            }
-            set
-            {
-                if (value.Length != EventConstMax)
-                    return;
+            ushort[] Constants = new ushort[EventConstMax];
+            for (int i = 0; i < Constants.Length; i++)
+                Constants[i] = Data[EventConst + i];
+            return Constants;
+        }
 
-                for (int i = 0; i < value.Length; i++)
-                    Data[EventConst + i] = Math.Min(byte.MaxValue, (byte)value[i]);
-            }
+        /// <summary>All Event Constant values for the save file</summary>
+        /// <remarks>These are all bytes</remarks>
+        public override void SetEventConsts(ushort[] value)
+        {
+            if (value.Length != EventConstMax)
+                return;
+
+            for (int i = 0; i < value.Length; i++)
+                Data[EventConst + i] = Math.Min(byte.MaxValue, (byte)value[i]);
         }
 
         // Misc

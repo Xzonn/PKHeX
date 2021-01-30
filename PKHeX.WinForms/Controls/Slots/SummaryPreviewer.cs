@@ -6,7 +6,7 @@ namespace PKHeX.WinForms.Controls
 {
     public sealed class SummaryPreviewer
     {
-        private readonly ToolTip ShowSet = new ToolTip { InitialDelay = 200, IsBalloon = false };
+        private readonly ToolTip ShowSet = new() { InitialDelay = 200, IsBalloon = false };
 
         public void Show(Control pb, PKM pk)
         {
@@ -15,7 +15,7 @@ namespace PKHeX.WinForms.Controls
                 Clear();
                 return;
             }
-            var text = ShowdownSet.GetLocalizedPreviewText(pk, Settings.Default.Language);
+            var text = ShowdownParsing.GetLocalizedPreviewText(pk, Settings.Default.Language);
             ShowSet.SetToolTip(pb, text);
         }
 

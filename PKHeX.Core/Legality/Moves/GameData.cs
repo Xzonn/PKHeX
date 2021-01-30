@@ -7,7 +7,7 @@ namespace PKHeX.Core
         public static Learnset[] GetLearnsets(GameVersion game) => Learnsets[game];
         public static PersonalTable GetPersonal(GameVersion game) => Personal[game];
 
-        private static readonly Dictionary<GameVersion, Learnset[]> Learnsets = new Dictionary<GameVersion, Learnset[]>
+        private static readonly Dictionary<GameVersion, Learnset[]> Learnsets = new()
         {
             { GameVersion.RD, Legal.LevelUpRB },
             { GameVersion.BU, Legal.LevelUpRB },
@@ -80,16 +80,14 @@ namespace PKHeX.Core
             { GameVersion.Gen5, Legal.LevelUpB2W2 },
             { GameVersion.Gen6, Legal.LevelUpAO },
             { GameVersion.Gen7, Legal.LevelUpSM },
+            { GameVersion.Gen7b, Legal.LevelUpGG },
             { GameVersion.Gen8, Legal.LevelUpSWSH },
-            { GameVersion.VCEvents, Legal.LevelUpY },
 
             { GameVersion.Stadium, Legal.LevelUpY },
-            { GameVersion.EventsGBGen1, Legal.LevelUpY },
             { GameVersion.Stadium2, Legal.LevelUpGS },
-            { GameVersion.EventsGBGen2, Legal.LevelUpGS },
         };
 
-        private static readonly Dictionary<GameVersion, PersonalTable> Personal = new Dictionary<GameVersion, PersonalTable>
+        private static readonly Dictionary<GameVersion, PersonalTable> Personal = new()
         {
             { GameVersion.RD, PersonalTable.RB },
             { GameVersion.BU, PersonalTable.RB },
@@ -161,14 +159,12 @@ namespace PKHeX.Core
             { GameVersion.Gen4, PersonalTable.HGSS },
             { GameVersion.Gen5, PersonalTable.B2W2 },
             { GameVersion.Gen6, PersonalTable.AO },
-            { GameVersion.Gen7, PersonalTable.SM },
+            { GameVersion.Gen7, PersonalTable.USUM },
+            { GameVersion.Gen7b, PersonalTable.GG },
             { GameVersion.Gen8, PersonalTable.SWSH },
-            { GameVersion.VCEvents, PersonalTable.Y },
 
             { GameVersion.Stadium, PersonalTable.Y },
-            { GameVersion.EventsGBGen1, PersonalTable.Y },
             { GameVersion.Stadium2, PersonalTable.GS },
-            { GameVersion.EventsGBGen2, PersonalTable.GS },
         };
     }
 }

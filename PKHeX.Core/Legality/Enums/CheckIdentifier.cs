@@ -6,7 +6,7 @@
         /// <summary>
         /// The <see cref="CheckResult"/> pertains to the <see cref="PKM.Moves"/>.
         /// </summary>
-        Move,
+        CurrentMove,
 
         /// <summary>
         /// The <see cref="CheckResult"/> pertains to the <see cref="PKM.RelearnMoves"/>.
@@ -84,7 +84,7 @@
         Geography,
 
         /// <summary>
-        /// The <see cref="CheckResult"/> pertains to the <see cref="PKM.AltForm"/>.
+        /// The <see cref="CheckResult"/> pertains to the <see cref="PKM.Form"/>.
         /// </summary>
         Form,
 
@@ -130,13 +130,18 @@
 
         /// <summary>
         /// The <see cref="CheckResult"/> pertains to the <see cref="PKM"/>'s <see cref="PKM.Version"/> compatibility.
-        /// <remarks>This is used for parsing checks to ensure the <see cref="PKM"/> didn't debut on a future <see cref="PKM.GenNumber"/></remarks>
+        /// <remarks>This is used for parsing checks to ensure the <see cref="PKM"/> didn't debut on a future <see cref="PKM.Generation"/></remarks>
         /// </summary>
         GameOrigin,
 
         /// <summary>
         /// The CheckResult pertains to the <see cref="PKM.HeldItem"/>.
         /// </summary>
-        HeldItem
+        HeldItem,
+
+        /// <summary>
+        /// The <see cref="CheckResult"/> pertains to the <see cref="PKM"/> <see cref="IRibbonSetMark8"/>.
+        /// </summary>
+        RibbonMark,
     }
 }

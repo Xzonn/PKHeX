@@ -15,10 +15,10 @@ namespace PKHeX.WinForms
     public partial class SAV_FolderList : Form
     {
         private readonly Action<SaveFile> OpenSaveFile;
-        private readonly List<CustomFolderPath> Paths;
+        private readonly List<INamedFolderPath> Paths;
         private readonly SortableBindingList<SavePreview> Recent;
         private readonly SortableBindingList<SavePreview> Backup;
-        private readonly List<Label> TempTranslationLabels = new List<Label>();
+        private readonly List<Label> TempTranslationLabels = new();
 
         public SAV_FolderList(Action<SaveFile> openSaveFile)
         {
@@ -31,9 +31,9 @@ namespace PKHeX.WinForms
             dgDataRecent.ContextMenuStrip = GetContextMenu(dgDataRecent);
             dgDataBackup.ContextMenuStrip = GetContextMenu(dgDataBackup);
 
-            var recent = SaveDetection.GetSaveFiles(drives, false, Paths.Select(z => z.Path).Where(z => z != Main.BackupPath));
+            var recent = SaveFinder.GetSaveFiles(drives, false, Paths.Select(z => z.Path).Where(z => z != Main.BackupPath));
             Recent = PopulateData(dgDataRecent, recent);
-            var backup = SaveDetection.GetSaveFiles(drives, false, Main.BackupPath);
+            var backup = SaveFinder.GetSaveFiles(drives, false, Main.BackupPath);
             Backup = PopulateData(dgDataBackup, backup);
 
             CB_FilterColumn.Items.Add(MsgAny);
@@ -73,9 +73,9 @@ namespace PKHeX.WinForms
             CenterToParent();
         }
 
-        private static List<CustomFolderPath> GetPathList(IReadOnlyList<string> drives)
+        private static List<INamedFolderPath> GetPathList(IReadOnlyList<string> drives)
         {
-            var locs = new List<CustomFolderPath>
+            var locs = new List<INamedFolderPath>
             {
                 new CustomFolderPath(Main.BackupPath, "PKHeX Backups")
             };
@@ -118,7 +118,7 @@ namespace PKHeX.WinForms
                     var custom = Paths.Where(z => z.Custom).ToList();
                     if (custom.Count == 0)
                         Paths.Add(new CustomFolderPath("DISPLAY_TEXT", "FOLDER_PATH", true));
-                    var lines = custom.Select(z => z.Write());
+                    var lines = custom.Select(z => ((CustomFolderPath)z).ToString());
                     File.WriteAllLines(loc, lines);
                 }
                 Process.Start(loc);
@@ -129,7 +129,7 @@ namespace PKHeX.WinForms
 
         private static Button GetCustomButton(string name)
         {
-            return new Button
+            return new()
             {
                 Size = new Size { Height = ButtonHeight, Width = ButtonWidth },
                 Text = name,
@@ -151,35 +151,39 @@ namespace PKHeX.WinForms
 
         private static IEnumerable<CustomFolderPath> GetConsolePaths(IEnumerable<string> drives)
         {
-            var path3DS = SaveDetection.Get3DSLocation(drives);
+            var path3DS = SaveFinder.Get3DSLocation(drives);
             if (path3DS == null)
-                return Enumerable.Empty<CustomFolderPath>();
+                return Array.Empty<CustomFolderPath>();
             var root = Path.GetPathRoot(path3DS);
-            var paths = SaveDetection.Get3DSBackupPaths(root);
+            if (root == null)
+                return Array.Empty<CustomFolderPath>();
+            var paths = SaveFinder.Get3DSBackupPaths(root);
             return paths.Select(z => new CustomFolderPath(z));
         }
 
         private static IEnumerable<CustomFolderPath> GetSwitchPaths(IEnumerable<string> drives)
         {
-            var pathNX = SaveDetection.GetSwitchLocation(drives);
+            var pathNX = SaveFinder.GetSwitchLocation(drives);
             if (pathNX == null)
-                return Enumerable.Empty<CustomFolderPath>();
+                return Array.Empty<CustomFolderPath>();
             var root = Path.GetPathRoot(pathNX);
-            var paths = SaveDetection.GetSwitchBackupPaths(root);
+            if (root == null)
+                return Array.Empty<CustomFolderPath>();
+            var paths = SaveFinder.GetSwitchBackupPaths(root);
             return paths.Select(z => new CustomFolderPath(z));
         }
 
-        private class CustomFolderPath
+        private sealed class CustomFolderPath : INamedFolderPath
         {
-            public readonly string Path;
-            public readonly string DisplayText;
-            public readonly bool Custom;
+            public string Path { get; }
+            public string DisplayText { get; }
+            public bool Custom { get; }
 
             public CustomFolderPath(string z, bool custom = false)
             {
                 var di = new DirectoryInfo(z);
                 var root = di.Root.Name;
-                var folder = di.Parent.Name;
+                var folder = di.Parent?.Name ?? di.Name;
                 if (root == folder)
                     folder = di.Name;
 
@@ -202,43 +206,10 @@ namespace PKHeX.WinForms
                 Custom = custom;
             }
 
-            public string Write() => $"{DisplayText}\t{Path}";
+            public override string ToString() => $"{DisplayText}\t{Path}";
         }
 
-        private string GetParentFolderName(SaveFile first)
-        {
-            var parent = Paths.Find(z => first.FileFolder.StartsWith(z.Path));
-            return parent?.DisplayText ?? "???";
-        }
-
-        private sealed class SaveList<T> : SortableBindingList<T> { }
-
-        private sealed class SavePreview
-        {
-            public readonly SaveFile Save;
-
-            public SavePreview(SaveFile sav, string parent)
-            {
-                Save = sav;
-                Folder = parent;
-            }
-
-            public string OT => Save.OT;
-            public int G => Save.Generation;
-            public GameVersion Game => Save.Version;
-
-            public string Played => Save.PlayTimeString.PadLeft(9, '0');
-            public string FileTime => File.GetLastWriteTimeUtc(Save.FilePath).ToString("yyyy.MM.dd:hh:mm:ss");
-
-            public string TID => Save.Generation >= 7 ? Save.TrainerID7.ToString("000000") : Save.TID.ToString("00000");
-            public string SID => Save.Generation >= 7 ? Save.TrainerSID7.ToString("0000") : Save.SID.ToString("00000");
-
-            // ReSharper disable once MemberCanBePrivate.Local
-            // ReSharper disable once UnusedAutoPropertyAccessor.Local
-            public string Folder { get; }
-
-            public string Name => Path.GetFileName(Save.FilePath);
-        }
+        private sealed class SaveList<T> : SortableBindingList<T> where T : class { }
 
         private ContextMenuStrip GetContextMenu(DataGridView dgv)
         {
@@ -258,7 +229,7 @@ namespace PKHeX.WinForms
             };
             mnuBrowseAt.Click += (sender, e) => ClickOpenFolder(dgv);
 
-            ContextMenuStrip mnu = new ContextMenuStrip();
+            ContextMenuStrip mnu = new();
             mnu.Items.Add(mnuOpen);
             mnu.Items.Add(mnuBrowseAt);
             return mnu;
@@ -285,11 +256,11 @@ namespace PKHeX.WinForms
                 return;
             }
 
-            var path = sav.Save.FilePath;
+            var path = sav.Save.Metadata.FilePath;
             Process.Start("explorer.exe", $"/select, \"{path}\"");
         }
 
-        private SavePreview GetSaveFile(DataGridView dgData)
+        private SavePreview? GetSaveFile(DataGridView dgData)
         {
             var c = dgData.SelectedCells;
             if (c.Count != 1)
@@ -304,10 +275,10 @@ namespace PKHeX.WinForms
         {
             if (e.ColumnIndex == -1 || e.RowIndex == -1 || e.Button != MouseButtons.Right)
                 return;
-
-            var c = ((DataGridView) sender)[e.ColumnIndex, e.RowIndex];
-            c.DataGridView.ClearSelection();
-            c.DataGridView.CurrentCell = c;
+            var dgv = (DataGridView)sender;
+            var c = dgv[e.ColumnIndex, e.RowIndex];
+            dgv.ClearSelection();
+            dgv.CurrentCell = c;
             c.Selected = true;
         }
 
@@ -323,7 +294,7 @@ namespace PKHeX.WinForms
             }
 
             var first = enumerator.Current;
-            var sav1 = new SavePreview(first, GetParentFolderName(first));
+            var sav1 = new SavePreview(first, Paths);
             LoadEntryInitial(dgData, list, sav1);
 
             int ctr = 1; // refresh every 7 until 15+ are loaded
@@ -334,9 +305,7 @@ namespace PKHeX.WinForms
                 while (enumerator.MoveNext())
                 {
                     var next = enumerator.Current;
-                    if (next == null)
-                        continue;
-                    var sav = new SavePreview(next, GetParentFolderName(next));
+                    var sav = new SavePreview(next, Paths);
                     dgData.Invoke(new Action(() => LoadEntry(dgData, list, sav)));
                     ctr++;
                     if (ctr < 15 && ctr % 7 == 0)
@@ -353,7 +322,7 @@ namespace PKHeX.WinForms
         {
             dgData.SuspendLayout();
             dgData.AutoResizeColumns();
-            dgData.Invalidate();
+            dgData.ResumeLayout(true);
         }
 
         private static void LoadEntryInitial(DataGridView dgData, ICollection<SavePreview> list, SavePreview sav)
@@ -415,7 +384,12 @@ namespace PKHeX.WinForms
                 return;
             }
             var cell = row.Cells[column];
-            var value = cell.Value.ToString();
+            var value = cell.Value?.ToString();
+            if (value == null)
+            {
+                row.Visible = false;
+                return;
+            }
             row.Visible = value.IndexOf(text, StringComparison.CurrentCultureIgnoreCase) >= 0; // case insensitive contains
         }
     }

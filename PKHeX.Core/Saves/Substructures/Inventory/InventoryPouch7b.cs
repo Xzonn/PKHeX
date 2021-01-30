@@ -8,8 +8,8 @@ namespace PKHeX.Core
     /// </summary>
     public sealed class InventoryPouch7b : InventoryPouch
     {
-        public InventoryPouch7b(InventoryType type, ushort[] legal, int maxcount, int offset, int size)
-            : base(type, legal, maxcount, offset, size)
+        public InventoryPouch7b(InventoryType type, ushort[] legal, int maxCount, int offset, int size)
+            : base(type, legal, maxCount, offset, size)
         {
         }
 
@@ -46,7 +46,7 @@ namespace PKHeX.Core
             // 15bit count
             // 1 bit new flag
             // 1 bit reserved
-            return new InventoryItem
+            return new()
             {
                 Index = (int)(val & 0x7FF),
                 Count = (int)(val >> 15 & 0x3FF), // clamp to sane values

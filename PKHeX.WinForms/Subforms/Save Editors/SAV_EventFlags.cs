@@ -6,6 +6,7 @@ using System.Linq;
 using System.Windows.Forms;
 using PKHeX.Core;
 using static PKHeX.Core.MessageStrings;
+using static PKHeX.Core.GameVersion;
 
 namespace PKHeX.WinForms
 {
@@ -23,8 +24,8 @@ namespace PKHeX.WinForms
             DragEnter += Main_DragEnter;
             DragDrop += Main_DragDrop;
 
-            flags = SAV.EventFlags;
-            Constants = SAV.EventConsts;
+            flags = SAV.GetEventFlags();
+            Constants = SAV.GetEventConsts();
 
             CB_Stats.Items.Clear();
             for (int i = 0; i < Constants.Length; i++)
@@ -81,11 +82,11 @@ namespace PKHeX.WinForms
             // Gather Updated Flags
             foreach (CheckBox flag in TLP_Flags.Controls.OfType<CheckBox>())
                 flags[GetControlNum(flag)] = flag.Checked;
-            SAV.EventFlags = flags;
+            SAV.SetEventFlags(flags);
 
             // Copy back Constants
-            ChangeConstantIndex(null, EventArgs.Empty); // Trigger Saving
-            SAV.EventConsts = Constants;
+            ChangeConstantIndex(sender, EventArgs.Empty); // Trigger Saving
+            SAV.SetEventConsts(Constants);
 
             HandleSpecialFlags();
             Origin.CopyChangesFrom(SAV);
@@ -104,40 +105,36 @@ namespace PKHeX.WinForms
             return GameLanguage.GetStrings(gamePrefix, GameInfo.CurrentLanguage, type);
         }
 
-        private static string GetResourceSuffix(GameVersion ver)
+        private static string GetResourceSuffix(GameVersion ver) => ver switch
         {
-            switch (ver)
-            {
-                case GameVersion.X: case GameVersion.Y: case GameVersion.XY: return "xy";
-                case GameVersion.OR: case GameVersion.AS: case GameVersion.ORAS: return "oras";
-                case GameVersion.SN: case GameVersion.MN: case GameVersion.SM: return "sm";
-                case GameVersion.US: case GameVersion.UM: case GameVersion.USUM: return "usum";
-                case GameVersion.D: case GameVersion.P: case GameVersion.DP: return "dp";
-                case GameVersion.Pt: case GameVersion.DPPt: return "pt";
-                case GameVersion.HG: case GameVersion.SS: case GameVersion.HGSS: return "hgss";
-                case GameVersion.B: case GameVersion.W: case GameVersion.BW: return "bw";
-                case GameVersion.B2: case GameVersion.W2: case GameVersion.B2W2: return "b2w2";
-                case GameVersion.R: case GameVersion.S: case GameVersion.RS: return "rs";
-                case GameVersion.E: return "e";
-                case GameVersion.FR: case GameVersion.LG: case GameVersion.FRLG: return "frlg";
-                case GameVersion.C: return "c";
-                case GameVersion.GD: case GameVersion.SV: case GameVersion.GS: return "gs";
-                default:
-                    throw new ArgumentException(nameof(GameVersion));
-            }
-        }
+            X or Y or XY => "xy",
+            OR or AS or ORAS => "oras",
+            SN or MN or SM => "sm",
+            US or UM or USUM => "usum",
+            D or P or DP => "dp",
+            Pt or DPPt => "pt",
+            HG or SS or HGSS => "hgss",
+            B or W or BW => "bw",
+            B2 or W2 or B2W2 => "b2w2",
+            R or S or RS => "rs",
+            E => "e",
+            FR or LG or FRLG => "frlg",
+            C => "c",
+            GD or SV or GS => "gs",
+            _ => throw new ArgumentException(nameof(GameVersion))
+        };
 
         private void AddFlagList(string[] list)
         {
-            if (list == null || list.Length == 0)
+            if (list.Length == 0)
             {
                 TLP_Flags.Controls.Add(new Label { Text = MsgResearchRequired, Name = "TLP_Flags_Research", ForeColor = Color.Red, AutoSize = true }, 0, 0);
                 return;
             }
 
             // Get list
-            List<int> num = new List<int>();
-            List<string> desc = new List<string>();
+            List<int> num = new();
+            List<string> desc = new();
 
             foreach (string[] split in list.Select(s => s.Split('\t')).Where(split => split.Length == 2))
             {
@@ -151,7 +148,9 @@ namespace PKHeX.WinForms
                     num.Add(n);
                     desc.Add(split[1]);
                 }
+#pragma warning disable CA1031 // Do not catch general exception types
                 catch
+#pragma warning restore CA1031 // Do not catch general exception types
                 {
                     // Ignore bad user values
                     Debug.WriteLine(string.Concat(split));
@@ -180,7 +179,7 @@ namespace PKHeX.WinForms
                     Checked = flags[num[i]],
                     AutoSize = true
                 };
-                chk.CheckStateChanged += ToggleFlag;
+                chk.CheckStateChanged += (o, args) => ToggleFlag(chk, args);
                 lbl.Click += (sender, e) => chk.Checked ^= true;
                 TLP_Flags.Controls.Add(chk, 0, i);
                 TLP_Flags.Controls.Add(lbl, 1, i);
@@ -197,16 +196,16 @@ namespace PKHeX.WinForms
 
         private void AddConstList(string[] list)
         {
-            if (list == null || list.Length == 0)
+            if (list.Length == 0)
             {
                 TLP_Const.Controls.Add(new Label { Text = MsgResearchRequired, Name = "TLP_Const_Research", ForeColor = Color.Red, AutoSize = true }, 0, 0);
                 return;
             }
 
             // Get list
-            List<int> num = new List<int>();
-            List<string> desc = new List<string>();
-            List<string> enums = new List<string>();
+            List<int> num = new();
+            List<string> desc = new();
+            List<string> enums = new();
 
             foreach (string[] split in list.Select(s => s.Split('\t')).Where(split => split.Length == 2 || split.Length == 3))
             {
@@ -221,11 +220,13 @@ namespace PKHeX.WinForms
                     desc.Add(split[1]);
                     enums.Add(split.Length == 3 ? split[2] : string.Empty);
                 }
+#pragma warning disable CA1031 // Do not catch general exception types
                 catch
                 {
                     // Ignore bad user values
                     Debug.WriteLine(string.Concat(split));
                 }
+#pragma warning restore CA1031 // Do not catch general exception types
             }
             if (num.Count == 0)
             {
@@ -252,14 +253,14 @@ namespace PKHeX.WinForms
                     Width = 50,
                 };
 
-                var map = new[] { new { Text = "Custom", Value = -1 } }.ToList();
+                var map = new[] { new ComboItem("Custom", -1 ) }.ToList();
 
                 if (!string.IsNullOrWhiteSpace(enums[i]))
                 {
                     foreach (var entry in enums[i].Split(','))
                     {
                         var spl = entry.Split(':');
-                        map.Add(new { Text = spl[1], Value = Convert.ToInt32(spl[0])});
+                        map.Add(new ComboItem(spl[1], Convert.ToInt32(spl[0])));
                     }
                 }
                 var cb = new ComboBox
@@ -274,15 +275,15 @@ namespace PKHeX.WinForms
                 cb.InitializeBinding();
                 cb.DataSource = map;
                 cb.SelectedIndex = 0;
-                cb.SelectedValueChanged += ToggleConst;
-                mtb.TextChanged += ToggleConst;
+                cb.SelectedValueChanged += (o, args) => ToggleConst(cb, args);
+                mtb.TextChanged += (o, args) => ToggleConst(mtb, args);
                 TLP_Const.Controls.Add(lbl, 0, i);
                 TLP_Const.Controls.Add(cb, 1, i);
                 TLP_Const.Controls.Add(mtb, 2, i);
-                if (map.Any(val => val.Value == Constants[num[i]]))
-                {
-                    cb.SelectedValue = (int)Constants[num[i]];
-                }
+
+                int cid = Constants[num[i]];
+                if (map.Any(val => val.Value == cid))
+                    cb.SelectedValue = cid;
             }
         }
 
@@ -329,10 +330,7 @@ namespace PKHeX.WinForms
             }
         }
 
-        private void ChangeCustomFlag(object sender, KeyEventArgs e)
-        {
-            ChangeCustomFlag(null, (EventArgs)e);
-        }
+        private void ChangeCustomFlag(object sender, KeyEventArgs e) => ChangeCustomFlag(sender, (EventArgs)e);
 
         private void ToggleFlag(object sender, EventArgs e)
         {

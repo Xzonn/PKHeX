@@ -1,46 +1,65 @@
-﻿using System.Collections.Generic;
-using System.Linq;
+﻿using System;
+using System.Collections.Generic;
 
 namespace PKHeX.Core
 {
-    /// <inheritdoc />
+    /// <inheritdoc cref="EncounterArea" />
     /// <summary>
     /// <see cref="GameVersion.GG"/> encounter area
     /// </summary>
-    public sealed class EncounterArea7b : EncounterArea32
+    public sealed record EncounterArea7b : EncounterArea
     {
-        private const int CatchComboBonus = 1;
-
-        protected override IEnumerable<EncounterSlot> GetMatchFromEvoLevel(PKM pkm, IEnumerable<EvoCriteria> vs, int minLevel)
+        public static EncounterArea7b[] GetAreas(byte[][] input, GameVersion game)
         {
-            var slots = Slots.Where(slot => vs.Any(evo => evo.Species == slot.Species && evo.Level >= (slot.LevelMin - CatchComboBonus)));
-
-            // Get slots where pokemon can exist with respect to level constraints
-            return slots.Where(s => s.IsLevelWithinRange(minLevel, minLevel, 0, CatchComboBonus));
+            var result = new EncounterArea7b[input.Length];
+            for (int i = 0; i < input.Length; i++)
+                result[i] = new EncounterArea7b(input[i], game);
+            return result;
         }
 
-        protected override IEnumerable<EncounterSlot> GetFilteredSlots(PKM pkm, IEnumerable<EncounterSlot> slots, int minLevel)
+        private EncounterArea7b(byte[] data, GameVersion game) : base(game)
         {
-            int species = pkm.Species;
+            Location = data[0] | (data[1] << 8);
+            Slots = ReadSlots(data);
+        }
 
-            int form = pkm.AltForm;
-            if (Legal.AlolanVariantEvolutions12.Contains(species) || Legal.GalarVariantFormEvolutions.Contains(species)) // match form if same species, else form 0.
+        private EncounterSlot7b[] ReadSlots(byte[] data)
+        {
+            const int size = 4;
+            int count = (data.Length - 2) / size;
+            var slots = new EncounterSlot7b[count];
+            for (int i = 0; i < slots.Length; i++)
             {
-                if (pkm.AltForm != 0 && pkm is PB7)
-                    yield break; // can't get Alolan forms from wild
-
-                foreach (var slot in slots)
-                {
-                    if (species == slot.Species ? slot.Form == form : slot.Form == 0)
-                        yield return slot;
-                }
+                int offset = 2 + (size * i);
+                ushort SpecForm = BitConverter.ToUInt16(data, offset);
+                int species = SpecForm & 0x3FF;
+                int min = data[offset + 2];
+                int max = data[offset + 3];
+                slots[i] = new EncounterSlot7b(this, species, min, max);
             }
-            else if (form == 0)
+
+            return slots;
+        }
+
+        private const int CatchComboBonus = 1;
+
+        public override IEnumerable<EncounterSlot> GetMatchingSlots(PKM pkm, IReadOnlyList<EvoCriteria> chain)
+        {
+            foreach (var slot in Slots)
             {
-                // enforce no form
-                foreach (var slot in slots)
+                foreach (var evo in chain)
                 {
+                    if (slot.Species != evo.Species)
+                        continue;
+
+                    var met = pkm.Met_Level;
+                    if (!slot.IsLevelWithinRange(met, 0, CatchComboBonus))
+                        break;
+                    if (slot.Form != evo.Form)
+                        break;
+
                     yield return slot;
+                    break;
                 }
             }
         }

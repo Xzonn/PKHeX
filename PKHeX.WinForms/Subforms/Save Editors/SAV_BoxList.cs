@@ -33,7 +33,7 @@ namespace PKHeX.WinForms
             {
                 foreach (var b in Boxes)
                 {
-                    b.M.Boxes.Remove(b);
+                    b.M?.Boxes.Remove(b);
                     m.Env.Slots.Publisher.Subscribers.Remove(b);
                 }
             };
@@ -54,8 +54,12 @@ namespace PKHeX.WinForms
         {
             for (int i = 0; i < sav.BoxCount; i++)
             {
-                var boxEditor = new BoxEditor { Name = $"BE_Box{i:00}", Margin = new Padding(1) };
-                boxEditor.Editor = new BoxEdit(sav);
+                var boxEditor = new BoxEditor
+                {
+                    Name = $"BE_Box{i:00}",
+                    Margin = new Padding(1),
+                    Editor = new BoxEdit(sav),
+                };
                 boxEditor.Setup(m);
                 boxEditor.InitializeGrid();
                 boxEditor.Reset();
@@ -73,13 +77,17 @@ namespace PKHeX.WinForms
                 box.ClearEvents();
                 box.B_BoxLeft.Click += (s, e) =>
                 {
-                    int index = Array.FindIndex(Boxes, z => z == ((Button)s).Parent);
+                    if (s == null)
+                        return;
+                    int index = Array.IndexOf(Boxes, ((Button)s).Parent);
                     int other = (index + Boxes.Length - 1) % Boxes.Length;
                     m.SwapBoxes(index, other, p.SAV);
                 };
                 box.B_BoxRight.Click += (s, e) =>
                 {
-                    int index = Array.FindIndex(Boxes, z => z == ((Button)s).Parent);
+                    if (s == null)
+                        return;
+                    int index = Array.IndexOf(Boxes, ((Button)s).Parent);
                     int other = (index + 1) % Boxes.Length;
                     m.SwapBoxes(index, other, p.SAV);
                 };

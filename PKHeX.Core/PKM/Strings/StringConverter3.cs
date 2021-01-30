@@ -11,62 +11,63 @@ namespace PKHeX.Core
         /// <summary>
         /// Converts a Generation 3 encoded value array to string.
         /// </summary>
-        /// <param name="strdata">Byte array containing string data.</param>
+        /// <param name="data">Byte array containing string data.</param>
         /// <param name="offset">Offset to read from</param>
         /// <param name="count">Length of data to read.</param>
         /// <param name="jp">Value source is Japanese font.</param>
         /// <returns>Decoded string.</returns>
-        public static string GetString3(byte[] strdata, int offset, int count, bool jp)
+        public static string GetString3(byte[] data, int offset, int count, bool jp)
         {
-            var s = new StringBuilder();
+            var s = new StringBuilder(count);
             for (int i = 0; i < count; i++)
             {
-                var val = strdata[offset + i];
+                var val = data[offset + i];
                 var c = GetG3Char(val, jp); // Convert to Unicode
                 if (c == 0xFF) // Stop if Terminator/Invalid
                     break;
                 s.Append(c);
             }
-            return StringConverter.SanitizeString(s.ToString());
+            StringConverter.SanitizeString(s);
+            return s.ToString();
         }
 
         /// <summary>
         /// Converts a string to a Generation 3 encoded value array.
         /// </summary>
         /// <param name="value">Decoded string.</param>
-        /// <param name="maxLength">Maximum length of string</param>
+        /// <param name="maxLength">Maximum length of the input <see cref="value"/></param>
         /// <param name="jp">String destination is Japanese font.</param>
-        /// <param name="padTo">Pad to given length</param>
-        /// <param name="padWith">Pad with value</param>
+        /// <param name="padTo">Pad the input <see cref="value"/> to given length</param>
+        /// <param name="padWith">Pad the input <see cref="value"/> with this character value</param>
         /// <returns></returns>
         public static byte[] SetString3(string value, int maxLength, bool jp, int padTo = 0, ushort padWith = 0)
         {
             if (value.Length > maxLength)
                 value = value.Substring(0, maxLength); // Hard cap
-            var strdata = new byte[value.Length + 1]; // +1 for 0xFF
+            var data = new byte[value.Length + 1]; // +1 for 0xFF
             for (int i = 0; i < value.Length; i++)
             {
                 var chr = value[i];
                 var val = SetG3Char(chr, jp);
                 if (val == 0xFF) // end
                 {
-                    Array.Resize(ref strdata, i + 1);
+                    Array.Resize(ref data, i + 1);
                     break;
                 }
-                strdata[i] = val;
+                data[i] = val;
             }
-            if (strdata.Length > 0)
-                strdata[strdata.Length - 1] = 0xFF;
-            if (strdata.Length > maxLength && padTo <= maxLength)
-                Array.Resize(ref strdata, maxLength);
-            if (strdata.Length < padTo)
+            if (data.Length > 0)
+                data[data.Length - 1] = 0xFF;
+            if (data.Length > maxLength && padTo <= maxLength)
+                Array.Resize(ref data, maxLength);
+            if (data.Length < padTo)
             {
-                var start = strdata.Length;
-                Array.Resize(ref strdata, padTo);
-                for (int i = start; i < strdata.Length; i++)
-                    strdata[i] = (byte)padWith;
+                var start = data.Length;
+                Array.Resize(ref data, padTo);
+                for (int i = start; i < data.Length; i++)
+                    data[i] = (byte)padWith;
             }
-            return strdata;
+            return data;
         }
 
         /// <summary>Converts Big Endian encoded data to decoded string.</summary>
@@ -76,23 +77,30 @@ namespace PKHeX.Core
         /// <returns>Decoded string.</returns>
         public static string GetBEString3(byte[] data, int offset, int count)
         {
-            return Util.TrimFromZero(Encoding.BigEndianUnicode.GetString(data, offset, count));
+            var raw = Encoding.BigEndianUnicode.GetString(data, offset, count);
+            var sb = new StringBuilder(raw);
+            Util.TrimFromZero(sb);
+            return sb.ToString();
         }
 
-        /// <summary>Gets the bytes for a BigEndian string.</summary>
+        /// <summary>Gets the bytes for a Big Endian string.</summary>
         /// <param name="value">Decoded string.</param>
-        /// <param name="maxLength">Maximum length</param>
-        /// <param name="padTo">Pad to given length</param>
-        /// <param name="padWith">Pad with value</param>
+        /// <param name="maxLength">Maximum length of the input <see cref="value"/></param>
+        /// <param name="padTo">Pad the input <see cref="value"/> to given length</param>
+        /// <param name="padWith">Pad the input <see cref="value"/> with this character value</param>
         /// <returns>Encoded data.</returns>
         public static byte[] SetBEString3(string value, int maxLength, int padTo = 0, ushort padWith = 0)
         {
             if (value.Length > maxLength)
                 value = value.Substring(0, maxLength); // Hard cap
-            var temp = StringConverter.SanitizeString(value)
-                .PadRight(value.Length + 1, (char)0) // Null Terminator
-                .PadRight(padTo, (char)padWith);
-            return Encoding.BigEndianUnicode.GetBytes(temp);
+            var sb = new StringBuilder(value);
+            StringConverter.SanitizeString(sb);
+            sb.Append('\0');
+            var delta = padTo - value.Length;
+            if (delta > 0)
+                sb.Append((char)padWith, delta);
+            var result = sb.ToString();
+            return Encoding.BigEndianUnicode.GetBytes(result);
         }
 
         /// <summary>

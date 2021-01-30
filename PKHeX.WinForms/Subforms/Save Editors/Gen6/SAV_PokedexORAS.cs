@@ -122,17 +122,17 @@ namespace PKHeX.WinForms
             for (int i = 0; i < CL.Length; i++)
                 CL[i].Checked = Zukan.GetLanguageFlag(species - 1, i);
 
-            int gt = SAV.Personal[pk].Gender;
+            var pi = SAV.Personal[pk];
 
-            CHK_P2.Enabled = CHK_P4.Enabled = CHK_P6.Enabled = CHK_P8.Enabled = gt != 254; // Not Female-Only
-            CHK_P3.Enabled = CHK_P5.Enabled = CHK_P7.Enabled = CHK_P9.Enabled = gt != 0 && gt != 255; // Not Male-Only and Not Genderless
+            CHK_P2.Enabled = CHK_P4.Enabled = CHK_P6.Enabled = CHK_P8.Enabled = !pi.OnlyFemale;
+            CHK_P3.Enabled = CHK_P5.Enabled = CHK_P7.Enabled = CHK_P9.Enabled = !(pi.OnlyMale || pi.Genderless);
 
             MT_Count.Text = Zukan.GetEncounterCount(species - 1).ToString();
 
             CLB_FormsSeen.Items.Clear();
             CLB_FormDisplayed.Items.Clear();
 
-            int fc = SAV.Personal[species].FormeCount;
+            int fc = pi.FormCount;
             int f = DexFormUtil.GetDexFormIndexORAS(species, fc);
             if (f < 0)
                 return;
@@ -168,7 +168,7 @@ namespace PKHeX.WinForms
             ushort count = (ushort) Math.Min(0xFFFF, Util.ToUInt32(MT_Count.Text));
             Zukan.SetEncounterCount(species - 1, count);
 
-            int fc = SAV.Personal[species].FormeCount;
+            int fc = SAV.Personal[species].FormCount;
             int f = DexFormUtil.GetDexFormIndexORAS(species, fc);
             if (f < 0)
                 return;
@@ -219,7 +219,7 @@ namespace PKHeX.WinForms
             int gt = SAV.Personal[index].Gender;
 
             CHK_P2.Checked = CHK_P4.Checked = gt != 254 && ModifierKeys != Keys.Control;
-            CHK_P3.Checked = CHK_P5.Checked = gt != 0 && gt != 255 && ModifierKeys != Keys.Control;
+            CHK_P3.Checked = CHK_P5.Checked = gt is not (0 or 255) && ModifierKeys != Keys.Control;
 
             if (ModifierKeys == Keys.Control)
             {
@@ -318,7 +318,7 @@ namespace PKHeX.WinForms
                         if (mnuComplete == sender)
                         {
                             CHK_P2.Checked = CHK_P4.Checked = gt != 254; // not female only
-                            CHK_P3.Checked = CHK_P5.Checked = gt != 0 && gt != 255; // not male only or genderless
+                            CHK_P3.Checked = CHK_P5.Checked = gt is not (0 or 255); // not male only or genderless
                         }
                         else
                         {

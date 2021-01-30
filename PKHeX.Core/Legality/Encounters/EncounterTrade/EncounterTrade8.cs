@@ -3,17 +3,19 @@ using System.Collections.Generic;
 
 namespace PKHeX.Core
 {
-    public class EncounterTrade8 : EncounterTrade, IDynamaxLevel, IRelearn, IMemoryOT
+    public sealed record EncounterTrade8 : EncounterTrade, IDynamaxLevel, IRelearn, IMemoryOT
     {
+        public override int Generation => 8;
+
         public byte DynamaxLevel { get; set; }
-        public IReadOnlyList<int> Relearn { get; set; } = Array.Empty<int>();
+        public IReadOnlyList<int> Relearn { get; init; } = Array.Empty<int>();
 
-        public int OT_Memory { get; }
-        public int OT_TextVar { get; }
-        public int OT_Feeling { get; }
-        public int OT_Intensity { get; }
+        public int OT_Memory { get; set; }
+        public int OT_TextVar { get; set; }
+        public int OT_Feeling { get; set; }
+        public int OT_Intensity { get; set; }
 
-        public EncounterTrade8(int species, int level, int m, int a, int f, int i)
+        public EncounterTrade8(GameVersion game, int species, int level, int m, int a, int f, int i) : base(game)
         {
             Species = species;
             Level = level;
@@ -24,21 +26,23 @@ namespace PKHeX.Core
             OT_Intensity = i;
         }
 
-        public override bool IsMatch(PKM pkm, int lvl)
+        public override bool IsMatchExact(PKM pkm, DexLevel evo)
         {
             if (pkm is IDynamaxLevel d && d.DynamaxLevel < DynamaxLevel)
                 return false;
-            return base.IsMatch(pkm, lvl);
+            if (pkm.FlawlessIVCount < FlawlessIVCount)
+                return false;
+            return base.IsMatchExact(pkm, evo);
         }
 
-        protected override void ApplyDetails(ITrainerInfo SAV, EncounterCriteria criteria, PKM pk)
+        protected override void ApplyDetails(ITrainerInfo sav, EncounterCriteria criteria, PKM pk)
         {
-            base.ApplyDetails(SAV, criteria, pk);
+            base.ApplyDetails(sav, criteria, pk);
             pk.SetRelearnMoves(Relearn);
 
             var pk8 = (PK8)pk;
             pk8.DynamaxLevel = DynamaxLevel;
-            pk8.HT_Language = SAV.Language;
+            pk8.HT_Language = sav.Language;
             pk8.OT_Memory = OT_Memory;
             pk8.OT_TextVar = OT_TextVar;
             pk8.OT_Feeling = OT_Feeling;

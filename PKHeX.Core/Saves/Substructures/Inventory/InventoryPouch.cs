@@ -17,12 +17,12 @@ namespace PKHeX.Core
         protected readonly int Offset;
         protected readonly int PouchDataSize;
 
-        protected InventoryPouch(InventoryType type, ushort[] legal, int maxcount, int offset, int size = -1)
+        protected InventoryPouch(InventoryType type, ushort[] legal, int maxCount, int offset, int size = -1)
         {
             Items = Array.Empty<InventoryItem>();
             Type = type;
             LegalItems = legal;
-            MaxCount = maxcount;
+            MaxCount = maxCount;
             Offset = offset;
             PouchDataSize = size > -1 ? size : legal.Length;
         }
@@ -172,31 +172,31 @@ namespace PKHeX.Core
             }
         }
 
-        public bool IsValidItemAndCount(ITrainerInfo SAV, int itemindex, bool HasNew, bool HaX, ref int itemcnt)
+        public bool IsValidItemAndCount(ITrainerInfo sav, int item, bool HasNew, bool HaX, ref int count)
         {
-            if (HaX && SAV.Generation != 7) // Gen7 has true cap at 1023, keep 999 cap.
+            if (HaX && sav.Generation != 7) // Gen7 has true cap at 1023, keep 999 cap.
             {
                 // Cap at absolute maximum
-                if (SAV.Generation <= 2 && itemcnt > byte.MaxValue)
-                    itemcnt = byte.MaxValue;
-                else if (SAV.Generation >= 3 && itemcnt > ushort.MaxValue)
-                    itemcnt = ushort.MaxValue;
+                if (sav.Generation <= 2 && count > byte.MaxValue)
+                    count = byte.MaxValue;
+                else if (sav.Generation >= 3 && count > ushort.MaxValue)
+                    count = ushort.MaxValue;
                 return true;
             }
 
-            if (itemcnt > MaxCount)
+            if (count > MaxCount)
             {
-                if (itemindex == 797 && itemcnt >= 2) // Edge case when for some reason the item count for Z-Ring was 2 in an unedited save and set 1 after using PKHeX
-                    itemcnt = 2;
+                if (item == 797 && count >= 2) // Edge case when for some reason the item count for Z-Ring was 2 in an unedited save and set 1 after using PKHeX
+                    count = 2;
                 else
-                    itemcnt = MaxCount; // Cap at pouch maximum
+                    count = MaxCount; // Cap at pouch maximum
             }
-            else if (itemcnt <= 0 && !HasNew)
+            else if (count <= 0 && !HasNew)
             {
                 return false;
             }
 
-            itemcnt = GetSuggestedItemCount(SAV, itemindex, itemcnt);
+            count = GetSuggestedItemCount(sav, item, count);
             return true;
         }
 
@@ -204,6 +204,8 @@ namespace PKHeX.Core
         {
             if (sav is SAV7b) // mixed pouch count caps
                 return InventoryPouch7b.GetSuggestedCount(Type, item, requestVal);
+            if (sav is SAV8SWSH)
+                return InventoryPouch8.GetSuggestedCount(Type, item, requestVal);
             if (ItemConverter.IsItemHM((ushort)item, sav.Generation))
                 return 1;
             return Math.Min(MaxCount, requestVal);
@@ -212,14 +214,14 @@ namespace PKHeX.Core
 
     public static class InventoryPouchExtensions
     {
-        public static InventoryPouch[] LoadAll(this InventoryPouch[] value, byte[] Data)
+        public static IReadOnlyList<InventoryPouch> LoadAll(this IReadOnlyList<InventoryPouch> value, byte[] Data)
         {
             foreach (var p in value)
                 p.GetPouch(Data);
             return value;
         }
 
-        public static void SaveAll(this InventoryPouch[] value, byte[] Data)
+        public static void SaveAll(this IReadOnlyList<InventoryPouch> value, byte[] Data)
         {
             foreach (var p in value)
                 p.SetPouch(Data);

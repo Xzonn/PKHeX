@@ -1,23 +1,22 @@
 ﻿using System;
-using System.Linq;
+using System.Collections.Generic;
 
 namespace PKHeX.Core
 {
     /// <summary>
     /// Generation 6 <see cref="SaveFile"/> object.
     /// </summary>
-    public abstract class SAV6 : SAV_BEEF, ITrainerStatRecord, ISaveBlock6Core
+    public abstract class SAV6 : SAV_BEEF, ITrainerStatRecord, ISaveBlock6Core, IRegionOrigin, IGameSync
     {
         // Save Data Attributes
-        protected override string BAKText => $"{OT} ({Version}) - {Played.LastSavedTime}";
-        public override string Filter => "Main SAV|*.*";
+        protected internal override string ShortSummary => $"{OT} ({Version}) - {Played.LastSavedTime}";
         public override string Extension => string.Empty;
 
         protected SAV6(byte[] data, int biOffset) : base(data, biOffset) { }
         protected SAV6(int size, int biOffset) : base(size, biOffset) { }
 
         // Configuration
-        public override int SIZE_STORED => PokeCrypto.SIZE_6STORED;
+        protected override int SIZE_STORED => PokeCrypto.SIZE_6STORED;
         protected override int SIZE_PARTY => PokeCrypto.SIZE_6PARTY;
         public override PKM BlankPKM => new PK6();
         public override Type PKMType => typeof(PK6);
@@ -49,7 +48,7 @@ namespace PKHeX.Core
         public int GetBattleBoxSlot(int slot) => BattleBoxOffset + (slot * SIZE_STORED);
 
         public virtual string JPEGTitle => string.Empty;
-        public virtual byte[] JPEGData => Array.Empty<byte>();
+        public virtual byte[] GetJPEGData() => Array.Empty<byte>();
 
         protected internal const int LongStringLength = 0x22; // bytes, not characters
         protected internal const int ShortStringLength = 0x1A; // bytes, not characters
@@ -61,9 +60,11 @@ namespace PKHeX.Core
         public override int Gender { get => Status.Gender; set => Status.Gender = value; }
         public override int Language { get => Status.Language; set => Status.Language = value; }
         public override string OT { get => Status.OT; set => Status.OT = value; }
-        public override int SubRegion { get => Status.SubRegion; set => Status.SubRegion = value; }
-        public override int Country { get => Status.Country; set => Status.Country = value; }
-        public override int ConsoleRegion { get => Status.ConsoleRegion; set => Status.ConsoleRegion = value; }
+        public int Region { get => Status.SubRegion; set => Status.SubRegion = value; }
+        public int Country { get => Status.Country; set => Status.Country = value; }
+        public int ConsoleRegion { get => Status.ConsoleRegion; set => Status.ConsoleRegion = value; }
+        public int GameSyncIDSize => MyStatus6.GameSyncIDSize; // 64 bits
+        public string GameSyncID { get => Status.GameSyncID; set => Status.GameSyncID = value; }
         public override int PlayedHours { get => Played.PlayedHours; set => Played.PlayedHours = value; }
         public override int PlayedMinutes { get => Played.PlayedMinutes; set => Played.PlayedMinutes = value; }
         public override int PlayedSeconds { get => Played.PlayedSeconds; set => Played.PlayedSeconds = value; }
@@ -75,7 +76,7 @@ namespace PKHeX.Core
 
         public override uint SecondsToStart { get => GameTime.SecondsToStart; set => GameTime.SecondsToStart = value; }
         public override uint SecondsToFame { get => GameTime.SecondsToFame; set => GameTime.SecondsToFame = value; }
-        public override InventoryPouch[] Inventory { get => Items.Inventory; set => Items.Inventory = value; }
+        public override IReadOnlyList<InventoryPouch> Inventory { get => Items.Inventory; set => Items.Inventory = value; }
 
         // Daycare
         public override int DaycareSeedSize => 16;
@@ -110,9 +111,9 @@ namespace PKHeX.Core
             if (CT != pk6.CurrentHandler) // Logic updated Friendship
             {
                 // Copy over the Friendship Value only under certain circumstances
-                if (pk6.Moves.Contains(216)) // Return
+                if (pk6.HasMove(216)) // Return
                     pk6.CurrentFriendship = pk6.OppositeFriendship;
-                else if (pk6.Moves.Contains(218)) // Frustration
+                else if (pk6.HasMove(218)) // Frustration
                     pkm.CurrentFriendship = pk6.OppositeFriendship;
             }
             pkm.RefreshChecksum();
@@ -136,7 +137,7 @@ namespace PKHeX.Core
 
         private static uint GetFormArgument(PKM pkm, bool isParty)
         {
-            if (!isParty || pkm.AltForm == 0)
+            if (!isParty || pkm.Form == 0)
                 return 0;
             return pkm.Species switch
             {

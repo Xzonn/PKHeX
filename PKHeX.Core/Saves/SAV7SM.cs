@@ -5,14 +5,14 @@ namespace PKHeX.Core
 {
     public sealed class SAV7SM : SAV7, ISaveBlock7SM
     {
-        public SAV7SM(byte[] data) : base(data, SaveBlockAccessor7SM.boSM)
+        public SAV7SM(byte[] data) : base(data, SaveBlockAccessor7SM.BlockMetadataOffset)
         {
             Blocks = new SaveBlockAccessor7SM(this);
             Initialize();
             ClearMemeCrypto();
         }
 
-        public SAV7SM() : base(SaveUtil.SIZE_G7SM, SaveBlockAccessor7SM.boSM)
+        public SAV7SM() : base(SaveUtil.SIZE_G7SM, SaveBlockAccessor7SM.BlockMetadataOffset)
         {
             Blocks = new SaveBlockAccessor7SM(this);
             Initialize();
@@ -37,7 +37,7 @@ namespace PKHeX.Core
 
         public override PersonalTable Personal => PersonalTable.SM;
         public override IReadOnlyList<ushort> HeldItems => Legal.HeldItems_SM;
-        public override SaveFile Clone() => new SAV7SM((byte[])Data.Clone());
+        protected override SaveFile CloneInternal() => new SAV7SM((byte[])Data.Clone());
 
         #region Blocks
         public SaveBlockAccessor7SM Blocks { get; }

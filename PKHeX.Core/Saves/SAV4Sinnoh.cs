@@ -72,7 +72,7 @@ namespace PKHeX.Core
 
         public bool PoketchFlag6 { get => (PoketchPacked & 0x40) != 0; set => PoketchPacked = (byte)(value ? (PoketchPacked | 0x40) : (PoketchPacked & ~0x40)); }
         public bool PoketchFlag7 { get => (PoketchPacked & 0x80) != 0; set => PoketchPacked = (byte)(value ? (PoketchPacked | 0x80) : (PoketchPacked & ~0x80)); }
-        private byte Poketch1 { get => General[PoketchStart + 1]; set => General[PoketchStart + 1] = value; }
+        public byte Poketch1 { get => General[PoketchStart + 1]; set => General[PoketchStart + 1] = value; }
         public sbyte CurrentPoketchApp { get => (sbyte)General[PoketchStart + 2]; set => General[PoketchStart + 2] = (byte)Math.Min((sbyte)PoketchApp.Alarm_Clock, value); }
 
         public bool GetPoketchAppUnlocked(PoketchApp index)
@@ -100,10 +100,13 @@ namespace PKHeX.Core
 
         // 2 bytes for alarm clock time setting
 
-        public byte[] PoketchDotArtistData
+        public byte[] GetPoketchDotArtistData() => General.Slice(PoketchStart + 0x2A, 120);
+
+        public void SetPoketchDotArtistData(byte[] value)
         {
-            get => General.Slice(PoketchStart + 0x2A, 120);
-            set => SetData(General, value, PoketchStart + 0x2A);
+            if (value.Length != 120)
+                throw new ArgumentException($"Expected {120} bytes.", nameof(value.Length));
+            SetData(General, value, PoketchStart + 0x2A);
         }
 
         // map marking stuff is at the end, unimportant
@@ -127,29 +130,30 @@ namespace PKHeX.Core
                 SetData(General, tree.Data, OFS_HONEY + (HONEY_SIZE * index));
         }
 
-        public int[] MunchlaxTrees
+        public int[] GetMunchlaxTrees() => CalculateMunchlaxTrees(TID, SID);
+
+        private static int[] CalculateMunchlaxTrees(int tid, int sid)
         {
-            get
-            {
-                int A = (TID >> 8) % 21;
-                int B = (TID & 0x00FF) % 21;
-                int C = (SID >> 8) % 21;
-                int D = (SID & 0x00FF) % 21;
+            int A = (tid >> 8) % 21;
+            int B = (tid & 0x00FF) % 21;
+            int C = (sid >> 8) % 21;
+            int D = (sid & 0x00FF) % 21;
 
-                if (A == B) B = (B + 1) % 21;
-                if (A == C) C = (C + 1) % 21;
-                if (B == C) C = (C + 1) % 21;
-                if (A == D) D = (D + 1) % 21;
-                if (B == D) D = (D + 1) % 21;
-                if (C == D) D = (D + 1) % 21;
+            if (A == B) B = (B + 1) % 21;
+            if (A == C) C = (C + 1) % 21;
+            if (B == C) C = (C + 1) % 21;
+            if (A == D) D = (D + 1) % 21;
+            if (B == D) D = (D + 1) % 21;
+            if (C == D) D = (D + 1) % 21;
 
-                return new[] { A, B, C, D };
-            }
+            return new[] {A, B, C, D};
         }
+
         #endregion
 
         public int OFS_PoffinCase { get; protected set; }
 
+        #region Underground
         //Underground Scores
         protected int OFS_UG_Stats;
         public uint UG_PlayersMet { get => BitConverter.ToUInt32(General, OFS_UG_Stats); set => SetData(General, BitConverter.GetBytes(value), OFS_UG_Stats); }
@@ -159,6 +163,26 @@ namespace PKHeX.Core
         public uint UG_TrapsAvoided { get => BitConverter.ToUInt32(General, OFS_UG_Stats + 0x18); set => SetData(General, BitConverter.GetBytes(value), OFS_UG_Stats + 0x18); }
         public uint UG_TrapsTriggered { get => BitConverter.ToUInt32(General, OFS_UG_Stats + 0x1C); set => SetData(General, BitConverter.GetBytes(value), OFS_UG_Stats + 0x1C); }
         public uint UG_Flags { get => BitConverter.ToUInt32(General, OFS_UG_Stats + 0x34); set => SetData(General, BitConverter.GetBytes(value), OFS_UG_Stats + 0x34); }
+
+        //Underground Items
+        protected int OFS_UG_Items;
+
+        public const int UG_POUCH_SIZE = 0x28; // 40 for each of the inventory pouches
+
+        public byte[] GetUGI_Traps() => General.Slice(OFS_UG_Items, UG_POUCH_SIZE);
+        public void SetUGI_Traps(byte[] value) => SetData(General, value, OFS_UG_Items);
+
+        public byte[] GetUGI_Goods() => General.Slice(OFS_UG_Items + 0x28, UG_POUCH_SIZE);
+        public void SetUGI_Goods(byte[] value) => SetData(General, value, OFS_UG_Items + 0x28);
+
+        public byte[] GetUGI_Treasures() => General.Slice(OFS_UG_Items + 0x50, UG_POUCH_SIZE);
+        public void SetUGI_Treasures(byte[] value) => SetData(General, value, OFS_UG_Items + 0x50);
+
+        // first 40 are the sphere type, last 40 are the sphere sizes
+        public byte[] GetUGI_Spheres() => General.Slice(OFS_UG_Items + 0x78, UG_POUCH_SIZE * 2);
+        public void SetUGI_Spheres(byte[] value) => SetData(General, value, OFS_UG_Items + 0x78);
+
+        #endregion
     }
 
     public enum PoketchColor

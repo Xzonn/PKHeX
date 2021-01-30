@@ -795,3 +795,33 @@ Kniefalltrick
 Sternensturm
 Unendynastrahlen
 Stahlstrahl
+Flächenmacht
+Eisenwalze
+Schuppenschuss
+Meteorstrahl
+Muschelwaffe
+Nebelexplosion
+Grasrutsche
+Hochspannung
+Feldimpuls
+Krabbelkracher
+Neidflammen
+Frustventil
+Poltergeist
+Korrosionsgas
+Coaching
+Rollwende
+Dreifach-Axel
+Doppelflügel
+Brandsand
+Dschungelheilung
+Finstertreffer
+Trefferschwall
+Blitzgefängnis
+Drachenkräfte
+Eisiger Blick
+Brennender Zorn
+Donnernder Tritt
+Blizzardlanze
+Astralfragmente
+Schauderspruch

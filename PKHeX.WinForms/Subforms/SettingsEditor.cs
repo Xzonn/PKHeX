@@ -13,7 +13,7 @@ namespace PKHeX.WinForms
 {
     public partial class SettingsEditor : Form
     {
-        public SettingsEditor(object obj, params string[] blacklist)
+        public SettingsEditor(object? obj, params string[] blacklist)
         {
             InitializeComponent();
             SettingsObject = obj ?? Settings.Default;
@@ -77,20 +77,17 @@ namespace PKHeX.WinForms
                 ReflectUtil.SetValue(SettingsObject, s.Name, GetValue(s));
         }
 
-        private static CheckBox GetCheckBox(string name, bool state) => new CheckBox
+        private static CheckBox GetCheckBox(string name, bool state) => new()
         {
             Name = name, Checked = state, Text = name,
             AutoSize = true,
         };
 
-        private static object GetValue(IDisposable control)
+        private static object GetValue(IDisposable control) => control switch
         {
-            return control switch
-            {
-                CheckBox cb => cb.Checked,
-                _ => (object)null
-            };
-        }
+            CheckBox cb => cb.Checked,
+            _ => throw new Exception(nameof(control)),
+        };
 
         private void SettingsEditor_KeyDown(object sender, KeyEventArgs e)
         {
@@ -108,9 +105,12 @@ namespace PKHeX.WinForms
                 var path = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.PerUserRoamingAndLocal).FilePath;
                 if (File.Exists(path))
                     File.Delete(path);
+                System.Diagnostics.Process.Start(Application.ExecutablePath);
                 Environment.Exit(0);
             }
+#pragma warning disable CA1031 // Do not catch general exception types
             catch (Exception ex)
+#pragma warning restore CA1031 // Do not catch general exception types
             {
                 WinFormsUtil.Error("Failed to delete settings.", ex.Message);
             }

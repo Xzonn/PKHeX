@@ -2,7 +2,8 @@
 
 namespace PKHeX.Core
 {
-    public struct Xoroshiro128Plus
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1815:Override equals and operator equals on value types", Justification = "Unused")]
+    public ref struct Xoroshiro128Plus
     {
         public const ulong XOROSHIRO_CONST = 0x82A2B175229D6A5B;
 

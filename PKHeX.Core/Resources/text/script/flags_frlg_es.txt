@@ -27,8 +27,8 @@
 0x278	Recibido Hitmonchan/Hitmonlee
 0x2DA	Recibido Huevo Togepi
 
-0x2A7	Recibido Misti-Ticket desde Regalo Misterioso
-0x2A8	Recibido Ori-Ticket desde Regalo Misterioso
+0x2A7	Recibido Ori-Ticket desde Regalo Misterioso
+0x2A8	Recibido Misti-Ticket desde Regalo Misterioso
 
 0x2F0	Muestra Misti-Ticket
 0x2F1	Muestra Ori-Ticket
@@ -50,6 +50,8 @@
 0x2D0	Derrotado Electrode (1)
 0x2D2	Derrotado Electrode (2)
 
+0x060	Escondido en el mundo (Hitmonlee bola)
+0x061	Escondido en el mundo (Hitmonchan bola)
 0x02F	Escondido en el mundo (Fósil Domo)
 0x030	Escondido en el mundo (Fósil Hélix)
 0x082	Escondido en el mundo (Articuno)
@@ -77,6 +79,10 @@
 0x2CC	Usado Tutor de Movimientos en Isla Canela (Metrónomo)
 0x2CD	Usado Tutor de Movimientos en Ciudad Azafrán (Mimético)
 0x2CE	Usado Tutor de Movimientos en Isla Cuarta (Golpe Cuerpo)
+0x2DE	Used Move Tutor at Cape Brink (Frenzy Plant)
+0x2DF	Used Move Tutor at Cape Brink (Blast Burn)
+0x2E0	Used Move Tutor at Cape Brink (Hydro Cannon)
+0x2E1	Cape Brink Move Tutor taught all 3 Moves
 
 0x829	Recibida PokéDex
 0x82F	Recibidas Deportivas

@@ -22,8 +22,8 @@ namespace PKHeX.Core
         /// </summary>
         public static bool CanLearn(string species, IEnumerable<string> moves, string lang = GameLanguage.DefaultLanguage)
         {
-            var encs = GetLearn(species, moves, lang);
-            return encs.Any();
+            var encounters = GetLearn(species, moves, lang);
+            return encounters.Any();
         }
 
         /// <summary>
@@ -31,8 +31,8 @@ namespace PKHeX.Core
         /// </summary>
         public static IEnumerable<string> GetLearnSummary(string species, IEnumerable<string> moves, string lang = GameLanguage.DefaultLanguage)
         {
-            var encs = GetLearn(species, moves, lang);
-            var msg = Summarize(encs).ToList();
+            var encounters = GetLearn(species, moves, lang);
+            var msg = Summarize(encounters).ToList();
             if (msg.Count == 0)
                 msg.Add(NoMatches);
             return msg;
@@ -44,13 +44,11 @@ namespace PKHeX.Core
         public static IEnumerable<IEncounterable> GetLearn(string species, IEnumerable<string> moves, string lang = GameLanguage.DefaultLanguage)
         {
             var str = GameInfo.GetStrings(lang);
-            if (str == null)
-                return Array.Empty<IEncounterable>();
 
-            var spec = StringUtil.FindIndexIgnoreCase(str.specieslist, species);
+            var speciesID = StringUtil.FindIndexIgnoreCase(str.specieslist, species);
             var moveIDs = StringUtil.GetIndexes(str.movelist, moves.ToList());
 
-            return GetLearn(spec, moveIDs);
+            return GetLearn(speciesID, moveIDs);
         }
 
         /// <summary>
@@ -95,26 +93,26 @@ namespace PKHeX.Core
 
         private EncounterSummary(IEncounterable z, string type)
         {
-            Version = z is IVersion v ? v.Version : GameVersion.Any;
+            Version = z.Version;
             LocationName = GetLocationName(z) + $"({type}) ";
         }
 
         private EncounterSummary(IEncounterable z)
         {
-            Version = z is IVersion v ? v.Version : GameVersion.Any;
+            Version = z.Version;
             LocationName = GetLocationName(z);
         }
 
         private static string GetLocationName(IEncounterable z)
         {
-            var gen = z is IGeneration g ? g.Generation : -1;
-            var version = z is IVersion v ? (int)v.Version : -1;
+            var gen = z.Generation;
+            var version = z.Version;
             if (gen < 0 && version > 0)
-                gen = ((GameVersion)version).GetGeneration();
+                gen = version.GetGeneration();
 
-            if (!(z is ILocation l))
+            if (z is not ILocation l)
                 return $"[Gen{gen}]\t";
-            var loc = l.GetEncounterLocation(gen, version);
+            var loc = l.GetEncounterLocation(gen, (int)version);
 
             if (string.IsNullOrWhiteSpace(loc))
                 return $"[Gen{gen}]\t";
@@ -140,21 +138,11 @@ namespace PKHeX.Core
         {
             switch (item)
             {
-                case EncounterSlot s:
-                    var type = s.Type;
-                    if (type == 0)
-                    {
-                        yield return new EncounterSummary(item);
-                        break;
-                    }
-                    for (int i = 0; i < sizeof(SlotType) * 8; i++)
-                    {
-                        var flag = (SlotType)(1 << i);
-                        if ((type & flag) != 0)
-                            yield return new EncounterSummary(item, flag.ToString());
-                    }
-
+                case EncounterSlot s when s.Area.Type != 0:
+                {
+                    yield return new EncounterSummary(item, s.Area.Type.ToString());
                     break;
+                }
 
                 default:
                     yield return new EncounterSummary(item);

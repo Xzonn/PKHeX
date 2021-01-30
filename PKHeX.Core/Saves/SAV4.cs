@@ -12,8 +12,7 @@ namespace PKHeX.Core
     /// </remarks>
     public abstract class SAV4 : SaveFile
     {
-        protected override string BAKText => $"{OT} ({Version}) - {PlayTimeString}";
-        public override string Filter => (Footer.Length > 0 ? "DeSmuME DSV|*.dsv|" : string.Empty) + "SAV File|*.sav|All Files|*.*";
+        protected internal override string ShortSummary => $"{OT} ({Version}) - {PlayTimeString}";
         public override string Extension => ".sav";
 
         // Blocks & Offsets
@@ -59,16 +58,15 @@ namespace PKHeX.Core
         }
 
         // Configuration
-        public override SaveFile Clone()
+        protected override SaveFile CloneInternal()
         {
-            var sav = CloneInternal();
+            var sav = CloneInternal4();
             SetData(sav.General, General, 0);
             SetData(sav.Storage, Storage, 0);
-            sav.Footer = (byte[])Footer.Clone();
             return sav;
         }
 
-        protected abstract SAV4 CloneInternal();
+        protected abstract SAV4 CloneInternal4();
 
         public override void CopyChangesFrom(SaveFile sav)
         {
@@ -78,7 +76,7 @@ namespace PKHeX.Core
             SetData(Storage, s4.Storage, 0);
         }
 
-        public override int SIZE_STORED => PokeCrypto.SIZE_4STORED;
+        protected override int SIZE_STORED => PokeCrypto.SIZE_4STORED;
         protected override int SIZE_PARTY => PokeCrypto.SIZE_4PARTY;
         public override PKM BlankPKM => new PK4();
         public override Type PKMType => typeof(PK4);
@@ -149,35 +147,15 @@ namespace PKHeX.Core
 
         private static int GetActiveBlock(byte[] data, int begin, int length)
         {
-            // Check to see if the save is initialized completely
-            // if the block is not initialized, fall back to the other save.
-            var start = begin;
-            if (data.IsRangeAll((byte)0, start, 10) || data.IsRangeAll((byte)0xFF, start, 10))
-                return 1;
-            start += PartitionSize; // check other save
-            if (data.IsRangeAll((byte)0, start, 10) || data.IsRangeAll((byte)0xFF, start, 10))
-                return 0;
-
-            // Fall back to highest value save counter
-            return GetActiveBlockViaCounter(data, begin, length);
+            int offset = begin + length - 0x14;
+            return SAV4BlockDetection.CompareFooters(data, offset, offset + PartitionSize);
         }
-
-        private static int GetActiveBlockViaCounter(byte[] data, int begin, int length)
-        {
-            int ofs = GetBlockSaveCounterOffset(begin, length);
-            var block0 = BitConverter.ToUInt16(data, ofs);
-            var block1 = BitConverter.ToUInt16(data, ofs + PartitionSize);
-            bool first = block0 >= block1;
-            return first ? 0 : 1;
-        }
-
-        private static int GetBlockSaveCounterOffset(int start, int length) => start + length - 0x10;
 
         protected int WondercardFlags = int.MinValue;
         protected int AdventureInfo = int.MinValue;
         protected int Seal = int.MinValue;
         protected int Trainer1;
-        public int GTS { get; protected set; } = int.MinValue;
+        public int GTS { get; } = int.MinValue;
 
         // Storage
         public override int PartyCount
@@ -461,7 +439,7 @@ namespace PKHeX.Core
         {
             for (int i = 0; i < 8; i++) // 8 PGT
             {
-                if (value[i] is PGT g && g.CardType != 0)
+                if (value[i] is PGT {CardType: not 0})
                     return true;
             }
             for (int i = 8; i < 11; i++) // 3 PCD
@@ -472,12 +450,12 @@ namespace PKHeX.Core
             return false;
         }
 
-        private int[] MatchMysteryGifts(DataMysteryGift[] value)
+        private byte[] MatchMysteryGifts(DataMysteryGift[] value)
         {
-            int[] cardMatch = new int[8];
+            byte[] cardMatch = new byte[8];
             for (int i = 0; i < 8; i++)
             {
-                if (!(value[i] is PGT pgt))
+                if (value[i] is not PGT pgt)
                     continue;
 
                 if (pgt.CardType == 0) // empty
@@ -489,7 +467,7 @@ namespace PKHeX.Core
                 cardMatch[i] = pgt.Slot = 3;
                 for (byte j = 0; j < 3; j++)
                 {
-                    if (!(value[8 + j] is PCD pcd))
+                    if (value[8 + j] is not PCD pcd)
                         continue;
 
                     // Check if data matches (except Slot @ 0x02)
@@ -662,25 +640,25 @@ namespace PKHeX.Core
                     for (int i = 0; i < 0x1C; i++)
                     {
                         byte val = General[FormOffset1 + 4 + i];
-                        if (val == pkm.AltForm)
+                        if (val == pkm.Form)
                             break; // already set
                         if (val != 0xFF)
                             continue; // keep searching
 
-                        General[FormOffset1 + 4 + i] = (byte)pkm.AltForm;
+                        General[FormOffset1 + 4 + i] = (byte)pkm.Form;
                         break; // form now set
                     }
                 }
                 else if (pkm.Species == (int)Species.Pichu && HGSS) // Pichu (HGSS Only)
                 {
-                    int form = pkm.AltForm == 1 ? 2 : pkm.Gender;
-                    CheckInsertForm(ref forms, form);
-                    SetForms(pkm.Species, forms);
+                    int form = pkm.Form == 1 ? 2 : pkm.Gender;
+                    if (TryInsertForm(forms, form))
+                        SetForms(pkm.Species, forms);
                 }
                 else
                 {
-                    CheckInsertForm(ref forms, pkm.AltForm);
-                    SetForms(pkm.Species, forms);
+                    if (TryInsertForm(forms, pkm.Form))
+                        SetForms(pkm.Species, forms);
                 }
             }
 
@@ -696,18 +674,14 @@ namespace PKHeX.Core
 
         private static readonly int[] DPLangSpecies = { 23, 25, 54, 77, 120, 129, 202, 214, 215, 216, 228, 278, 287, 315 };
 
-        private static int GetGen4LanguageBitIndex(int lang)
+        private static int GetGen4LanguageBitIndex(int lang) => --lang switch
         {
-            lang--;
-            switch (lang) // invert ITA/GER
-            {
-                case 3: return 4;
-                case 4: return 3;
-            }
-            if (lang > 5)
-                return 0; // no KOR+
-            return lang < 0 ? 1 : lang; // default English
-        }
+            3 => 4, // invert ITA/GER
+            4 => 3, // invert ITA/GER
+            > 5 => 0, // Japanese
+            < 0 => 1, // English
+            _ => lang,
+        };
 
         public override bool GetCaught(int species)
         {
@@ -770,10 +744,10 @@ namespace PKHeX.Core
             };
         }
 
-        public void SetForms(int spec, int[] forms)
+        public void SetForms(int species, int[] forms)
         {
             const int brSize = 0x40;
-            switch (spec)
+            switch (species)
             {
                 case (int)Species.Deoxys: // Deoxys
                     uint newval = SetDexFormValues(forms, 4, 4);
@@ -783,7 +757,7 @@ namespace PKHeX.Core
             }
 
             int FormOffset1 = PokeDex + 4 + (4 * brSize) + 4;
-            switch (spec)
+            switch (species)
             {
                 case (int)Species.Shellos: // Shellos
                     General[FormOffset1 + 0] = (byte)SetDexFormValues(forms, 1, 2);
@@ -812,7 +786,7 @@ namespace PKHeX.Core
 
             int PokeDexLanguageFlags = FormOffset1 + (HGSS ? 0x3C : 0x20);
             int FormOffset2 = PokeDexLanguageFlags + 0x1F4;
-            switch (spec)
+            switch (species)
             {
                 case (int)Species.Rotom: // Rotom
                     BitConverter.GetBytes(SetDexFormValues(forms, 3, 6)).CopyTo(General, FormOffset2);
@@ -866,24 +840,17 @@ namespace PKHeX.Core
             return Value;
         }
 
-        private static bool CheckInsertForm(ref int[] Forms, int FormNum)
+        private static bool TryInsertForm(int[] forms, int form)
         {
-            if (Forms.Any(num => num == FormNum))
-            {
+            if (Array.IndexOf(forms, form) >= 0)
                 return false; // already in list
-            }
-            if (Forms.All(num => num == -1))
-            {
-                Forms[0] = FormNum;
-                return true; // none in list, insert at top
-            }
 
             // insert at first empty
-            int n1 = Array.IndexOf(Forms, -1);
-            if (n1 < 0)
-                return false;
+            var index = Array.IndexOf(forms, -1);
+            if (index < 0)
+                return false; // no free slots?
 
-            Forms[n1] = FormNum;
+            forms[index] = form;
             return true;
         }
 
@@ -918,22 +885,22 @@ namespace PKHeX.Core
                 switch (Version)
                 {
                     case GameVersion.DP:
-                        General[0x1413] = (byte)(value == 4 ? 1 : 0);
-                        General[0x1415] = (byte)(value >= 3 ? 1 : 0);
-                        General[0x1404] = (byte)(value >= 2 ? 1 : 0);
-                        General[0x1414] = (byte)(value >= 1 ? 1 : 0);
+                        General[0x1413] = value == 4 ? 1 : 0;
+                        General[0x1415] = value >= 3 ? 1 : 0;
+                        General[0x1404] = value >= 2 ? 1 : 0;
+                        General[0x1414] = value >= 1 ? 1 : 0;
                         break;
                     case GameVersion.HGSS:
-                        General[0x15ED] = (byte)(value == 3 ? 1 : 0);
-                        General[0x15EF] = (byte)(value >= 2 ? 1 : 0);
-                        General[0x15EE] = (byte)(value >= 1 ? 1 : 0);
+                        General[0x15ED] = value == 3 ? 1 : 0;
+                        General[0x15EF] = value >= 2 ? 1 : 0;
+                        General[0x15EE] = value >= 1 ? 1 : 0;
                         General[0x10D1] = (byte)((General[0x10D1] & ~8) | (value >= 1 ? 8 : 0));
                         break;
                     case GameVersion.Pt:
-                        General[0x1641] = (byte)(value == 4 ? 1 : 0);
-                        General[0x1643] = (byte)(value >= 3 ? 1 : 0);
-                        General[0x1640] = (byte)(value >= 2 ? 1 : 0);
-                        General[0x1642] = (byte)(value >= 1 ? 1 : 0);
+                        General[0x1641] = value == 4 ? 1 : 0;
+                        General[0x1643] = value >= 3 ? 1 : 0;
+                        General[0x1640] = value >= 2 ? 1 : 0;
+                        General[0x1642] = value >= 1 ? 1 : 0;
                         break;
                     default: return;
                 }
@@ -950,33 +917,35 @@ namespace PKHeX.Core
         }
 
         /// <summary> All Event Constant values for the savegame </summary>
-        public override ushort[] EventConsts
+        public override ushort[] GetEventConsts()
         {
-            get
-            {
-                if (EventConstMax <= 0)
-                    return Array.Empty<ushort>();
+            if (EventConstMax <= 0)
+                return Array.Empty<ushort>();
 
-                ushort[] Constants = new ushort[EventConstMax];
-                for (int i = 0; i < Constants.Length; i++)
-                    Constants[i] = BitConverter.ToUInt16(General, EventConst + (i * 2));
-                return Constants;
-            }
-            set
-            {
-                if (EventConstMax <= 0)
-                    return;
-                if (value.Length != EventConstMax)
-                    return;
+            ushort[] Constants = new ushort[EventConstMax];
+            for (int i = 0; i < Constants.Length; i++)
+                Constants[i] = BitConverter.ToUInt16(General, EventConst + (i * 2));
+            return Constants;
+        }
 
-                for (int i = 0; i < value.Length; i++)
-                    BitConverter.GetBytes(value[i]).CopyTo(General, EventConst + (i * 2));
-            }
+        /// <summary> All Event Constant values for the savegame </summary>
+        public override void SetEventConsts(ushort[] value)
+        {
+            if (EventConstMax <= 0)
+                return;
+            if (value.Length != EventConstMax)
+                return;
+
+            for (int i = 0; i < value.Length; i++)
+                BitConverter.GetBytes(value[i]).CopyTo(General, EventConst + (i * 2));
         }
 
         // Seals
         private const byte SealMaxCount = 99;
-        public byte[] SealCase { get => General.Slice(Seal, (int) Seal4.MAX); set => SetData(General, value, Seal); }
+
+        public byte[] GetSealCase() => General.Slice(Seal, (int)Seal4.MAX);
+        public void SetSealCase(byte[] value) => SetData(General, value, Seal);
+
         public byte GetSealCount(Seal4 id) => General[Seal + (int)id];
         public byte SetSealCount(Seal4 id, byte count) => General[Seal + (int)id] = Math.Min(SealMaxCount, count);
 

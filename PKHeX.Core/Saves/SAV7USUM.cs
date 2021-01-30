@@ -4,7 +4,7 @@ namespace PKHeX.Core
 {
     public sealed class SAV7USUM : SAV7, ISaveBlock7USUM
     {
-        public SAV7USUM(byte[] data) : base(data, boUU)
+        public SAV7USUM(byte[] data) : base(data, SaveBlockAccessor7USUM.BlockMetadataOffset)
         {
             Blocks = new SaveBlockAccessor7USUM(this);
             Initialize();
@@ -35,7 +35,7 @@ namespace PKHeX.Core
 
         public override PersonalTable Personal => PersonalTable.USUM;
         public override IReadOnlyList<ushort> HeldItems => Legal.HeldItems_USUM;
-        public override SaveFile Clone() => new SAV7USUM((byte[])Data.Clone());
+        protected override SaveFile CloneInternal() => new SAV7USUM((byte[])Data.Clone());
         protected override int EventFlagMax => 4928;
         public override int MaxMoveID => Legal.MaxMoveID_7_USUM;
         public override int MaxSpeciesID => Legal.MaxSpeciesID_7_USUM;

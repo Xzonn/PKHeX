@@ -8,39 +8,39 @@ namespace PKHeX.WinForms.Controls
 {
     public sealed class BoxMenuStrip : ContextMenuStrip
     {
-        private readonly SAVEditor sav;
-        private readonly List<ItemVisibility> CustomItems = new List<ItemVisibility>();
+        private readonly SAVEditor SAV;
+        private readonly List<ItemVisibility> CustomItems = new();
         private readonly BoxManipulator Manipulator;
 
-        public BoxMenuStrip(SAVEditor SAV)
+        public BoxMenuStrip(SAVEditor sav)
         {
-            Manipulator = new BoxManipulatorWF(SAV);
-            sav = SAV;
-            var Levels = BoxManipUtil.ManipCategories;
-            var LevelNames = BoxManipUtil.ManipCategoryNames;
-            for (int i = 0; i < Levels.Length; i++)
+            Manipulator = new BoxManipulatorWF(sav);
+            SAV = sav;
+            var categories = BoxManipUtil.ManipCategories;
+            var names = BoxManipUtil.ManipCategoryNames;
+            for (int i = 0; i < categories.Length; i++)
             {
-                var level = Levels[i];
+                var category = categories[i];
                 var sprite = TopLevelImages[i];
-                var name = LevelNames[i];
+                var name = names[i];
                 var parent = new ToolStripMenuItem {Name = $"mnu_{name}", Text = name, Image = sprite};
-                foreach (var item in level)
-                    AddItem(SAV, parent, item);
+                foreach (var item in category)
+                    AddItem(sav, parent, item);
                 Items.Add(parent);
             }
         }
 
-        private void AddItem(ISaveFileProvider SAV, ToolStripDropDownItem parent, IBoxManip item)
+        private void AddItem(ISaveFileProvider sav, ToolStripDropDownItem parent, IBoxManip item)
         {
             var name = item.Type.ToString();
             ManipTypeImage.TryGetValue(item.Type, out var img);
             var tsi = new ToolStripMenuItem { Name = $"mnu_{name}", Text = name, Image = img };
-            tsi.Click += (s, e) => Manipulator.Execute(item, SAV.CurrentBox, All, Reverse);
+            tsi.Click += (s, e) => Manipulator.Execute(item, sav.CurrentBox, All, Reverse);
             parent.DropDownItems.Add(tsi);
             CustomItems.Add(new ItemVisibility(tsi, item));
         }
 
-        private static readonly Dictionary<BoxManipType, Image> ManipTypeImage = new Dictionary<BoxManipType, Image>
+        private static readonly Dictionary<BoxManipType, Image> ManipTypeImage = new()
         {
             [BoxManipType.DeleteAll] = Resources.nocheck,
             [BoxManipType.DeleteEggs] = Resources.about,
@@ -95,13 +95,13 @@ namespace PKHeX.WinForms.Controls
                 Manip = visible;
             }
 
-            public void SetVisibility(SaveFile s) => Item.Visible = Manip.Usable?.Invoke(s) ?? true;
+            public void SetVisibility(SaveFile s) => Item.Visible = Manip.Usable(s);
         }
 
         public void ToggleVisibility()
         {
             foreach (var s in CustomItems)
-                s.SetVisibility(sav.SAV);
+                s.SetVisibility(SAV.SAV);
         }
 
         private static readonly Image[] TopLevelImages =
@@ -112,8 +112,8 @@ namespace PKHeX.WinForms.Controls
             Resources.wand,
         };
 
-        public void Clear() => Manipulator.Execute(BoxManipType.DeleteAll, sav.SAV.CurrentBox, All);
-        public void Sort() => Manipulator.Execute(BoxManipType.SortSpecies, sav.SAV.CurrentBox, All);
+        public void Clear() => Manipulator.Execute(BoxManipType.DeleteAll, SAV.CurrentBox, All);
+        public void Sort() => Manipulator.Execute(BoxManipType.SortSpecies, SAV.CurrentBox, All);
 
         private static bool All => (ModifierKeys & Keys.Shift) != 0;
         private static bool Reverse => (ModifierKeys & Keys.Control) != 0;

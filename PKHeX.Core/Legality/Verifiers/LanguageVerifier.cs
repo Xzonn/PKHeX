@@ -24,7 +24,7 @@ namespace PKHeX.Core
 
             // Korean Gen4 games can not trade with other Gen4 languages, but can use Pal Park with any Gen3 game/language.
             if (pkm.Format == 4 && pkm.Gen4 && !IsValidG4Korean(currentLanguage)
-                && !(data.EncounterMatch is EncounterTrade x && (x.Species == (int)Species.Pikachu || x.Species == (int)Species.Magikarp)) // ger magikarp / eng pikachu
+                && !(data.EncounterMatch is EncounterTrade4 {Species: (int)Species.Pikachu or (int)Species.Magikarp}) // ger magikarp / eng pikachu
             )
             {
                 bool kor = currentLanguage == (int)LanguageID.Korean;
@@ -34,10 +34,15 @@ namespace PKHeX.Core
                 return;
             }
 
-            // Korean Crystal does not exist, neither do VC1
-            if (originalGeneration <= 2 && pkm.Korean && !GameVersion.GS.Contains((GameVersion)pkm.Version))
+            if (originalGeneration <= 2)
             {
-                data.AddLine(GetInvalid(string.Format(LOTLanguage, $"!={(LanguageID)currentLanguage}", (LanguageID)currentLanguage)));
+                // Korean Crystal does not exist, neither do Korean VC1
+                if (pkm.Korean && !GameVersion.GS.Contains((GameVersion)pkm.Version))
+                    data.AddLine(GetInvalid(string.Format(LOTLanguage, $"!={(LanguageID)currentLanguage}", (LanguageID)currentLanguage)));
+
+                // Japanese VC is language locked; cannot obtain Japanese-Blue version as other languages.
+                if (pkm.Version == (int)GameVersion.BU && !pkm.Japanese)
+                    data.AddLine(GetInvalid(string.Format(LOTLanguage, nameof(LanguageID.Japanese), (LanguageID)currentLanguage)));
             }
         }
 

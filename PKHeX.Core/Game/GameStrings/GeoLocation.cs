@@ -5,8 +5,14 @@ namespace PKHeX.Core
     public static class GeoLocation
     {
         private static readonly string[][] CountryList = GetCountryList();
-        private static readonly string[] lang_geo = { "ja", "en", "fr", "de", "it", "es", "zh", "ko" };
-        private static readonly string[][][] RegionList = new string[CountryList.Length][][];
+        internal static readonly string[] lang_geo = { "ja", "en", "fr", "de", "it", "es", "zh", "ko" };
+        private static readonly string[][]?[] RegionList = new string[CountryList.Length][][];
+
+        public static string[] GetCountryList(string language)
+        {
+            int index = GetLanguageIndex(language);
+            return CountryList[index];
+        }
 
         private const string INVALID = nameof(INVALID);
 
@@ -43,34 +49,28 @@ namespace PKHeX.Core
             return entries;
         }
 
-        private static string GetCountryName(int countryID, int l)
+        private static string GetCountryName(int country, int l)
         {
             if (l < 0)
                 return INVALID;
-            if (countryID >= CountryList.Length)
+            if (country >= CountryList.Length)
                 return INVALID;
-            var countryNames = CountryList[countryID];
+            var countryNames = CountryList[country];
             if (l < countryNames.Length)
                 return countryNames[l + 1];
             return INVALID;
         }
 
-        private static string GetRegionName(int countryID, int regionID, int l)
+        private static string GetRegionName(int country, int region, int l)
         {
             if (l < 0)
                 return INVALID;
-            if (countryID >= RegionList.Length)
+            if (country >= RegionList.Length)
                 return INVALID;
-            var regionstrs = RegionList[countryID];
-            if (regionstrs == null)
-            {
-                regionstrs = RegionList[countryID] = GetRegionList(countryID);
-                if (regionstrs == null)
-                    return INVALID;
-            }
-            if (regionID >= regionstrs.Length)
+            var regionNames = RegionList[country] ??= GetRegionList(country);
+            if (region >= regionNames.Length)
                 return INVALID;
-            var localized = regionstrs[regionID];
+            var localized = regionNames[region];
             if (l < localized.Length)
                 return localized[l + 1];
             return INVALID;
@@ -113,20 +113,20 @@ namespace PKHeX.Core
         /// <summary>
         /// Gets Country and Region strings for corresponding IDs and language.
         /// </summary>
-        /// <param name="countryID">Country ID</param>
-        /// <param name="regionID">Region ID</param>
+        /// <param name="country">Country ID</param>
+        /// <param name="region">Region ID</param>
         /// <param name="language">Language ID</param>
         /// <returns>Tuple containing country and region</returns>
-        public static Tuple<string, string> GetCountryRegionText(int countryID, int regionID, string language)
+        public static Tuple<string, string> GetCountryRegionText(int country, int region, string language)
         {
             // Get Language we're fetching for
             int lang = Array.IndexOf(lang_geo, language);
-            var country = GetCountryName(countryID, lang);
-            var region = GetRegionName(countryID, regionID, lang);
-            return new Tuple<string, string>(country, region); // country, region
+            var countryName = GetCountryName(country, lang);
+            var regionName = GetRegionName(country, region, lang);
+            return new Tuple<string, string>(countryName, regionName); // country, region
         }
 
-        private static int GetLanguageIndex(string language) => Array.IndexOf(lang_geo, language);
+        public static int GetLanguageIndex(string language) => Array.IndexOf(lang_geo, language);
         private static int GetLanguageIndex(LanguageID language) => GetLanguageIndex(language.GetLanguage2CharName());
     }
 }

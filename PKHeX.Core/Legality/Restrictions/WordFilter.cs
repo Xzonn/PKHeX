@@ -16,7 +16,7 @@ namespace PKHeX.Core
         /// <summary>
         /// Due to some messages repeating (Trainer names), keep a list of repeated values for faster lookup.
         /// </summary>
-        private static readonly Dictionary<string, string> Lookup = new Dictionary<string, string>(INIT_COUNT);
+        private static readonly Dictionary<string, string> Lookup = new(INIT_COUNT);
 
         private const string NoMatch = "";
 
@@ -51,7 +51,7 @@ namespace PKHeX.Core
                 // match found, cache result
                 regMatch = pattern;
                 lock (dictLock)
-                    Lookup.Add(msg, regMatch);
+                    Lookup[msg] = regMatch;
                 return true;
             }
 
@@ -60,12 +60,12 @@ namespace PKHeX.Core
             {
                 if ((Lookup.Count & ~MAX_COUNT) != 0)
                     Lookup.Clear(); // reset
-                Lookup.Add(msg, regMatch = NoMatch);
+                Lookup[msg] = regMatch = NoMatch;
             }
             return false;
         }
 
-        private static readonly object dictLock = new object();
+        private static readonly object dictLock = new();
         private const int MAX_COUNT = (1 << 17) - 1; // arbitrary cap for max dictionary size
         private const int INIT_COUNT = 1 << 10; // arbitrary init size to limit future doublings
     }

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace PKHeX.Core
 {
@@ -11,13 +10,13 @@ namespace PKHeX.Core
     /// <inheritdoc cref="SAV6" />
     public sealed class SAV6AO : SAV6, ISaveBlock6AO
     {
-        public SAV6AO(byte[] data) : base(data, SaveBlockAccessor6AO.boAO)
+        public SAV6AO(byte[] data) : base(data, SaveBlockAccessor6AO.BlockMetadataOffset)
         {
             Blocks = new SaveBlockAccessor6AO(this);
             Initialize();
         }
 
-        public SAV6AO() : base(SaveUtil.SIZE_G6ORAS, SaveBlockAccessor6AO.boAO)
+        public SAV6AO() : base(SaveUtil.SIZE_G6ORAS, SaveBlockAccessor6AO.BlockMetadataOffset)
         {
             Blocks = new SaveBlockAccessor6AO(this);
             Initialize();
@@ -27,7 +26,7 @@ namespace PKHeX.Core
         public override PersonalTable Personal => PersonalTable.AO;
         public override IReadOnlyList<ushort> HeldItems => Legal.HeldItem_AO;
         public SaveBlockAccessor6AO Blocks { get; }
-        public override SaveFile Clone() => new SAV6AO((byte[])Data.Clone());
+        protected override SaveFile CloneInternal() => new SAV6AO((byte[])Data.Clone());
         public override int MaxMoveID => Legal.MaxMoveID_6_AO;
         public override int MaxItemID => Legal.MaxItemID_6_AO;
         public override int MaxAbilityID => Legal.MaxAbilityID_6_AO;
@@ -83,23 +82,19 @@ namespace PKHeX.Core
         public SuperTrainBlock SuperTrain => Blocks.SuperTrain;
         public MaisonBlock Maison => Blocks.Maison;
         public SubEventLog6 SUBE => Blocks.SUBE;
+        public ConfigSave6 Config => Blocks.Config;
+        public Encount6 Encount => Blocks.Encount;
 
         public Misc6AO Misc => Blocks.Misc;
         public Zukan6AO Zukan => Blocks.Zukan;
         #endregion
 
-        public override GameVersion Version
+        public override GameVersion Version => Game switch
         {
-            get
-            {
-                return Game switch
-                {
-                    (int)GameVersion.AS => GameVersion.AS,
-                    (int)GameVersion.OR => GameVersion.OR,
-                    _ => GameVersion.Invalid
-                };
-            }
-        }
+            (int) GameVersion.AS => GameVersion.AS,
+            (int) GameVersion.OR => GameVersion.OR,
+            _ => GameVersion.Invalid
+        };
 
         public override bool GetCaught(int species) => Blocks.Zukan.GetCaught(species);
         public override bool GetSeen(int species) => Blocks.Zukan.GetSeen(species);
@@ -111,6 +106,12 @@ namespace PKHeX.Core
         public override int Vivillon { get => Blocks.Misc.Vivillon; set => Blocks.Misc.Vivillon = value; }
         public override int Badges { get => Blocks.Misc.Badges; set => Blocks.Misc.Badges = value; }
         public override int BP { get => Blocks.Misc.BP; set => Blocks.Misc.BP = value; }
+
+        public override int MultiplayerSpriteID
+        {
+            get => Blocks.Status.MultiplayerSpriteID_1;
+            set => Blocks.Status.MultiplayerSpriteID_1 = Blocks.Status.MultiplayerSpriteID_2 = value;
+        }
 
         // Daycare
         public override int DaycareSeedSize => 16;
@@ -156,7 +157,7 @@ namespace PKHeX.Core
         public override void SetDaycareOccupied(int loc, int slot, bool occupied)
         {
             int ofs = loc == 0 ? DaycareOffset : Daycare2;
-            Data[ofs + ((SIZE_STORED + 8) * slot)] = (byte)(occupied ? 1 : 0);
+            Data[ofs + ((SIZE_STORED + 8) * slot)] = occupied ? 1 : 0;
         }
 
         public override void SetDaycareRNGSeed(int loc, string seed)
@@ -174,16 +175,15 @@ namespace PKHeX.Core
         public override void SetDaycareHasEgg(int loc, bool hasEgg)
         {
             int ofs = loc == 0 ? DaycareOffset : Daycare2;
-            Data[ofs + 0x1E0] = (byte)(hasEgg ? 1 : 0);
+            Data[ofs + 0x1E0] = hasEgg ? 1 : 0;
         }
 
-        public override string JPEGTitle => HasJPPEGData ? string.Empty : Util.TrimFromZero(Encoding.Unicode.GetString(Data, JPEG, 0x1A));
-        public override byte[] JPEGData => HasJPPEGData ? Array.Empty<byte>() : GetData(JPEG + 0x54, 0xE004);
-
+        public override string JPEGTitle => HasJPPEGData ? string.Empty : StringConverter.GetString6(Data, JPEG, 0x1A);
+        public override byte[] GetJPEGData() => HasJPPEGData ? Array.Empty<byte>() : GetData(JPEG + 0x54, 0xE004);
         private bool HasJPPEGData => Data[JPEG + 0x54] == 0xFF;
 
-        protected override bool[] MysteryGiftReceivedFlags { get => Blocks.MysteryGift.MysteryGiftReceivedFlags; set => Blocks.MysteryGift.MysteryGiftReceivedFlags = value; }
-        protected override DataMysteryGift[] MysteryGiftCards { get => Blocks.MysteryGift.MysteryGiftCards; set => Blocks.MysteryGift.MysteryGiftCards = value; }
+        protected override bool[] MysteryGiftReceivedFlags { get => Blocks.MysteryGift.GetReceivedFlags(); set => Blocks.MysteryGift.SetReceivedFlags(value); }
+        protected override DataMysteryGift[] MysteryGiftCards { get => Blocks.MysteryGift.GetGifts(); set => Blocks.MysteryGift.SetGifts(value); }
 
         public override int CurrentBox { get => Blocks.BoxLayout.CurrentBox; set => Blocks.BoxLayout.CurrentBox = value; }
         protected override int GetBoxWallpaperOffset(int box) => Blocks.BoxLayout.GetBoxWallpaperOffset(box);

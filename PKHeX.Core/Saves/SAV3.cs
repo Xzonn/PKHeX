@@ -7,12 +7,15 @@ namespace PKHeX.Core
     /// <summary>
     /// Generation 3 <see cref="SaveFile"/> object.
     /// </summary>
-    public sealed class SAV3 : SaveFile
+    public sealed class SAV3 : SaveFile, ILangDeviantSave
     {
-        protected override string BAKText => $"{OT} ({Version}) - {PlayTimeString}";
-        public override string Filter => "SAV File|*.sav|All Files|*.*";
+        protected internal override string ShortSummary => $"{OT} ({Version}) - {PlayTimeString}";
         public override string Extension => ".sav";
-        public readonly bool Japanese;
+
+        public int SaveRevision => Japanese ? 0 : 1;
+        public string SaveRevisionString => Japanese ? "J" : "U";
+        public bool Japanese { get; }
+        public bool Korean => false;
         public bool IndeterminateGame => Version == GameVersion.Unknown;
 
         /* SAV3 Structure:
@@ -75,13 +78,13 @@ namespace PKHeX.Core
 
         public SAV3(GameVersion version = GameVersion.FRLG, bool japanese = false) : base(SaveUtil.SIZE_G3RAW)
         {
-            if (version == GameVersion.FR || version == GameVersion.LG)
-                Version = GameVersion.FRLG;
-            else if (version == GameVersion.R || version == GameVersion.S)
-                Version = GameVersion.RS;
-            else
-                Version = version;
-            _personal = SaveUtil.GetG3Personal(Version) ?? PersonalTable.RS;
+            Version = version switch
+            {
+                GameVersion.FR or GameVersion.LG => GameVersion.FRLG,
+                GameVersion.R or GameVersion.S => GameVersion.RS,
+                _ => version
+            };
+            _personal = SaveUtil.GetG3Personal(Version);
             Japanese = japanese;
 
             LoadBlocks(out BlockOrder, out BlockOfs);
@@ -105,7 +108,7 @@ namespace PKHeX.Core
         {
             LoadBlocks(out BlockOrder, out BlockOfs);
             Version = versionOverride != GameVersion.Any ? versionOverride : GetVersion(Data, BlockOfs[0]);
-            _personal = SaveUtil.GetG3Personal(Version) ?? PersonalTable.RS;
+            _personal = SaveUtil.GetG3Personal(Version);
 
             // Japanese games are limited to 5 character OT names; any unused characters are 0xFF.
             // 5 for JP, 7 for INT. There's always 1 terminator, thus we can check 0x6-0x7 being 0xFFFF = INT
@@ -137,7 +140,7 @@ namespace PKHeX.Core
             Array.Resize(ref Data, Data.Length + SIZE_RESERVED); // More than enough empty space.
 
             // Copy chunk to the allocated location
-            for (int i = 5; i < BLOCK_COUNT; i++)
+            for (short i = 5; i < BLOCK_COUNT; i++)
             {
                 int blockIndex = Array.IndexOf(BlockOrder, i);
                 if (blockIndex == -1) // block empty
@@ -192,12 +195,12 @@ namespace PKHeX.Core
             SeenFlagOffsets = SeenFlagOffsets.Where(z => z >= 0).ToArray();
         }
 
-        private void LoadBlocks(out int[] blockOrder, out int[] blockOfs)
+        private void LoadBlocks(out short[] blockOrder, out int[] blockOfs)
         {
-            int[] o1 = GetBlockOrder(0);
+            var o1 = GetBlockOrder(0);
             if (Data.Length > SaveUtil.SIZE_G3RAWHALF)
             {
-                int[] o2 = GetBlockOrder(0xE000);
+                var o2 = GetBlockOrder(0xE000);
                 ActiveSAV = GetActiveSaveIndex(o1, o2);
                 blockOrder = ActiveSAV == 0 ? o1 : o2;
             }
@@ -208,25 +211,25 @@ namespace PKHeX.Core
             }
 
             blockOfs = new int[BLOCK_COUNT];
-            for (int i = 0; i < BLOCK_COUNT; i++)
+            for (short i = 0; i < BLOCK_COUNT; i++)
             {
                 int index = Array.IndexOf(blockOrder, i);
                 blockOfs[i] = index < 0 ? int.MinValue : (index * SIZE_BLOCK) + ABO;
             }
         }
 
-        private int[] GetBlockOrder(int ofs)
+        private short[] GetBlockOrder(int ofs)
         {
-            int[] order = new int[BLOCK_COUNT];
+            short[] order = new short[BLOCK_COUNT];
             for (int i = 0; i < BLOCK_COUNT; i++)
                 order[i] = BitConverter.ToInt16(Data, ofs + (i * SIZE_BLOCK) + 0xFF4);
             return order;
         }
 
-        private int GetActiveSaveIndex(int[] BlockOrder1, int[] BlockOrder2)
+        private int GetActiveSaveIndex(short[] BlockOrder1, short[] BlockOrder2)
         {
-            int zeroBlock1 = Array.IndexOf(BlockOrder1, 0);
-            int zeroBlock2 = Array.IndexOf(BlockOrder2, 0);
+            int zeroBlock1 = Array.IndexOf(BlockOrder1, (short)0);
+            int zeroBlock2 = Array.IndexOf(BlockOrder2, (short)0);
             if (zeroBlock2 < 0)
                 return 0;
             if (zeroBlock1 < 0)
@@ -260,7 +263,7 @@ namespace PKHeX.Core
         protected override byte[] GetFinalData()
         {
             // Copy Box data back
-            for (int i = 5; i < BLOCK_COUNT; i++)
+            for (short i = 5; i < BLOCK_COUNT; i++)
             {
                 int blockIndex = Array.IndexOf(BlockOrder, i);
                 if (blockIndex == -1) // block empty
@@ -276,14 +279,14 @@ namespace PKHeX.Core
 
         private int ActiveSAV;
         private int ABO => ActiveSAV*SIZE_BLOCK*0xE;
-        private readonly int[] BlockOrder;
+        private readonly short[] BlockOrder;
         private readonly int[] BlockOfs;
         public int GetBlockOffset(int block) => BlockOfs[block];
 
         // Configuration
-        public override SaveFile Clone() => new SAV3(Write(), Version);
+        protected override SaveFile CloneInternal() => new SAV3(Write(), Version);
 
-        public override int SIZE_STORED => PokeCrypto.SIZE_3STORED;
+        protected override int SIZE_STORED => PokeCrypto.SIZE_3STORED;
         protected override int SIZE_PARTY => PokeCrypto.SIZE_3PARTY;
         public override PKM BlankPKM => new PK3();
         public override Type PKMType => typeof(PK3);
@@ -323,20 +326,20 @@ namespace PKHeX.Core
                 if (index == -1)
                     continue;
                 int len = chunkLength[index];
-                ushort chk = Checksums.CRC32(Data, ofs, len);
+                ushort chk = Checksums.CheckSum32(Data, ofs, len);
                 BitConverter.GetBytes(chk).CopyTo(Data, ofs + 0xFF6);
             }
 
-            if (BAK.Length < SaveUtil.SIZE_G3RAW) // don't update HoF for half-sizes
+            if (State.BAK.Length < SaveUtil.SIZE_G3RAW) // don't update HoF for half-sizes
                 return;
 
             // Hall of Fame Checksums
             {
-                ushort chk = Checksums.CRC32(Data, 0x1C000, SIZE_BLOCK_USED);
+                ushort chk = Checksums.CheckSum32(Data, 0x1C000, SIZE_BLOCK_USED);
                 BitConverter.GetBytes(chk).CopyTo(Data, 0x1CFF4);
             }
             {
-                ushort chk = Checksums.CRC32(Data, 0x1D000, SIZE_BLOCK_USED);
+                ushort chk = Checksums.CheckSum32(Data, 0x1D000, SIZE_BLOCK_USED);
                 BitConverter.GetBytes(chk).CopyTo(Data, 0x1DFF4);
             }
         }
@@ -351,7 +354,7 @@ namespace PKHeX.Core
                         return false;
                 }
 
-                if (BAK.Length < SaveUtil.SIZE_G3RAW) // don't check HoF for half-sizes
+                if (State.BAK.Length < SaveUtil.SIZE_G3RAW) // don't check HoF for half-sizes
                     return true;
 
                 if (!IsChunkValidHoF(0x1C000))
@@ -364,7 +367,7 @@ namespace PKHeX.Core
 
         private bool IsChunkValidHoF(int ofs)
         {
-            ushort chk = Checksums.CRC32(Data, ofs, SIZE_BLOCK_USED);
+            ushort chk = Checksums.CheckSum32(Data, ofs, SIZE_BLOCK_USED);
             return chk == BitConverter.ToUInt16(Data, ofs + 0xFF4);
         }
 
@@ -372,7 +375,7 @@ namespace PKHeX.Core
         {
             int ofs = ABO + (i * SIZE_BLOCK);
             int len = chunkLength[BlockOrder[i]];
-            ushort chk = Checksums.CRC32(Data, ofs, len);
+            ushort chk = Checksums.CheckSum32(Data, ofs, len);
             return chk == BitConverter.ToUInt16(Data, ofs + 0xFF6);
         }
 
@@ -387,7 +390,7 @@ namespace PKHeX.Core
                         list.Add($"Block {BlockOrder[i]:00} @ {i*SIZE_BLOCK:X5} invalid.");
                 }
 
-                if (BAK.Length > SaveUtil.SIZE_G3RAW) // don't check HoF for half-sizes
+                if (State.BAK.Length > SaveUtil.SIZE_G3RAW) // don't check HoF for half-sizes
                 {
                     if (!IsChunkValidHoF(0x1C000))
                         list.Add("HoF Block 1 invalid.");
@@ -401,18 +404,12 @@ namespace PKHeX.Core
         // Trainer Info
         public override GameVersion Version { get; protected set; }
 
-        public uint SecurityKey
+        public uint SecurityKey => Version switch
         {
-            get
-            {
-                return Version switch
-                {
-                    GameVersion.E => BitConverter.ToUInt32(Data, BlockOfs[0] + 0xAC),
-                    GameVersion.FRLG => BitConverter.ToUInt32(Data, BlockOfs[0] + 0xF20),
-                    _ => 0u
-                };
-            }
-        }
+            GameVersion.E => BitConverter.ToUInt32(Data, BlockOfs[0] + 0xAC),
+            GameVersion.FRLG => BitConverter.ToUInt32(Data, BlockOfs[0] + 0xF20),
+            _ => 0u
+        };
 
         public override string OT
         {
@@ -493,6 +490,9 @@ namespace PKHeX.Core
             }
             SetFlag(start + (flagNumber >> 3), flagNumber & 7, value);
         }
+
+        public ushort GetEventConst(int index) => BitConverter.ToUInt16(Data, EventConst + (index * 2));
+        public void SetEventConst(int index, ushort value) => BitConverter.GetBytes(value).CopyTo(Data, EventConst + (index * 2));
 
         public int Badges
         {
@@ -622,7 +622,7 @@ namespace PKHeX.Core
 
         private int OFS_PCItem, OFS_PouchHeldItem, OFS_PouchKeyItem, OFS_PouchBalls, OFS_PouchTMHM, OFS_PouchBerry, OFS_Decorations;
 
-        public override InventoryPouch[] Inventory
+        public override IReadOnlyList<InventoryPouch> Inventory
         {
             get
             {
@@ -826,48 +826,74 @@ namespace PKHeX.Core
                 SetFlag(o + ofs, bit & 7, seen);
         }
 
+        public byte PokedexSort
+        {
+            get => Data[PokeDex + 0x01];
+            set => Data[PokeDex + 0x01] = value;
+        }
+
+        public byte PokedexMode
+        {
+            get => Data[PokeDex + 0x01];
+            set => Data[PokeDex + 0x01] = value;
+        }
+
+        public byte PokedexNationalMagicRSE
+        {
+            get => Data[PokeDex + 0x02];
+            set => Data[PokeDex + 0x02] = value;
+        }
+
+        public byte PokedexNationalMagicFRLG
+        {
+            get => Data[PokeDex + 0x03];
+            set => Data[PokeDex + 0x03] = value;
+        }
+
+        private const int PokedexNationalUnlockRSE = 0xDA;
+        private const int PokedexNationalUnlockFRLG = 0xDA;
+        private const ushort PokedexNationalUnlockWorkRSE = 0x0302;
+        private const ushort PokedexNationalUnlockWorkFRLG = 0x6258;
+
         public bool NationalDex
         {
             get
             {
                 if (BlockOfs.Any(z => z < 0))
                     return false;
-                switch (Version) // only check natdex status in Block0
+                return Version switch // only check natdex status in Block0
                 {
-                    case GameVersion.RS:
-                    case GameVersion.E:
-                        return Data[PokeDex + 2] == 0xDA; // enable nat dex option magic value
-                    case GameVersion.FRLG:
-                        return Data[PokeDex + 3] == 0xB9;
-                }
-                return false;
+                    // enable nat dex option magic value
+                    GameVersion.RS or GameVersion.E => PokedexNationalMagicRSE == PokedexNationalUnlockRSE,
+                    GameVersion.FRLG                => PokedexNationalMagicFRLG == PokedexNationalUnlockFRLG,
+                    _ => false
+                };
             }
             set
             {
                 if (BlockOfs.Any(z => z < 0))
                     return;
+
+                PokedexMode = value ? 1 : 0; // mode
                 switch (Version)
                 {
                     case GameVersion.RS:
-                        Data[PokeDex + 1] = (byte)(value ? 1 : 0); // mode
-                        Data[PokeDex + 2] = (byte)(value ? 0xDA : 0); // magic
-                        Data[BlockOfs[2] + 0x3A6] &= 0xBF;
-                        Data[BlockOfs[2] + 0x3A6] |= (byte)(value ? 1 << 6 : 0); // B
-                        BitConverter.GetBytes((ushort)(value ? 0x0302 : 0)).CopyTo(Data, BlockOfs[2] + 0x44C); // C
+                        PokedexNationalMagicRSE = value ? PokedexNationalUnlockRSE : 0; // magic
+                        SetEventFlag(0x836, value);
+                        SetEventConst(0x46, PokedexNationalUnlockWorkRSE);
                         break;
                     case GameVersion.E:
-                        Data[PokeDex + 1] = (byte)(value ? 1 : 0); // mode
-                        Data[PokeDex + 2] = (byte)(value ? 0xDA : 0); // magic
-                        Data[BlockOfs[2] + 0x402] &= 0xBF; // Bit6
-                        Data[BlockOfs[2] + 0x402] |= (byte)(value ? 1 << 6 : 0); // B
-                        BitConverter.GetBytes((ushort)(value ? 0x6258 : 0)).CopyTo(Data, BlockOfs[2] + 0x4A8); // C
+                        PokedexNationalMagicRSE = value ? PokedexNationalUnlockRSE : 0; // magic
+                        SetEventFlag(0x896, value);
+                        SetEventConst(0x46, PokedexNationalUnlockWorkRSE);
                         break;
                     case GameVersion.FRLG:
-                        Data[PokeDex + 2] = (byte)(value ? 0xDA : 0); // magic
-                        Data[PokeDex + 3] = (byte)(value ? 0xB9 : 0); // magic
-                        Data[BlockOfs[2] + 0x68] &= 0xFE;
-                        Data[BlockOfs[2] + 0x68] |= (byte)(value ? 1 : 0); // B
-                        BitConverter.GetBytes((ushort)(value ? 0x6258 : 0)).CopyTo(Data, BlockOfs[2] + 0x11C); // C
+                        //PokedexNationalMagicRSE = value ? PokedexNationalUnlockRSE : 0; // magic
+                        //SetEventFlag(0x838, value);
+                        //SetEventConst(0x3C, PokedexNationalUnlockWorkRSE);
+                        PokedexNationalMagicFRLG = value ? PokedexNationalUnlockFRLG : 0; // magic
+                        SetEventFlag(0x840, value);
+                        SetEventConst(0x4E, PokedexNationalUnlockWorkFRLG);
                         break;
                 }
             }

@@ -7,9 +7,9 @@ namespace PKHeX.Drawing
 {
     public static class SpriteUtil
     {
-        public static readonly SpriteBuilder3040 SB17 = new SpriteBuilder3040();
-        public static readonly SpriteBuilder5668 SB8 = new SpriteBuilder5668();
-        public static SpriteBuilder Spriter { get; set; } = SB17;
+        public static readonly SpriteBuilder3040 SB17 = new();
+        public static readonly SpriteBuilder5668 SB8 = new();
+        public static SpriteBuilder Spriter { get; set; } = SB8;
 
         public static Image GetBallSprite(int ball)
         {
@@ -78,7 +78,7 @@ namespace PKHeX.Drawing
             if (gift.IsEgg && gift.Species == (int)Species.Manaphy) // Manaphy Egg
                 return Resources._490_e;
             if (gift.IsPokémon)
-                return GetSprite(gift.Species, gift.Form, gift.Gender, 0, gift.HeldItem, gift.IsEgg, gift.IsShiny, gift.Format);
+                return GetSprite(gift.Species, gift.Form, gift.Gender, 0, gift.HeldItem, gift.IsEgg, gift.IsShiny, gift.Generation);
             if (gift.IsItem)
             {
                 int item = gift.ItemID;
@@ -92,17 +92,18 @@ namespace PKHeX.Drawing
         private static Image GetSprite(PKM pk, bool isBoxBGRed = false)
         {
             var formarg = pk is IFormArgument f ? f.FormArgument : 0;
-            var img = GetSprite(pk.Species, pk.AltForm, pk.Gender, formarg, pk.SpriteItem, pk.IsEgg, pk.IsShiny, pk.Format, isBoxBGRed, pk.Format >= 8 && (pk.ShinyXor == 0 || pk.FatefulEncounter));
-            if (pk is IShadowPKM s && s.Purification > 0)
+            bool alt = pk.Format >= 8 && (pk.ShinyXor == 0 || pk.FatefulEncounter || pk.Version == (int)GameVersion.GO);
+            var img = GetSprite(pk.Species, pk.Form, pk.Gender, formarg, pk.SpriteItem, pk.IsEgg, pk.IsShiny, pk.Format, isBoxBGRed, alt);
+            if (pk is IShadowPKM {IsShadow: true})
             {
                 const int Lugia = 249;
                 if (pk.Species == Lugia) // show XD shadow sprite
-                    img = Spriter.GetSprite(Resources._249x, Lugia, pk.HeldItem, pk.IsEgg, pk.IsShiny, pk.Format, isBoxBGRed);
+                    img = Spriter.GetSprite(Spriter.ShadowLugia, Lugia, pk.HeldItem, pk.IsEgg, pk.IsShiny, pk.Format, isBoxBGRed);
                 GetSpriteGlow(pk, 75, 0, 130, out var pixels, out var baseSprite, true);
                 var glowImg = ImageUtil.GetBitmap(pixels, baseSprite.Width, baseSprite.Height, baseSprite.PixelFormat);
                 return ImageUtil.LayerImage(glowImg, img, 0, 0);
             }
-            if (pk is IGigantamax g && g.CanGigantamax)
+            if (pk is IGigantamax {CanGigantamax: true})
             {
                 var gm = Resources.dyna;
                 return ImageUtil.LayerImage(img, gm, (img.Width - gm.Width) / 2, 0);
@@ -183,7 +184,7 @@ namespace PKHeX.Drawing
         {
             bool egg = pk.IsEgg;
             var formarg = pk is IFormArgument f ? f.FormArgument : 0;
-            baseSprite = GetSprite(pk.Species, pk.AltForm, pk.Gender, formarg, 0, egg, false, pk.Format);
+            baseSprite = GetSprite(pk.Species, pk.Form, pk.Gender, formarg, 0, egg, false, pk.Format);
             GetSpriteGlow(baseSprite, blue, green, red, out pixels, forceHollow || egg);
         }
 
@@ -216,13 +217,25 @@ namespace PKHeX.Drawing
         public static Image Sprite(this PKM pk, SaveFile sav, int box, int slot, bool flagIllegal = false)
             => GetSprite(pk, sav, box, slot, flagIllegal);
 
+        public static bool UseLargeAlways { get; set; } = true;
+
         public static void Initialize(SaveFile sav)
         {
-            var big = GameVersion.GG.Contains(sav.Version) || sav.Generation >= 8;
-            Spriter = big ? (SpriteBuilder)SB8 : SB17;
+            var s = GetSpriter(sav);
 
             // gen3 specific sprites
-            Spriter.Initialize(sav);
+            s.Initialize(sav);
+
+            Spriter = s;
+        }
+
+        private static SpriteBuilder GetSpriter(SaveFile sav)
+        {
+            if (UseLargeAlways)
+                return SB8;
+
+            var big = GameVersion.GG.Contains(sav.Version) || sav.Generation >= 8;
+            return big ? (SpriteBuilder) SB8 : SB17;
         }
     }
 }

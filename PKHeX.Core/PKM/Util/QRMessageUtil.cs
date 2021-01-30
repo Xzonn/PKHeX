@@ -22,10 +22,10 @@ namespace PKHeX.Core
         /// <returns>Decoded <see cref="PKM"/> object, null if invalid.</returns>
         public static PKM? GetPKM(string message, int format)
         {
-            var pkdata = DecodeMessagePKM(message);
-            if (pkdata == null)
+            var data = DecodeMessagePKM(message);
+            if (data == null)
                 return null;
-            return PKMConverter.GetPKMfromBytes(pkdata, format);
+            return PKMConverter.GetPKMfromBytes(data, format);
         }
 
         /// <summary>
@@ -60,15 +60,15 @@ namespace PKHeX.Core
         /// <returns>QR Message</returns>
         public static string GetMessage(DataMysteryGift mg)
         {
-            var server = GetExploitURLPrefixWC(mg.Format);
+            var server = GetExploitURLPrefixWC(mg.Generation);
             var data = mg.Write();
             return GetMessageBase64(data, server);
         }
 
         public static string GetMessageBase64(byte[] data, string server)
         {
-            string qrdata = Convert.ToBase64String(data);
-            return server + qrdata;
+            string payload = Convert.ToBase64String(data);
+            return server + payload;
         }
 
         private static byte[]? DecodeMessagePKM(string message)
@@ -94,7 +94,9 @@ namespace PKHeX.Core
                 url = url.Substring(payloadBegin + 1); // Trim URL to right after #
                 return Convert.FromBase64String(url);
             }
+#pragma warning disable CA1031 // Do not catch general exception types
             catch
+#pragma warning restore CA1031 // Do not catch general exception types
             {
                 return null;
             }

@@ -145,7 +145,7 @@ namespace PKHeX.WinForms
             string[] formNames = GetFormNames4Dex(species);
 
             var seen = forms.Where(z => z >= 0 && z < forms.Length).Distinct().Select((_, i) => formNames[forms[i]]).ToArray();
-            var not = formNames.Where(z => !seen.Contains(z)).ToArray();
+            var not = formNames.Except(seen).ToArray();
 
             LB_Form.Items.AddRange(seen);
             LB_NForm.Items.AddRange(not);
@@ -221,7 +221,7 @@ namespace PKHeX.WinForms
             }
 
             var forms = SAV.GetForms(species);
-            if (forms != null)
+            if (forms.Length > 0)
             {
                 int[] arr = new int[LB_Form.Items.Count];
                 string[] formNames = GetFormNames4Dex(species);
@@ -298,7 +298,7 @@ namespace PKHeX.WinForms
         private void ModifyAll(object sender, EventArgs e)
         {
             int lang = SAV.Language - 1;
-            if (lang > 5 || lang < 0) // KOR or Invalid
+            if (lang is < 0 or > 5) // KOR or Invalid
                 lang = 0;
 
             bool seenA = sender == mnuSeenAll || sender == mnuCaughtAll || sender == mnuComplete;

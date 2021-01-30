@@ -72,15 +72,12 @@ namespace PKHeX.WinForms
 
         public DrawConfig() => LoadBrushes();
 
-        public Color GetGenderColor(int gender)
+        public Color GetGenderColor(int gender) => gender switch
         {
-            return gender switch
-            {
-                0 => Male,
-                1 => Female,
-                _ => TextColor
-            };
-        }
+            0 => Male,
+            1 => Female,
+            _ => TextColor
+        };
 
         public bool GetMarkingColor(int markval, out Color c)
         {
@@ -95,7 +92,7 @@ namespace PKHeX.WinForms
         public Color GetText(bool highlight) => highlight ? TextHighlighted : TextColor;
         public Color GetBackground(bool legal, bool highlight) => highlight ? BackHighlighted : (legal ? BackLegal : BackColor);
 
-        public readonly BrushSet Brushes = new BrushSet();
+        public readonly BrushSet Brushes = new();
 
         public void LoadBrushes()
         {
@@ -118,7 +115,7 @@ namespace PKHeX.WinForms
                     continue;
 
                 var name = p.Name;
-                var value = p.PropertyType == typeof(Color) ? ((Color)p.GetValue(this)).ToArgb() : p.GetValue(this);
+                var value = p.PropertyType == typeof(Color) ? ((Color)p.GetValue(this)!).ToArgb() : p.GetValue(this);
                 lines.Add($"{name}\t{value}");
             }
             return string.Join("\n", lines);
@@ -147,6 +144,8 @@ namespace PKHeX.WinForms
             try
             {
                 var pi = t.GetProperty(name);
+                if (pi == null)
+                    throw new ArgumentNullException(name);
                 if (pi.PropertyType == typeof(Color))
                 {
                     var color = Color.FromArgb(int.Parse(value));
@@ -157,7 +156,9 @@ namespace PKHeX.WinForms
                     pi.SetValue(this, value);
                 }
             }
+#pragma warning disable CA1031 // Do not catch general exception types
             catch (Exception e)
+#pragma warning restore CA1031 // Do not catch general exception types
             {
                 Debug.WriteLine($"Failed to write {name} to {value}!");
                 Debug.WriteLine(e.Message);
@@ -167,11 +168,11 @@ namespace PKHeX.WinForms
 
     public sealed class BrushSet : IDisposable
     {
-        public Brush Text { get; set; }
-        public Brush BackLegal { get; set; }
-        public Brush BackDefault { get; set; }
-        public Brush TextHighlighted { get; set; }
-        public Brush BackHighlighted { get; set; }
+        public Brush Text { get; set; } = Brushes.Black;
+        public Brush BackLegal { get; set; } = Brushes.DarkSeaGreen;
+        public Brush BackDefault { get; set; } = Brushes.White;
+        public Brush TextHighlighted { get; set; } = Brushes.White;
+        public Brush BackHighlighted { get; set; } = Brushes.Blue;
 
         public Brush GetText(bool highlight) => highlight ? TextHighlighted : Text;
         public Brush GetBackground(bool legal, bool highlight) => highlight ? BackHighlighted : (legal ? BackLegal : BackDefault);

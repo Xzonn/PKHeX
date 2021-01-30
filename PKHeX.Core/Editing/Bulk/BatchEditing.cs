@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
@@ -20,7 +21,7 @@ namespace PKHeX.Core
             typeof (PB7),
             typeof (PK7), typeof (PK6), typeof (PK5), typeof (PK4), typeof(BK4),
             typeof (PK3), typeof (XK3), typeof (CK3),
-            typeof (PK2), typeof (PK1),
+            typeof (PK2), typeof (SK2), typeof (PK1),
         };
 
         public static readonly string[] CustomProperties = { PROP_LEGAL, PROP_RIBBONS };
@@ -68,10 +69,44 @@ namespace PKHeX.Core
         /// <param name="name">Property Name to check</param>
         /// <param name="pi">Property Info retrieved (if any).</param>
         /// <returns>True if has property, false if does not.</returns>
-        public static bool TryGetHasProperty(PKM pk, string name, out PropertyInfo pi)
+        public static bool TryGetHasProperty(PKM pk, string name, [NotNullWhen(true)] out PropertyInfo? pi)
         {
-            var props = Props[Array.IndexOf(Types, pk.GetType())];
+            var type = pk.GetType();
+            return TryGetHasProperty(type, name, out pi);
+        }
+
+        /// <summary>
+        /// Tries to fetch the <see cref="PKM"/> property from the cache of available properties.
+        /// </summary>
+        /// <param name="type">Type to check</param>
+        /// <param name="name">Property Name to check</param>
+        /// <param name="pi">Property Info retrieved (if any).</param>
+        /// <returns>True if has property, false if does not.</returns>
+        public static bool TryGetHasProperty(Type type, string name, [NotNullWhen(true)] out PropertyInfo? pi)
+        {
+            var index = Array.IndexOf(Types, type);
+            if (index < 0)
+            {
+                pi = null;
+                return false;
+            }
+            var props = Props[index];
             return props.TryGetValue(name, out pi);
+        }
+
+        /// <summary>
+        /// Gets a list of <see cref="PKM"/> types that implement the requested <see cref="property"/>.
+        /// </summary>
+        public static IEnumerable<string> GetTypesImplementing(string property)
+        {
+            for (int i = 0; i < Types.Length; i++)
+            {
+                var type = Types[i];
+                var props = Props[i];
+                if (!props.TryGetValue(property, out var pi))
+                    continue;
+                yield return $"{type.Name}: {pi.PropertyType.Name}";
+            }
         }
 
         /// <summary>
@@ -131,14 +166,9 @@ namespace PKHeX.Core
                 case nameof(PKM.Ability): i.SetScreenedValue(GameInfo.Strings.abilitylist); return;
                 case nameof(PKM.Nature): i.SetScreenedValue(GameInfo.Strings.natures); return;
                 case nameof(PKM.Ball): i.SetScreenedValue(GameInfo.Strings.balllist); return;
-                case nameof(PKM.Move1):
-                case nameof(PKM.Move2):
-                case nameof(PKM.Move3):
-                case nameof(PKM.Move4):
-                case nameof(PKM.RelearnMove1):
-                case nameof(PKM.RelearnMove2):
-                case nameof(PKM.RelearnMove3):
-                case nameof(PKM.RelearnMove4):
+
+                case nameof(PKM.Move1) or nameof(PKM.Move2) or nameof(PKM.Move3) or nameof(PKM.Move4):
+                case nameof(PKM.RelearnMove1) or nameof(PKM.RelearnMove2) or nameof(PKM.RelearnMove3) or nameof(PKM.RelearnMove4):
                     i.SetScreenedValue(GameInfo.Strings.movelist); return;
             }
         }
@@ -165,12 +195,13 @@ namespace PKHeX.Core
                     return false;
                 try
                 {
-                    if (pi == null)
-                        continue;
                     if (pi.IsValueEqual(obj, cmd.PropertyValue) == cmd.Evaluator)
                         continue;
                 }
+#pragma warning disable CA1031 // Do not catch general exception types
+                // User provided inputs can mismatch the type's required value format, and fail to be compared.
                 catch (Exception e)
+#pragma warning restore CA1031 // Do not catch general exception types
                 {
                     Debug.WriteLine($"Unable to compare {cmd.PropertyName} to {cmd.PropertyValue}.");
                     Debug.WriteLine(e.Message);
@@ -205,7 +236,7 @@ namespace PKHeX.Core
             if (!pk.ChecksumValid || pk.Species == 0)
                 return ModifyResult.Invalid;
 
-            PKMInfo info = new PKMInfo(pk);
+            var info = new PKMInfo(pk);
             var pi = Props[Array.IndexOf(Types, pk.GetType())];
             foreach (var cmd in filters)
             {
@@ -214,7 +245,10 @@ namespace PKHeX.Core
                     if (!IsFilterMatch(cmd, info, pi))
                         return ModifyResult.Filtered;
                 }
+#pragma warning disable CA1031 // Do not catch general exception types
+                // Swallow any error because this can be malformed user input.
                 catch (Exception ex)
+#pragma warning restore CA1031 // Do not catch general exception types
                 {
                     Debug.WriteLine(MsgBEModifyFailCompare + " " + ex.Message, cmd.PropertyName, cmd.PropertyValue);
                     return ModifyResult.Error;
@@ -230,7 +264,13 @@ namespace PKHeX.Core
                     if (tmp != ModifyResult.Modified)
                         result = tmp;
                 }
-                catch (Exception ex) { Debug.WriteLine(MsgBEModifyFail + " " + ex.Message, cmd.PropertyName, cmd.PropertyValue); }
+#pragma warning disable CA1031 // Do not catch general exception types
+                // Swallow any error because this can be malformed user input.
+                catch (Exception ex)
+#pragma warning restore CA1031 // Do not catch general exception types
+                {
+                    Debug.WriteLine(MsgBEModifyFail + " " + ex.Message, cmd.PropertyName, cmd.PropertyValue);
+                }
             }
             return result;
         }
@@ -248,10 +288,10 @@ namespace PKHeX.Core
             if (cmd.PropertyValue.StartsWith(CONST_BYTES))
                 return SetByteArrayProperty(pk, cmd);
 
-            if (cmd.PropertyValue.StartsWith(CONST_SUGGEST))
+            if (cmd.PropertyValue.StartsWith(CONST_SUGGEST, true, CultureInfo.CurrentCulture))
                 return SetSuggestedPKMProperty(cmd.PropertyName, info, cmd.PropertyValue);
             if (cmd.PropertyValue == CONST_RAND && cmd.PropertyName == nameof(PKM.Moves))
-                return SetMoves(pk, pk.GetMoveSet(info.Legality, true));
+                return SetMoves(pk, info.Legality.GetMoveSet(true));
 
             if (SetComplexProperty(pk, cmd))
                 return ModifyResult.Modified;
@@ -352,8 +392,8 @@ namespace PKHeX.Core
         /// <param name="propValue">Suggestion string which starts with <see cref="CONST_SUGGEST"/></param>
         private static ModifyResult SetSuggestedPKMProperty(string name, PKMInfo info, string propValue)
         {
-            bool isAll() => propValue.EndsWith("All", true, CultureInfo.CurrentCulture);
-            bool isNone() => propValue.EndsWith("None", true, CultureInfo.CurrentCulture);
+            static bool IsAll(string p) => p.EndsWith("All", true, CultureInfo.CurrentCulture);
+            static bool IsNone(string p) => p.EndsWith("None", true, CultureInfo.CurrentCulture);
             var pk = info.Entity;
             switch (name)
             {
@@ -366,6 +406,14 @@ namespace PKHeX.Core
                     return ModifyResult.Modified;
                 case nameof(PB7.WeightAbsolute) when pk is PB7 pb7:
                     pb7.WeightAbsolute = pb7.CalcWeightAbsolute;
+                    return ModifyResult.Modified;
+
+                // Date Copy
+                case nameof(PKM.EggMetDate):
+                    pk.EggMetDate = pk.MetDate;
+                    return ModifyResult.Modified;
+                case nameof(PKM.MetDate):
+                    pk.MetDate = pk.EggMetDate;
                     return ModifyResult.Modified;
 
                 case nameof(PKM.Nature) when pk.Format >= 8:
@@ -384,15 +432,15 @@ namespace PKHeX.Core
                     if (pk.Format >= 8)
                     {
                         pk.ClearRecordFlags();
-                        if (isAll())
+                        if (IsAll(propValue))
                             pk.SetRecordFlags(); // all
-                        else if (!isNone())
+                        else if (!IsNone(propValue))
                             pk.SetRecordFlags(pk.Moves); // whatever fit the current moves
                     }
                     pk.SetRelearnMoves(info.SuggestedRelearn);
                     return ModifyResult.Modified;
                 case PROP_RIBBONS:
-                    if (isNone())
+                    if (IsNone(propValue))
                         RibbonApplicator.RemoveAllValidRibbons(pk);
                     else // All
                         RibbonApplicator.SetAllValidRibbons(pk);
@@ -404,11 +452,11 @@ namespace PKHeX.Core
 
                     int level = encounter.LevelMin;
                     int location = encounter.Location;
-                    int minlvl = EncounterSuggestion.GetLowestLevel(pk, encounter.LevelMin);
+                    int minimumLevel = EncounterSuggestion.GetLowestLevel(pk, encounter.LevelMin);
 
                     pk.Met_Level = level;
                     pk.Met_Location = location;
-                    pk.CurrentLevel = Math.Max(minlvl, level);
+                    pk.CurrentLevel = Math.Max(minimumLevel, level);
 
                     return ModifyResult.Modified;
 
@@ -419,15 +467,12 @@ namespace PKHeX.Core
                     pk.HealPP();
                     return ModifyResult.Modified;
 
-                case nameof(PKM.Move1_PP):
-                case nameof(PKM.Move2_PP):
-                case nameof(PKM.Move3_PP):
-                case nameof(PKM.Move4_PP):
+                case nameof(PKM.Move1_PP) or nameof(PKM.Move2_PP) or nameof(PKM.Move3_PP) or nameof(PKM.Move4_PP):
                     pk.SetSuggestedMovePP(name[4] - '1'); // 0-3 int32
                     return ModifyResult.Modified;
 
                 case nameof(PKM.Moves):
-                    return SetMoves(pk, pk.GetMoveSet(la: info.Legality));
+                    return SetMoves(pk, info.Legality.GetMoveSet());
 
                 case nameof(PKM.Ball):
                     BallApplicator.ApplyBallLegalByColor(pk);
@@ -446,11 +491,12 @@ namespace PKHeX.Core
         private static ModifyResult SetMoves(PKM pk, int[] moves)
         {
             pk.SetMoves(moves);
+            pk.HealPP();
             return ModifyResult.Modified;
         }
 
         /// <summary>
-        /// Sets the <see cref="PKM"/> byte array propery to a specified value.
+        /// Sets the <see cref="PKM"/> byte array property to a specified value.
         /// </summary>
         /// <param name="pk">Pokémon to modify.</param>
         /// <param name="cmd">Modification</param>
@@ -459,15 +505,15 @@ namespace PKHeX.Core
             switch (cmd.PropertyName)
             {
                 case nameof(PKM.Nickname_Trash):
-                    pk.Nickname_Trash = string2arr(cmd.PropertyValue);
+                    pk.Nickname_Trash = ConvertToBytes(cmd.PropertyValue);
                     return ModifyResult.Modified;
                 case nameof(PKM.OT_Trash):
-                    pk.OT_Trash = string2arr(cmd.PropertyValue);
+                    pk.OT_Trash = ConvertToBytes(cmd.PropertyValue);
                     return ModifyResult.Modified;
                 default:
                     return ModifyResult.Error;
             }
-            static byte[] string2arr(string str) => str.Substring(CONST_BYTES.Length).Split(',').Select(z => Convert.ToByte(z.Trim(), 16)).ToArray();
+            static byte[] ConvertToBytes(string str) => str.Substring(CONST_BYTES.Length).Split(',').Select(z => Convert.ToByte(z.Trim(), 16)).ToArray();
         }
 
         /// <summary>
@@ -478,12 +524,12 @@ namespace PKHeX.Core
         /// <returns>True if modified, false if no modifications done.</returns>
         private static bool SetComplexProperty(PKM pk, StringInstruction cmd)
         {
-            static DateTime parseDate(string val) => DateTime.ParseExact(val, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None);
+            static DateTime ParseDate(string val) => DateTime.ParseExact(val, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None);
 
             if (cmd.PropertyName == nameof(PKM.MetDate))
-                pk.MetDate = parseDate(cmd.PropertyValue);
+                pk.MetDate = ParseDate(cmd.PropertyValue);
             else if (cmd.PropertyName == nameof(PKM.EggMetDate))
-                pk.EggMetDate = parseDate(cmd.PropertyValue);
+                pk.EggMetDate = ParseDate(cmd.PropertyValue);
             else if (cmd.PropertyName == nameof(PKM.EncryptionConstant) && cmd.PropertyValue == CONST_RAND)
                pk.EncryptionConstant = Util.Rand32();
             else if ((cmd.PropertyName == nameof(PKM.Ability) || cmd.PropertyName == nameof(PKM.AbilityNumber)) && cmd.PropertyValue.StartsWith("$"))
@@ -492,8 +538,8 @@ namespace PKHeX.Core
                 pk.SetPIDGender(pk.Gender);
             else if (cmd.PropertyName == nameof(PKM.EncryptionConstant) && cmd.PropertyValue == nameof(PKM.PID))
                 pk.EncryptionConstant = pk.PID;
-            else if (cmd.PropertyName == nameof(PKM.PID) && cmd.PropertyValue.StartsWith(CONST_SHINY))
-                CommonEdits.SetShiny(pk, cmd.PropertyValue.EndsWith("0"));
+            else if (cmd.PropertyName == nameof(PKM.PID) && cmd.PropertyValue.StartsWith(CONST_SHINY, true, CultureInfo.CurrentCulture))
+                CommonEdits.SetShiny(pk, cmd.PropertyValue.EndsWith("0") ? Shiny.AlwaysSquare : cmd.PropertyValue.EndsWith("1") ? Shiny.AlwaysStar : Shiny.Random);
             else if (cmd.PropertyName == nameof(PKM.Species) && cmd.PropertyValue == "0")
                 Array.Clear(pk.Data, 0, pk.Data.Length);
             else if (cmd.PropertyName.StartsWith("IV") && cmd.PropertyValue == CONST_RAND)

@@ -5,7 +5,7 @@ namespace PKHeX.Core
 {
     public sealed class BoxManipClearDuplicate<T> : BoxManipBase
     {
-        private readonly HashSet<T> HashSet = new HashSet<T>();
+        private readonly HashSet<T> HashSet = new();
         private readonly Func<PKM, bool> Criteria;
         public BoxManipClearDuplicate(BoxManipType type, Func<PKM, T> criteria) : this(type, criteria, _ => true) { }
 
@@ -25,11 +25,11 @@ namespace PKHeX.Core
         public override string GetFail(bool all) => all ? MessageStrings.MsgSaveBoxClearAllFailBattle : MessageStrings.MsgSaveBoxClearCurrentFailBattle;
         public override string GetSuccess(bool all) => all ? MessageStrings.MsgSaveBoxClearAllSuccess : MessageStrings.MsgSaveBoxClearCurrentSuccess;
 
-        public override int Execute(SaveFile SAV, BoxManipParam param)
+        public override int Execute(SaveFile sav, BoxManipParam param)
         {
             HashSet.Clear();
             bool Method(PKM p) => param.Reverse ^ Criteria(p);
-            return SAV.ClearBoxes(param.Start, param.Stop, Method);
+            return sav.ClearBoxes(param.Start, param.Stop, Method);
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 
@@ -7,14 +8,13 @@ namespace PKHeX.Core
     /// <summary>
     /// Generation 7 <see cref="SaveFile"/> object.
     /// </summary>
-    public abstract class SAV7 : SAV_BEEF, ITrainerStatRecord, ISaveBlock7Main
+    public abstract class SAV7 : SAV_BEEF, ITrainerStatRecord, ISaveBlock7Main, IRegionOrigin, IGameSync
     {
         // Save Data Attributes
-        protected override string BAKText => $"{OT} ({Version}) - {Played.LastSavedTime}";
-        public override string Filter => "Main SAV|*.*";
+        protected internal override string ShortSummary => $"{OT} ({Version}) - {Played.LastSavedTime}";
         public override string Extension => string.Empty;
 
-        public override string[] PKMExtensions => PKM.Extensions.Where(f =>
+        public override IReadOnlyList<string> PKMExtensions => PKM.Extensions.Where(f =>
         {
             int gen = f.Last() - 0x30;
             return gen <= 7 && f[1] != 'b'; // ignore PB7
@@ -31,7 +31,7 @@ namespace PKHeX.Core
         protected void ReloadBattleTeams()
         {
             var demo = this is SAV7SM && Data.IsRangeAll((byte)0, BoxLayout.Offset, 0x4C4); // up to Battle Box values
-            if (demo || !Exportable)
+            if (demo || !State.Exportable)
             {
                 BoxLayout.ClearBattleTeams();
             }
@@ -64,7 +64,7 @@ namespace PKHeX.Core
         #endregion
 
         // Configuration
-        public override int SIZE_STORED => PokeCrypto.SIZE_6STORED;
+        protected override int SIZE_STORED => PokeCrypto.SIZE_6STORED;
         protected override int SIZE_PARTY => PokeCrypto.SIZE_6PARTY;
         public override PKM BlankPKM => new PK7();
         public override Type PKMType => typeof(PK7);
@@ -109,20 +109,14 @@ namespace PKHeX.Core
 
         public int HoF { get; protected set; }
 
-        public override GameVersion Version
+        public override GameVersion Version => Game switch
         {
-            get
-            {
-                return Game switch
-                {
-                    30 => GameVersion.SN,
-                    31 => GameVersion.MN,
-                    32 => GameVersion.US,
-                    33 => GameVersion.UM,
-                    _ => GameVersion.Invalid
-                };
-            }
-        }
+            (int)GameVersion.SN => GameVersion.SN,
+            (int)GameVersion.MN => GameVersion.MN,
+            (int)GameVersion.US => GameVersion.US,
+            (int)GameVersion.UM => GameVersion.UM,
+            _ => GameVersion.Invalid
+        };
 
         public override string GetString(byte[] data, int offset, int length) => StringConverter.GetString7(data, offset, length);
 
@@ -138,11 +132,11 @@ namespace PKHeX.Core
         public override int SID { get => MyStatus.SID; set => MyStatus.SID = value; }
         public override int Game { get => MyStatus.Game; set => MyStatus.Game = value; }
         public override int Gender { get => MyStatus.Gender; set => MyStatus.Gender = value; }
-        public override int GameSyncIDSize => MyStatus7.GameSyncIDSize; // 64 bits
-        public override string GameSyncID { get => MyStatus.GameSyncID; set => MyStatus.GameSyncID = value; }
-        public override int SubRegion { get => MyStatus.SubRegion; set => MyStatus.SubRegion = value; }
-        public override int Country { get => MyStatus.Country; set => MyStatus.Country = value; }
-        public override int ConsoleRegion { get => MyStatus.ConsoleRegion; set => MyStatus.ConsoleRegion = value; }
+        public int GameSyncIDSize => MyStatus7.GameSyncIDSize; // 64 bits
+        public string GameSyncID { get => MyStatus.GameSyncID; set => MyStatus.GameSyncID = value; }
+        public int Region { get => MyStatus.SubRegion; set => MyStatus.SubRegion = value; }
+        public int Country { get => MyStatus.Country; set => MyStatus.Country = value; }
+        public int ConsoleRegion { get => MyStatus.ConsoleRegion; set => MyStatus.ConsoleRegion = value; }
         public override int Language { get => MyStatus.Language; set => MyStatus.Language = value; }
         public override string OT { get => MyStatus.OT; set => MyStatus.OT = value; }
         public override int MultiplayerSpriteID { get => MyStatus.MultiplayerSpriteID; set => MyStatus.MultiplayerSpriteID = value; }
@@ -162,7 +156,7 @@ namespace PKHeX.Core
         public int GetRecordOffset(int recordID) => Records.GetRecordOffset(recordID);
 
         // Inventory
-        public override InventoryPouch[] Inventory { get => Items.Inventory; set => Items.Inventory = value; }
+        public override IReadOnlyList<InventoryPouch> Inventory { get => Items.Inventory; set => Items.Inventory = value; }
 
         // Storage
         public override int GetPartyOffset(int slot) => Party + (SIZE_PARTY * slot);
@@ -186,9 +180,9 @@ namespace PKHeX.Core
             if (CT != pk7.CurrentHandler) // Logic updated Friendship
             {
                 // Copy over the Friendship Value only under certain circumstances
-                if (pk7.Moves.Contains(216)) // Return
+                if (pk7.HasMove(216)) // Return
                     pk7.CurrentFriendship = pk7.OppositeFriendship;
-                else if (pk7.Moves.Contains(218)) // Frustration
+                else if (pk7.HasMove(218)) // Frustration
                     pkm.CurrentFriendship = pk7.OppositeFriendship;
             }
             pkm.RefreshChecksum();
@@ -212,7 +206,7 @@ namespace PKHeX.Core
 
         private static uint GetFormArgument(PKM pkm)
         {
-            if (pkm.AltForm == 0)
+            if (pkm.Form == 0)
                 return 0;
             // Gen7 allows forms to be stored in the box with the current duration & form
             // Just cap out the form duration anyways

@@ -63,10 +63,6 @@ namespace PKHeX.WinForms
             else
             { TB_OTName.Visible = L_TrainerName.Visible = GB_TCM.Visible = false; }
 
-            if (SAV.RS)
-                NUD_BP.Visible = L_BP.Visible = false;
-            else
-                NUD_BP.Value = Math.Min(NUD_BP.Maximum, SAV.BP);
             NUD_Coins.Value = Math.Min(NUD_Coins.Maximum, SAV.Coin);
         }
 
@@ -159,7 +155,9 @@ namespace PKHeX.WinForms
             if (!SAV.Japanese && DialogResult.Yes != WinFormsUtil.Prompt(MessageBoxButtons.YesNo, $"Non Japanese save file. Add {itemlist[oldsea]} (unreleased)?"))
                 tickets = tickets.Take(tickets.Length - 1).ToArray(); // remove old sea map
 
-            var p = Array.Find(Pouches, z => z.Type == InventoryType.KeyItems);
+            var p = Pouches.FirstOrDefault(z => z.Type == InventoryType.KeyItems);
+            if (p == null)
+                throw new ArgumentException(nameof(InventoryPouch.Type));
 
             // check for missing tickets
             var missing = tickets.Where(z => !p.Items.Any(item => item.Index == z && item.Count == 1)).ToList();
@@ -236,20 +234,20 @@ namespace PKHeX.WinForms
         #endregion
 
         #region BattleFrontier
-        private int[] Symbols;
+        private int[] Symbols = null!;
         private int ofsSymbols;
-        private Color[] SymbolColorA;
-        private Button[] SymbolButtonA;
+        private Color[] SymbolColorA = null!;
+        private Button[] SymbolButtonA = null!;
         private bool editingcont;
         private bool editingval;
-        private RadioButton[] StatRBA;
-        private NumericUpDown[] StatNUDA;
-        private Label[] StatLabelA;
+        private RadioButton[] StatRBA = null!;
+        private NumericUpDown[] StatNUDA = null!;
+        private Label[] StatLabelA = null!;
         private bool loading;
-        private int[][] BFF;
-        private string[][] BFT;
-        private int[][] BFV;
-        private string[] BFN;
+        private int[][] BFF = null!;
+        private string[]?[] BFT = null!;
+        private int[][] BFV = null!;
+        private string[] BFN = null!;
 
         private void ChangeStat1(object sender, EventArgs e)
         {
@@ -263,15 +261,17 @@ namespace PKHeX.WinForms
             foreach (RadioButton rb in StatRBA)
                 rb.Checked = false;
 
-            if (BFT[BFF[facility][1]] == null)
+            var bft = BFT[BFF[facility][1]];
+            if (bft == null)
             {
                 CB_Stats2.Visible = false;
             }
             else
             {
                 CB_Stats2.Visible = true;
-                for (int i = 0; i < BFT[BFF[facility][1]].Length; i++)
-                    CB_Stats2.Items.Add(BFT[BFF[facility][1]][i]);
+                foreach (var t in bft)
+                    CB_Stats2.Items.Add(t);
+
                 CB_Stats2.SelectedIndex = 0;
             }
 
@@ -296,11 +296,12 @@ namespace PKHeX.WinForms
                 return;
 
             int BattleType = CB_Stats2.SelectedIndex;
-            if (BFT[BFF[Facility][1]] == null)
+            var bft = BFT[BFF[Facility][1]];
+            if (bft == null)
                 BattleType = 0;
             else if (BattleType < 0)
                 return;
-            else if (BattleType >= BFT[BFF[Facility][1]].Length)
+            else if (BattleType >= bft.Length)
                 return;
 
             int RBi = -1;
@@ -463,6 +464,7 @@ namespace PKHeX.WinForms
                 LoadRecordID(index);
                 NUD_FameH.Visible = NUD_FameS.Visible = NUD_FameM.Visible = index == 1;
             };
+            CB_Record.MouseWheel += (s, e) => ((HandledMouseEventArgs)e).Handled = true; // disallowed
             CB_Record.SelectedIndex = 0;
             LoadRecordID(0);
             NUD_RecordValue.ValueChanged += (s, e) =>
@@ -476,16 +478,26 @@ namespace PKHeX.WinForms
                 if (index == 1)
                     LoadFame(val);
             };
-            NUD_FameH.ValueChanged += (s, e) => ChangeFame();
-            NUD_FameM.ValueChanged += (s, e) => ChangeFame();
-            NUD_FameS.ValueChanged += (s, e) => ChangeFame();
 
-            void ChangeFame() => records.SetRecord(1, (uint)(NUD_RecordValue.Value = GetFameTime()));
+            if (!SAV.RS)
+            {
+                NUD_BP.Value = Math.Min(NUD_BP.Maximum, SAV.BP);
+                NUD_BPEarned.Value = SAV.BPEarned;
+                NUD_BPEarned.ValueChanged += (s, e) => SAV.BPEarned = (uint)NUD_BPEarned.Value;
+            }
+            else
+            {
+                NUD_BP.Visible = L_BP.Visible = false;
+                NUD_BPEarned.Visible = L_BPEarned.Visible = false;
+            }
+
+            NUD_FameH.ValueChanged += (s, e) => ChangeFame(records);
+            NUD_FameM.ValueChanged += (s, e) => ChangeFame(records);
+            NUD_FameS.ValueChanged += (s, e) => ChangeFame(records);
+
+            void ChangeFame(Record3 r3) => r3.SetRecord(1, (uint)(NUD_RecordValue.Value = GetFameTime()));
             void LoadRecordID(int index) => NUD_RecordValue.Value = records.GetRecord(index);
             void LoadFame(uint val) => SetFameTime(val);
-
-            NUD_BPEarned.Value = SAV.BPEarned;
-            NUD_BPEarned.ValueChanged += (s, e) => SAV.BPEarned = (uint)NUD_BPEarned.Value;
         }
 
         public uint GetFameTime()

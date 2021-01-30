@@ -11,13 +11,13 @@ namespace PKHeX.WinForms
         private readonly SAV8SWSH SAV;
         private readonly RaidSpawnList8 Raids;
 
-        public SAV_Raid8(SaveFile sav)
+        public SAV_Raid8(SaveFile sav, RaidSpawnList8 raid)
         {
             InitializeComponent();
             WinFormsUtil.TranslateInterface(this, Main.CurrentLanguage);
             SAV = (SAV8SWSH)(Origin = sav).Clone();
-            Raids = SAV.Blocks.Raid;
-            CB_Den.Items.AddRange(Enumerable.Range(1, RaidSpawnList8.RaidCount).Select(z => (object)$"Den {z:000}").ToArray());
+            Raids = raid;
+            CB_Den.Items.AddRange(Enumerable.Range(1, raid.CountUsed).Select(z => (object)$"Den {z:000}").ToArray());
             CB_Den.SelectedIndex = 0;
         }
 
@@ -25,12 +25,13 @@ namespace PKHeX.WinForms
 
         private void B_Cancel_Click(object sender, EventArgs e)
         {
+            // We've been editing the original save file blocks. Restore the clone's data.
+            Origin.CopyChangesFrom(SAV);
             Close();
         }
 
         private void B_Save_Click(object sender, EventArgs e)
         {
-            Origin.CopyChangesFrom(SAV);
             Close();
         }
 
@@ -38,9 +39,14 @@ namespace PKHeX.WinForms
 
         private void B_ActivateAll_Click(object sender, EventArgs e)
         {
-            bool export = ModifierKeys.HasFlag(Keys.Alt);
-            if (export)
+            bool alt = (ModifierKeys & Keys.Alt) != 0;
+            if (alt)
             {
+                if ((ModifierKeys & Keys.Control) == 0)
+                {
+                    Raids.DectivateAllRaids();
+                    LoadDen(CB_Den.SelectedIndex);
+                }
                 var txt = Raids.DumpAll();
                 var concat = string.Join(Environment.NewLine, txt);
                 if (WinFormsUtil.SetClipboardText(concat))
@@ -48,8 +54,8 @@ namespace PKHeX.WinForms
                 return;
             }
 
-            bool rare = ModifierKeys.HasFlag(Keys.Control);
-            bool isEvent = ModifierKeys.HasFlag(Keys.Shift);
+            bool rare = (ModifierKeys & Keys.Control) != 0;
+            bool isEvent = (ModifierKeys & Keys.Shift) != 0;
             Raids.ActivateAllRaids(rare, isEvent);
             LoadDen(CB_Den.SelectedIndex);
         }

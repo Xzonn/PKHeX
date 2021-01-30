@@ -8,10 +8,9 @@ namespace PKHeX.Core
     /// <summary>
     /// Generation 3 <see cref="SaveFile"/> object for Pokémon Colosseum saves.
     /// </summary>
-    public sealed class SAV3Colosseum : SaveFile, IDisposable, IGCSaveFile
+    public sealed class SAV3Colosseum : SaveFile, IGCSaveFile
     {
-        protected override string BAKText => $"{OT} ({Version}) - {PlayTimeString}";
-        public override string Filter => this.GCFilter();
+        protected internal override string ShortSummary => $"{OT} ({Version}) - {PlayTimeString}";
         public override string Extension => this.GCExtension();
         public override PersonalTable Personal => PersonalTable.RS;
         public override IReadOnlyList<ushort> HeldItems => Legal.HeldItems_COLO;
@@ -120,21 +119,20 @@ namespace PKHeX.Core
             byte[] newSAV = EncryptColosseum(Data, digest);
 
             // Put save slot back in original save data
-            byte[] newFile = MC != null ? MC.SelectedSaveData : (byte[])BAK.Clone();
+            byte[] newFile = MC != null ? MC.SelectedSaveData : (byte[]) State.BAK.Clone();
             Array.Copy(newSAV, 0, newFile, SLOT_START + (SaveIndex * SLOT_SIZE), newSAV.Length);
             return newFile;
         }
 
         // Configuration
-        public override SaveFile Clone()
+        protected override SaveFile CloneInternal()
         {
             var data = GetInnerData();
             var sav = IsMemoryCardSave ? new SAV3Colosseum(data, MC!) : new SAV3Colosseum(data);
-            sav.Header = (byte[])Header.Clone();
             return sav;
         }
 
-        public override int SIZE_STORED => PokeCrypto.SIZE_3CSTORED;
+        protected override int SIZE_STORED => PokeCrypto.SIZE_3CSTORED;
         protected override int SIZE_PARTY => PokeCrypto.SIZE_3CSTORED; // unused
         public override PKM BlankPKM => new CK3();
         public override Type PKMType => typeof(CK3);
@@ -156,11 +154,7 @@ namespace PKHeX.Core
         public override int BoxCount => 3;
         public override bool IsPKMPresent(byte[] data, int offset) => PKX.IsPKMPresentGC(data, offset);
 
-        // Checksums
-        private readonly SHA1 sha1 = SHA1.Create();
-        public void Dispose() => sha1?.Dispose();
-
-        private byte[] EncryptColosseum(byte[] input, byte[] digest)
+        private static byte[] EncryptColosseum(byte[] input, byte[] digest)
         {
             if (input.Length != SLOT_SIZE)
                 throw new ArgumentException(nameof(input));
@@ -172,6 +166,7 @@ namespace PKHeX.Core
             for (int i = 0; i < 20; i++)
                 k[i] = (byte)~k[i];
 
+            using var sha1 = SHA1.Create();
             for (int i = 0x18; i < 0x1DFD8; i += 20)
             {
                 for (int j = 0; j < 20; j++)
@@ -181,7 +176,7 @@ namespace PKHeX.Core
             return d;
         }
 
-        private byte[] DecryptColosseum(byte[] input, byte[] digest)
+        private static byte[] DecryptColosseum(byte[] input, byte[] digest)
         {
             if (input.Length != SLOT_SIZE)
                 throw new ArgumentException(nameof(input));
@@ -193,6 +188,7 @@ namespace PKHeX.Core
             for (int i = 0; i < 20; i++)
                 k[i] = (byte)~k[i];
 
+            using var sha1 = SHA1.Create();
             for (int i = 0x18; i < 0x1DFD8; i += 20)
             {
                 byte[] key = sha1.ComputeHash(d, i, 20); // update digest
@@ -208,6 +204,7 @@ namespace PKHeX.Core
             // Clear Header Checksum
             BitConverter.GetBytes(0).CopyTo(Data, 12);
             // Compute checksum of data
+            using var sha1 = SHA1.Create();
             byte[] checksum = sha1.ComputeHash(Data, 0, 0x1DFD8);
             // Set Checksum to end
             Array.Copy(checksum, 0, Data, Data.Length - 20, 20);
@@ -241,6 +238,7 @@ namespace PKHeX.Core
                 int oldHC = BigEndian.ToInt32(data, 12);
                 // Clear Header Checksum
                 BitConverter.GetBytes(0).CopyTo(data, 12);
+                using var sha1 = SHA1.Create();
                 byte[] checksum = sha1.ComputeHash(data, 0, 0x1DFD8);
                 // Header Integrity
                 byte[] H = new byte[8];
@@ -264,7 +262,7 @@ namespace PKHeX.Core
                 bool header = newHC == oldHC;
                 bool body = chk.SequenceEqual(checksum);
                 static string valid(bool s) => s ? "Valid" : "Invalid";
-                return $"Header Checksum {valid(header)}, Body Checksum {valid(body)}alid.";
+                return $"Header Checksum {valid(header)}, Body Checksum {valid(body)}.";
             }
         }
 
@@ -306,7 +304,7 @@ namespace PKHeX.Core
 
         protected override void SetPKM(PKM pkm)
         {
-            if (!(pkm is CK3 pk))
+            if (pkm is not CK3 pk)
                 return;
 
             if (pk.CurrentRegion == 0)
@@ -360,7 +358,7 @@ namespace PKHeX.Core
 
         // Trainer Info (offset 0x78, length 0xB18, end @ 0xB90)
         public override string OT { get => GetString(0x78, 20); set { SetString(value, 10).CopyTo(Data, 0x78); OT2 = value; } }
-        private string OT2 { get => GetString(0x8C, 20); set => SetString(value, 10).CopyTo(Data, 0x8C); }
+        public string OT2 { get => GetString(0x8C, 20); set => SetString(value, 10).CopyTo(Data, 0x8C); }
         public override int SID { get => BigEndian.ToUInt16(Data, 0xA4); set => BigEndian.GetBytes((ushort)value).CopyTo(Data, 0xA4); }
         public override int TID { get => BigEndian.ToUInt16(Data, 0xA6); set => BigEndian.GetBytes((ushort)value).CopyTo(Data, 0xA6); }
 
@@ -369,7 +367,7 @@ namespace PKHeX.Core
         public uint Coupons { get => BigEndian.ToUInt32(Data, 0xB00); set => BigEndian.GetBytes(value).CopyTo(Data, 0xB00); }
         public string RUI_Name { get => GetString(0xB3A, 20); set => SetString(value, 10).CopyTo(Data, 0xB3A); }
 
-        public override InventoryPouch[] Inventory
+        public override IReadOnlyList<InventoryPouch> Inventory
         {
             get
             {

@@ -37,11 +37,8 @@ namespace PKHeX.Core
         public string Ball => Get(Strings.balllist, pkm.Ball);
         public string OT => pkm.OT_Name;
         public string Version => Get(Strings.gamelist, pkm.Version);
-        public string OTLang => Get(GameDataSource.Languages, pkm.Language);
+        public string OTLang => ((LanguageID)pkm.Language).ToString();
         public string Legal { get { var la = new LegalityAnalysis(pkm); return la.Parsed ? la.Valid.ToString() : "-"; } }
-        public string CountryID => pkm.Format > 5 ? pkm.Country.ToString() : "N/A";
-        public string RegionID => pkm.Format > 5 ? pkm.Region.ToString() : "N/A";
-        public string DSRegionID => pkm.Format > 5 ? pkm.ConsoleRegion.ToString() : "N/A";
 
         #region Extraneous
         public string EC => pkm.EncryptionConstant.ToString("X8");
@@ -72,7 +69,7 @@ namespace PKHeX.Core
 
         public int AbilityNum => pkm.Format > 5 ? pkm.AbilityNumber : -1;
         public int GenderFlag => pkm.Gender;
-        public int AltForms => pkm.AltForm;
+        public int Form => pkm.Form;
         public int PKRS_Strain => pkm.PKRS_Strain;
         public int PKRS_Days => pkm.PKRS_Days;
         public int MetLevel => pkm.Met_Level;
@@ -100,7 +97,6 @@ namespace PKHeX.Core
         public string Relearn4 => Get(Strings.movelist, pkm.RelearnMove4);
         public ushort Checksum => pkm.Checksum;
         public int Friendship => pkm.OT_Friendship;
-        public int OT_Affection => pkm.OT_Affection;
         public int Egg_Year => pkm.EggMetDate.GetValueOrDefault().Year;
         public int Egg_Month => pkm.EggMetDate.GetValueOrDefault().Month;
         public int Egg_Day => pkm.EggMetDate.GetValueOrDefault().Day;

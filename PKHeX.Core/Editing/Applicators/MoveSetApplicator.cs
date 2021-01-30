@@ -15,14 +15,15 @@ namespace PKHeX.Core
         public static int[] GetMoveSet(this PKM pk, bool random = false)
         {
             var la = new LegalityAnalysis(pk);
-            var moves = pk.GetMoveSet(la, random);
+            var moves = la.GetMoveSet(random);
 
             if (random)
                 return moves;
 
             var clone = pk.Clone();
             clone.SetMoves(moves);
-            var newLa = new LegalityAnalysis(pk);
+            clone.SetMaximumPPCurrent(moves);
+            var newLa = new LegalityAnalysis(clone);
 
             // ReSharper disable once TailRecursiveCall
             return newLa.Valid ? moves : GetMoveSet(pk, true);
@@ -31,20 +32,18 @@ namespace PKHeX.Core
         /// <summary>
         /// Gets a moveset for the provided <see cref="PKM"/> data.
         /// </summary>
-        /// <param name="pk">PKM to generate for</param>
         /// <param name="la">Precomputed optional</param>
         /// <param name="random">Full movepool &amp; shuffling</param>
         /// <returns>4 moves</returns>
-        public static int[] GetMoveSet(this PKM pk, LegalityAnalysis la, bool random = false)
+        public static int[] GetMoveSet(this LegalityAnalysis la, bool random = false)
         {
-            int[] m = la.GetSuggestedMoves(tm: random, tutor: random, reminder: random);
-            if (m == null)
-                return pk.Moves;
+            int[] m = la.GetSuggestedCurrentMoves(random ? MoveSourceType.All : MoveSourceType.Encounter);
 
-            if (!m.All(z => la.AllSuggestedMovesAndRelearn().Contains(z)))
-                m = m.Intersect(la.AllSuggestedMovesAndRelearn()).ToArray();
+            var learn = la.GetSuggestedMovesAndRelearn();
+            if (!m.All(z => learn.Contains(z)))
+                m = m.Intersect(learn).ToArray();
 
-            if (random)
+            if (random && !la.pkm.IsEgg)
                 Util.Shuffle(m);
 
             const int count = 4;
@@ -59,7 +58,7 @@ namespace PKHeX.Core
         /// </summary>
         /// <param name="pk">Pokémon to modify.</param>
         /// <returns><see cref="PKM.RelearnMoves"/> best suited for the current <see cref="PKM"/> data.</returns>
-        public static IReadOnlyList<int> GetSuggestedRelearnMoves(this PKM pk) => new LegalityAnalysis(pk).GetSuggestedRelearnMoves();
+        public static IReadOnlyList<int> GetSuggestedRelearnMoves(this PKM pk) => GetSuggestedRelearnMoves(new LegalityAnalysis(pk));
 
         /// <summary>
         /// Fetches <see cref="PKM.RelearnMoves"/> based on the provided <see cref="LegalityAnalysis"/>.
@@ -68,7 +67,7 @@ namespace PKHeX.Core
         /// <returns><see cref="PKM.RelearnMoves"/> best suited for the current <see cref="PKM"/> data.</returns>
         public static IReadOnlyList<int> GetSuggestedRelearnMoves(this LegalityAnalysis legal)
         {
-            var m = legal.GetSuggestedRelearn();
+            var m = legal.GetSuggestedRelearnMovesFromEncounter();
             if (m.Any(z => z != 0))
                 return m;
 
@@ -78,7 +77,7 @@ namespace PKHeX.Core
 
             var encounter = EncounterSuggestion.GetSuggestedMetInfo(legal.pkm);
             if (encounter is IRelearn r && r.Relearn.Count > 0)
-                m = r.Relearn;
+                return r.Relearn;
 
             return m;
         }

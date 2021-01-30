@@ -8,11 +8,11 @@ namespace PKHeX.WinForms.Controls
 {
     public partial class PartyEditor : UserControl, ISlotViewer<PictureBox>
     {
-        public IList<PictureBox> SlotPictureBoxes { get; private set; }
-        public SaveFile SAV => M?.SE.SAV;
+        public IList<PictureBox> SlotPictureBoxes { get; private set; } = Array.Empty<PictureBox>();
+        public SaveFile SAV => M?.SE.SAV ?? throw new ArgumentNullException(nameof(SAV));
 
         public int BoxSlotCount { get; private set; }
-        public SlotChangeManager M { get; set; }
+        public SlotChangeManager? M { get; set; }
         public bool FlagIllegal { get; set; }
 
         public PartyEditor()
@@ -39,8 +39,8 @@ namespace PKHeX.WinForms.Controls
             BoxSlotCount = SlotPictureBoxes.Count;
             foreach (var pb in SlotPictureBoxes)
             {
-                pb.MouseEnter += BoxSlot_MouseEnter;
-                pb.MouseLeave += BoxSlot_MouseLeave;
+                pb.MouseEnter += (o, args) => BoxSlot_MouseEnter(pb, args);
+                pb.MouseLeave += (o, args) => BoxSlot_MouseLeave(pb, args);
                 pb.MouseClick += BoxSlot_MouseClick;
                 pb.MouseMove += BoxSlot_MouseMove;
                 pb.MouseDown += BoxSlot_MouseDown;
@@ -56,7 +56,7 @@ namespace PKHeX.WinForms.Controls
 
         public void NotifySlotOld(ISlotInfo previous)
         {
-            if (!(previous is SlotInfoParty p))
+            if (previous is not SlotInfoParty p)
                 return;
 
             var pb = SlotPictureBoxes[p.Slot];
@@ -81,7 +81,7 @@ namespace PKHeX.WinForms.Controls
 
         public int GetViewIndex(ISlotInfo slot)
         {
-            if (!(slot is SlotInfoParty p))
+            if (slot is not SlotInfoParty p)
                 return -1;
             return p.Slot;
         }
@@ -104,7 +104,7 @@ namespace PKHeX.WinForms.Controls
         public void ResetSlots()
         {
             //pokeGrid1.SetBackground(SAV.WallpaperImage(0));
-            M.Hover.Stop();
+            M?.Hover.Stop();
 
             foreach (var pb in SlotPictureBoxes)
             {
@@ -112,21 +112,25 @@ namespace PKHeX.WinForms.Controls
                 SlotUtil.UpdateSlot(pb, slot, slot.Read(SAV), SAV, FlagIllegal);
             }
 
-            if (M.Env.Slots.Publisher.Previous is SlotInfoParty p)
+            if (M?.Env.Slots.Publisher.Previous is SlotInfoParty p)
                 SlotPictureBoxes[p.Slot].BackgroundImage = SlotUtil.GetTouchTypeBackground(M.Env.Slots.Publisher.PreviousType);
         }
 
         // Drag & Drop Handling
-        private void BoxSlot_MouseEnter(object sender, EventArgs e) => M?.MouseEnter(sender, e);
-        private void BoxSlot_MouseLeave(object sender, EventArgs e) => M?.MouseLeave(sender, e);
-        private void BoxSlot_MouseClick(object sender, MouseEventArgs e) => M?.MouseClick(sender, e);
-        private void BoxSlot_MouseUp(object sender, MouseEventArgs e) => M?.MouseUp(sender, e);
-        private void BoxSlot_MouseDown(object sender, MouseEventArgs e) => M?.MouseDown(sender, e);
-        private void BoxSlot_MouseMove(object sender, MouseEventArgs e) => M?.MouseMove(sender, e);
-        private void BoxSlot_DragEnter(object sender, DragEventArgs e) => M?.DragEnter(sender, e);
-        private void BoxSlot_QueryContinueDrag(object sender, QueryContinueDragEventArgs e) => M?.QueryContinueDrag(sender, e);
-        private void BoxSlot_DragDrop(object sender, DragEventArgs e) => M?.DragDrop(sender, e);
+        private void BoxSlot_MouseEnter(object? sender, EventArgs e) => M?.MouseEnter(sender, e);
+        private void BoxSlot_MouseLeave(object? sender, EventArgs e) => M?.MouseLeave(sender, e);
+        private void BoxSlot_MouseClick(object? sender, MouseEventArgs e) => M?.MouseClick(sender, e);
+        private void BoxSlot_MouseUp(object? sender, MouseEventArgs e) => M?.MouseUp(sender, e);
+        private void BoxSlot_MouseDown(object? sender, MouseEventArgs e) => M?.MouseDown(sender, e);
+        private void BoxSlot_MouseMove(object? sender, MouseEventArgs e) => M?.MouseMove(sender, e);
+        private void BoxSlot_DragEnter(object? sender, DragEventArgs e) => M?.DragEnter(sender, e);
+        private void BoxSlot_QueryContinueDrag(object? sender, QueryContinueDragEventArgs e) => M?.QueryContinueDrag(sender, e);
+        private void BoxSlot_DragDrop(object? sender, DragEventArgs e) => M?.DragDrop(sender, e);
 
-        public bool InitializeFromSAV(SaveFile sav) => InitializeGrid();
+        public bool InitializeFromSAV(SaveFile sav)
+        {
+            Visible = sav.HasParty;
+            return InitializeGrid();
+        }
     }
 }

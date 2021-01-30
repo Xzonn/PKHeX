@@ -89,7 +89,19 @@ namespace PKHeX.Core
         public bool PokeDexComplete
         {
             get => Data[Offset + 0x30] == 1;
-            set => Data[Offset + 0x30] = (byte)(value ? 1 : 0);
+            set => Data[Offset + 0x30] = value ? 1 : 0;
+        }
+
+        public bool ArmorDexComplete
+        {
+            get => Data[Offset + 0x1B4] == 1;
+            set => Data[Offset + 0x1B4] = value ? 1 : 0;
+        }
+
+        public bool CrownDexComplete
+        {
+            get => Data[Offset + 0x1B5] == 1;
+            set => Data[Offset + 0x1B5] = value ? 1 : 0;
         }
 
         public int Gender
@@ -105,7 +117,7 @@ namespace PKHeX.Core
             {
                 for (int i = 0; i < 3; i++)
                     Data[0x39 + i] = (byte) (value.Length > i ? value[i] : '\0');
-                SAV.Edited = true;
+                SAV.State.Edited = true;
             }
         }
 
@@ -199,6 +211,12 @@ namespace PKHeX.Core
             set => BitConverter.GetBytes(value).CopyTo(Data, 0xB0);
         }
 
+        public ulong MomSkin // aka the base model
+        {
+            get => BitConverter.ToUInt64(Data, 0xC0);
+            set => BitConverter.GetBytes(value).CopyTo(Data, 0xC0);
+        }
+
         // Trainer Card Pokemon
         // 0xC8 - 0xE3 (0x1C)
         // 0xE4
@@ -226,21 +244,23 @@ namespace PKHeX.Core
         {
             for (int i = 0; i < party.Count; i++)
                 ViewPoke(i).LoadFrom(party[i]);
+            for (int i = party.Count; i < 6; i++)
+                ViewPoke(i).Clear();
         }
 
-        public ushort Year
+        public ushort StartedYear
         {
             get => BitConverter.ToUInt16(Data, Offset + 0x170);
             set => SAV.SetData(Data, BitConverter.GetBytes(value), Offset + 0x170);
         }
 
-        public byte Month
+        public byte StartedMonth
         {
             get => Data[Offset + 0x172];
             set => Data[Offset + 0x172] = value;
         }
 
-        public byte Day
+        public byte StartedDay
         {
             get => Data[Offset + 0x173];
             set => Data[Offset + 0x173] = value;
@@ -254,7 +274,7 @@ namespace PKHeX.Core
         }
     }
 
-    public class TrainerCard8Poke
+    public sealed class TrainerCard8Poke : ISpeciesForm
     {
         public const int SIZE = 0x1C;
         private readonly byte[] Data;
@@ -272,7 +292,7 @@ namespace PKHeX.Core
             set => BitConverter.GetBytes(value).CopyTo(Data, Offset + 0x00);
         }
 
-        public int AltForm
+        public int Form
         {
             get => BitConverter.ToInt32(Data, Offset + 0x04);
             set => BitConverter.GetBytes(value).CopyTo(Data, Offset + 0x04);
@@ -287,7 +307,7 @@ namespace PKHeX.Core
         public bool IsShiny
         {
             get => Data[Offset + 0xC] != 0;
-            set => Data[Offset + 0xC] = (byte) (value ? 1 : 0);
+            set => Data[Offset + 0xC] = value ? 1 : 0;
         }
 
         public uint EncryptionConstant
@@ -308,10 +328,12 @@ namespace PKHeX.Core
             set => BitConverter.GetBytes(value).CopyTo(Data, Offset + 0x18);
         }
 
+        public void Clear() => Array.Clear(Data, Offset, SIZE);
+
         public void LoadFrom(PKM pkm)
         {
             Species = pkm.Species;
-            AltForm = pkm.AltForm;
+            Form = pkm.Form;
             Gender = pkm.Gender;
             IsShiny = pkm.IsShiny;
             EncryptionConstant = pkm.EncryptionConstant;
@@ -321,7 +343,7 @@ namespace PKHeX.Core
         public void LoadFrom(TitleScreen8Poke pkm)
         {
             Species = pkm.Species;
-            AltForm = pkm.AltForm;
+            Form = pkm.Form;
             Gender = pkm.Gender;
             IsShiny = pkm.IsShiny;
             EncryptionConstant = pkm.EncryptionConstant;

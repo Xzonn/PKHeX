@@ -9,14 +9,14 @@ namespace PKHeX.Core
     public static class CommonEdits
     {
         /// <summary>
-        /// Setting which enables/disables automatic manipulation of <see cref="PKM.Markings"/> when importing from a <see cref="ShowdownSet"/>.
+        /// Setting which enables/disables automatic manipulation of <see cref="PKM.Markings"/> when importing from a <see cref="IBattleTemplate"/>.
         /// </summary>
         public static bool ShowdownSetIVMarkings { get; set; } = true;
 
         /// <summary>
         /// Setting which causes the <see cref="PKM.StatNature"/> to the <see cref="PKM.Nature"/> in Gen8+ formats.
         /// </summary>
-        public static bool ShowdownSetBehaviorNature { get; set; } = false;
+        public static bool ShowdownSetBehaviorNature { get; set; }
 
         /// <summary>
         /// Sets the <see cref="PKM.Nickname"/> to the provided value.
@@ -49,23 +49,23 @@ namespace PKHeX.Core
         }
 
         /// <summary>
-        /// Sets the <see cref="PKM.AltForm"/> value, with special consideration for <see cref="PKM.Format"/> values which derive the <see cref="PKM.AltForm"/> value.
+        /// Sets the <see cref="PKM.Form"/> value, with special consideration for <see cref="PKM.Format"/> values which derive the <see cref="PKM.Form"/> value.
         /// </summary>
         /// <param name="pk">Pokémon to modify.</param>
-        /// <param name="form">Desired <see cref="PKM.AltForm"/> value to set.</param>
-        public static void SetAltForm(this PKM pk, int form)
+        /// <param name="form">Desired <see cref="PKM.Form"/> value to set.</param>
+        public static void SetForm(this PKM pk, int form)
         {
             switch (pk.Format)
             {
                 case 2:
-                    while (pk.AltForm != form)
+                    while (pk.Form != form)
                         pk.SetRandomIVs();
                     break;
                 case 3:
                     pk.SetPIDUnown3(form);
                     break;
                 default:
-                    pk.AltForm = form;
+                    pk.Form = form;
                     break;
             }
         }
@@ -79,24 +79,23 @@ namespace PKHeX.Core
         {
             if (abil < 0)
                 return;
-            var abilities = pk.PersonalInfo.Abilities;
-            int abilIndex = Array.IndexOf(abilities, abil);
-            abilIndex = Math.Max(0, abilIndex);
-            pk.SetAbilityIndex(abilIndex);
+            var index = pk.PersonalInfo.GetAbilityIndex(abil);
+            index = Math.Max(0, index);
+            pk.SetAbilityIndex(index);
         }
 
         /// <summary>
         /// Sets the <see cref="PKM.Ability"/> value based on the provided ability index (0-2)
         /// </summary>
         /// <param name="pk">Pokémon to modify.</param>
-        /// <param name="abilIndex">Desired <see cref="PKM.AbilityNumber"/> (shifted by 1) to set.</param>
-        public static void SetAbilityIndex(this PKM pk, int abilIndex)
+        /// <param name="index">Desired <see cref="PKM.AbilityNumber"/> (shifted by 1) to set.</param>
+        public static void SetAbilityIndex(this PKM pk, int index)
         {
-            if (pk is PK5 pk5 && abilIndex == 2)
+            if (pk is PK5 pk5 && index == 2)
                 pk5.HiddenAbility = true;
             else if (pk.Format <= 5)
-                pk.PID = PKX.GetRandomPID(Util.Rand, pk.Species, pk.Gender, pk.Version, pk.Nature, pk.AltForm, (uint)(abilIndex * 0x10001));
-            pk.RefreshAbility(abilIndex);
+                pk.PID = PKX.GetRandomPID(Util.Rand, pk.Species, pk.Gender, pk.Version, pk.Nature, pk.Form, (uint)(index * 0x10001));
+            pk.RefreshAbility(index);
         }
 
         /// <summary>
@@ -106,8 +105,8 @@ namespace PKHeX.Core
         /// <param name="pk">Pokémon to modify.</param>
         public static void SetRandomEC(this PKM pk)
         {
-            int gen = pk.GenNumber;
-            if (2 < gen && gen < 6)
+            int gen = pk.Generation;
+            if (gen is 3 or 4 or 5)
             {
                 pk.EncryptionConstant = pk.PID;
                 return;
@@ -116,7 +115,7 @@ namespace PKHeX.Core
             int wIndex = WurmpleUtil.GetWurmpleEvoGroup(pk.Species);
             if (wIndex != -1)
             {
-                pk.EncryptionConstant = WurmpleUtil.GetWurmpleEC(wIndex);
+                pk.EncryptionConstant = WurmpleUtil.GetWurmpleEncryptionConstant(wIndex);
                 return;
             }
             pk.EncryptionConstant = Util.Rand32();
@@ -134,24 +133,23 @@ namespace PKHeX.Core
         /// Makes a <see cref="PKM"/> shiny.
         /// </summary>
         /// <param name="pk">Pokémon to modify.</param>
-        /// <param name="xor0">Square shiny</param>
+        /// <param name="type">Shiny type to force. Only use Always* or Random</param>
         /// <returns>Returns true if the <see cref="PKM"/> data was modified.</returns>
-        public static bool SetShiny(PKM pk, bool xor0 = false)
+        public static bool SetShiny(PKM pk, Shiny type = Shiny.Random)
         {
-            if (pk.IsShiny)
+            if (pk.IsShiny && type.IsValid(pk))
                 return false;
 
-            while (true)
+            if (type == Shiny.Random || pk.FatefulEncounter || pk.Version == (int)GameVersion.GO || pk.Format <= 2)
             {
                 pk.SetShiny();
-
-                if (pk.Format <= 7)
-                    return true;
-
-                var xor = pk.ShinyXor;
-                if (xor0 ? xor == 0 : xor != 0)
-                    return true;
+                return true;
             }
+
+            do { pk.SetShiny(); }
+            while (!type.IsValid(pk));
+
+            return true;
         }
 
         /// <summary>
@@ -185,11 +183,11 @@ namespace PKHeX.Core
         }
 
         /// <summary>
-        /// Copies <see cref="ShowdownSet"/> details to the <see cref="PKM"/>.
+        /// Copies <see cref="IBattleTemplate"/> details to the <see cref="PKM"/>.
         /// </summary>
         /// <param name="pk">Pokémon to modify.</param>
-        /// <param name="Set"><see cref="ShowdownSet"/> details to copy from.</param>
-        public static void ApplySetDetails(this PKM pk, ShowdownSet Set)
+        /// <param name="Set"><see cref="IBattleTemplate"/> details to copy from.</param>
+        public static void ApplySetDetails(this PKM pk, IBattleTemplate Set)
         {
             pk.Species = Math.Min(pk.MaxSpeciesID, Set.Species);
             pk.SetMoves(Set.Moves, true);
@@ -197,18 +195,45 @@ namespace PKHeX.Core
             pk.CurrentLevel = Set.Level;
             pk.CurrentFriendship = Set.Friendship;
             pk.IVs = Set.IVs;
-            pk.EVs = Set.EVs;
 
-            pk.SetSuggestedHyperTrainingData(Set.IVs);
+            if (pk is GBPKM gb)
+            {
+                // In Generation 1/2 Format sets, when IVs are not specified with a Hidden Power set, we might not have the hidden power type.
+                // Under this scenario, just force the Hidden Power type.
+                if (Set.Moves.Contains(237) && pk.HPType != Set.HiddenPowerType && Set.IVs.Any(z => z >= 30))
+                    pk.SetHiddenPower(Set.HiddenPowerType);
+
+                // In Generation 1/2 Format sets, when EVs are not specified at all, it implies maximum EVs instead!
+                // Under this scenario, just apply maximum EVs (65535).
+                if (Set.EVs.All(z => z == 0))
+                    gb.EV_HP = gb.EV_ATK = gb.EV_DEF = gb.EV_SPC = gb.EV_SPE = gb.MaxEV;
+                else
+                    pk.EVs = Set.EVs;
+            }
+            else
+            {
+                pk.EVs = Set.EVs;
+            }
+
+            // IVs have no side effects such as hidden power type in gen 8
+            // therefore all specified IVs are deliberate and should not be HT'd over for pokemon met in gen 8
+            if (!pk.Gen8)
+                pk.SetSuggestedHyperTrainingData(Set.IVs);
+
             if (ShowdownSetIVMarkings)
                 pk.SetMarkings();
 
             pk.SetNickname(Set.Nickname);
-            pk.SetAltForm(Set.FormIndex);
+            pk.SetForm(Set.Form);
             pk.SetGender(Set.Gender);
             pk.SetMaximumPPUps(Set.Moves);
-            pk.SetAbility(Set.Ability);
-            pk.SetNature(Set.Nature);
+
+            if (pk.Format >= 3)
+            {
+                pk.SetAbility(Set.Ability);
+                pk.SetNature(Set.Nature);
+            }
+
             pk.SetIsShiny(Set.Shiny);
             pk.SetRandomEC();
 
@@ -225,6 +250,8 @@ namespace PKHeX.Core
 
             if (pk is IGigantamax c)
                 c.CanGigantamax = Set.CanGigantamax;
+            if (pk is IDynamaxLevel d)
+                d.DynamaxLevel = d.CanHaveDynamaxLevel(pk) ? 10 : 0;
 
             pk.ClearRecordFlags();
             pk.SetRecordFlags(Set.Moves);
@@ -247,7 +274,7 @@ namespace PKHeX.Core
         /// <param name="format">Format required for importing</param>
         public static void ApplyHeldItem(this PKM pk, int item, int format)
         {
-            item = ItemConverter.GetFormatHeldItemID(item, format, pk.Format);
+            item = ItemConverter.GetItemForFormat(item, format, pk.Format);
             pk.HeldItem = ((uint)item > pk.MaxItemID) ? 0 : item;
         }
 
@@ -257,20 +284,16 @@ namespace PKHeX.Core
         /// <param name="pk">Pokémon to modify.</param>
         /// <param name="index">Index to set to</param>
         /// <param name="value">Value to set</param>
-        public static void SetEV(this PKM pk, int index, int value)
+        public static int SetEV(this PKM pk, int index, int value) => index switch
         {
-            switch (index)
-            {
-                case 0: pk.EV_HP = value; break;
-                case 1: pk.EV_ATK = value; break;
-                case 2: pk.EV_DEF = value; break;
-                case 3: pk.EV_SPE = value; break;
-                case 4: pk.EV_SPA = value; break;
-                case 5: pk.EV_SPD = value; break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(index));
-            }
-        }
+            0 => pk.EV_HP = value,
+            1 => pk.EV_ATK = value,
+            2 => pk.EV_DEF = value,
+            3 => pk.EV_SPE = value,
+            4 => pk.EV_SPA = value,
+            5 => pk.EV_SPD = value,
+            _ => throw new ArgumentOutOfRangeException(nameof(index))
+        };
 
         /// <summary>
         /// Sets one of the <see cref="PKM.IVs"/> based on its index within the array.
@@ -278,20 +301,16 @@ namespace PKHeX.Core
         /// <param name="pk">Pokémon to modify.</param>
         /// <param name="index">Index to set to</param>
         /// <param name="value">Value to set</param>
-        public static void SetIV(this PKM pk, int index, int value)
+        public static int SetIV(this PKM pk, int index, int value) => index switch
         {
-            switch (index)
-            {
-                case 0: pk.IV_HP = value; break;
-                case 1: pk.IV_ATK = value; break;
-                case 2: pk.IV_DEF = value; break;
-                case 3: pk.IV_SPE = value; break;
-                case 4: pk.IV_SPA = value; break;
-                case 5: pk.IV_SPD = value; break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(index));
-            }
-        }
+            0 => pk.IV_HP = value,
+            1 => pk.IV_ATK = value,
+            2 => pk.IV_DEF = value,
+            3 => pk.IV_SPE = value,
+            4 => pk.IV_SPA = value,
+            5 => pk.IV_SPD = value,
+            _ => throw new ArgumentOutOfRangeException(nameof(index))
+        };
 
         /// <summary>
         /// Fetches the highest value the provided <see cref="PKM.EVs"/> index can be while considering others.
@@ -304,9 +323,7 @@ namespace PKHeX.Core
             if (pk.Format < 3)
                 return ushort.MaxValue;
 
-            var EVs = pk.EVs;
-            EVs[index] = 0;
-            var sum = EVs.Sum();
+            var sum = pk.EVTotal - pk.GetEV(index);
             int remaining = 510 - sum;
             return Math.Min(Math.Max(remaining, 0), 252);
         }
@@ -316,7 +333,7 @@ namespace PKHeX.Core
         /// </summary>
         /// <param name="pk">Pokémon to modify.</param>
         /// <param name="index">Index to fetch for</param>
-        /// <param name="allow30">Causes the returned value to be dropped down -1 if the value is already at a maxmimum.</param>
+        /// <param name="allow30">Causes the returned value to be dropped down -1 if the value is already at a maximum.</param>
         /// <returns>Highest value the value can be.</returns>
         public static int GetMaximumIV(this PKM pk, int index, bool allow30 = false)
         {
@@ -357,7 +374,7 @@ namespace PKHeX.Core
         {
             bool traded = origin == dest;
             var today = pk.MetDate = DateTime.Today;
-            pk.Egg_Location = EncounterSuggestion.GetSuggestedEncounterEggLocationEgg(pk, traded);
+            pk.Egg_Location = EncounterSuggestion.GetSuggestedEncounterEggLocationEgg(pk.Generation, traded);
             pk.EggMetDate = today;
         }
 
@@ -395,7 +412,7 @@ namespace PKHeX.Core
         /// <param name="la">Precomputed optional</param>
         public static void SetDefaultNickname(this PKM pk, LegalityAnalysis la)
         {
-            if (la.Parsed && la.EncounterOriginal is EncounterTrade t && t.HasNickname)
+            if (la.Parsed && la.EncounterOriginal is EncounterTrade {HasNickname: true} t)
                 pk.SetNickname(t.GetNickname(pk.Language));
             else
                 pk.ClearNickname();
@@ -434,8 +451,8 @@ namespace PKHeX.Core
             if (pk.Format < 2)
                 return string.Empty;
 
-            int locval = eggmet ? pk.Egg_Location : pk.Met_Location;
-            return GameInfo.GetLocationName(eggmet, locval, pk.Format, pk.GenNumber, (GameVersion)pk.Version);
+            int location = eggmet ? pk.Egg_Location : pk.Met_Location;
+            return GameInfo.GetLocationName(eggmet, location, pk.Format, pk.Generation, (GameVersion)pk.Version);
         }
     }
 }

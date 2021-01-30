@@ -2,7 +2,7 @@
 
 namespace PKHeX.Core
 {
-    public sealed class TeamIndexes8 : SaveBlock
+    public sealed class TeamIndexes8 : SaveBlock, ITeamIndexSet
     {
         private const int TeamCount = 6;
         private const int NONE_SELECTED = -1;
@@ -12,7 +12,7 @@ namespace PKHeX.Core
 
         public void LoadBattleTeams()
         {
-            if (!SAV.Exportable)
+            if (!SAV.State.Exportable)
             {
                 ClearBattleTeams();
                 return;
@@ -64,10 +64,6 @@ namespace PKHeX.Core
         }
 
         public bool GetIsTeamLocked(int team) => true;
-
-        public void SetIsTeamLocked(int team, bool value)
-        {
-
-        }
+        public void SetIsTeamLocked(int team, bool value) { }
     }
 }

@@ -17,15 +17,14 @@ namespace PKHeX.Core
                 GameInfo.FilteredSources = new FilteredGameDataSource(sav, GameInfo.Sources, hax);
 
             // Update Legality Analysis strings
-            LegalityAnalysis.MoveStrings = str.movelist;
-            LegalityAnalysis.SpeciesStrings = str.specieslist;
+            ParseSettings.ChangeLocalizationStrings(str.movelist, str.specieslist);
 
             // Update Legality Strings
             Task.Run(() =>
             {
                 RibbonStrings.ResetDictionary(str.ribbons);
-                Util.SetLocalization(typeof(LegalityCheckStrings), lang);
-                Util.SetLocalization(typeof(MessageStrings), lang);
+                LocalizationUtil.SetLocalization(typeof(LegalityCheckStrings), lang);
+                LocalizationUtil.SetLocalization(typeof(MessageStrings), lang);
             });
         }
     }

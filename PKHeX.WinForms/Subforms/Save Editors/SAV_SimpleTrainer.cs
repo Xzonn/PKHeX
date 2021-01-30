@@ -102,7 +102,7 @@ namespace PKHeX.WinForms
                 CAL_AdventureStartDate.Visible = CAL_HoFDate.Visible = false;
                 CAL_AdventureStartTime.Visible = CAL_HoFTime.Visible = false;
             }
-            if (SAV is SAV3Colosseum || SAV is SAV3XD)
+            if (SAV is SAV3Colosseum or SAV3XD)
             {
                 GB_Map.Visible = false;
                 GB_Badges.Visible = false;
@@ -206,7 +206,7 @@ namespace PKHeX.WinForms
                 sav1.Coin = (ushort)Math.Min(Util.ToUInt32(MT_Coins.Text), SAV.MaxCoins);
                 sav1.Badges = badgeval & 0xFF;
                 sav1.PikaFriendship = (byte)Math.Min(255, Util.ToUInt32(MT_PikaFriend.Text));
-                sav1.PikaBeachScore = (byte)Math.Min(9999, Util.ToUInt32(MT_PikaBeach.Text));
+                sav1.PikaBeachScore = (ushort)Math.Min(9999, Util.ToUInt32(MT_PikaBeach.Text));
                 sav1.BattleEffects = CHK_BattleEffects.Checked;
                 sav1.BattleStyleSwitch = CB_BattleStyle.SelectedIndex == 0;
                 sav1.Sound = CB_SoundType.SelectedIndex;

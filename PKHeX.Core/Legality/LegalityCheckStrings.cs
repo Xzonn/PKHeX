@@ -31,13 +31,13 @@ namespace PKHeX.Core
         /// <summary>Format text for exporting a legality check result for a Relearn Move.</summary>
         public static string L_F0_RM_1_2 { get; set; } = "{0} Relearn Move {1}: {2}";
 
-        /// <summary>Format text for exporting the type of Encounter that was matched for the the <see cref="PKM"/></summary>
+        /// <summary>Format text for exporting the type of Encounter that was matched for the <see cref="PKM"/></summary>
         public static string L_FEncounterType_0 { get; set; } = "Encounter Type: {0}";
 
-        /// <summary>Format text for exporting the <see cref="PIDIV.OriginSeed"/> that was matched for the the <see cref="PKM"/></summary>
+        /// <summary>Format text for exporting the <see cref="PIDIV.OriginSeed"/> that was matched for the <see cref="PKM"/></summary>
         public static string L_FOriginSeed_0 { get; set; } = "Origin Seed: {0}";
 
-        /// <summary>Format text for exporting the <see cref="PIDIV.Type"/> that was matched for the the <see cref="PKM"/></summary>
+        /// <summary>Format text for exporting the <see cref="PIDIV.Type"/> that was matched for the <see cref="PKM"/></summary>
         public static string L_FPIDType_0 { get; set; } = "PID Type: {0}";
 
         /// <summary>Severity string for <see cref="Severity.Indeterminate"/></summary>
@@ -64,6 +64,7 @@ namespace PKHeX.Core
         public static string L_XWurmpleEvo_0 { get; set; } = "Wurmple Evolution: {0}";
 
         public static string LAbilityCapsuleUsed { get; set; } = "Ability modified with Ability Capsule.";
+        public static string LAbilityPatchUsed { get; set; } = "Ability modified with Ability Patch.";
         public static string LAbilityFlag { get; set; } = "Ability matches ability number.";
         public static string LAbilityHiddenFail { get; set; } = "Hidden Ability mismatch for encounter type.";
         public static string LAbilityHiddenUnavailable { get; set; } = "Hidden Ability not available.";
@@ -239,12 +240,14 @@ namespace PKHeX.Core
         public static string LG2InvalidTileTreeID { get; set; } = "Found an unreacheable tree for Crystal headbutt encounter that matches OTID.";
         public static string LG2InvalidTileTreeNotFound { get; set; } = "Could not find a tree for Crystal headbutt encounter that matches OTID.";
         public static string LG2TreeID { get; set; } = "Found a tree for Crystal headbutt encounter that matches OTID.";
+        public static string LG2OTGender { get; set; } = "OT from Virtual Console games other than Crystal cannot be female.";
 
         public static string LG3EReader { get; set; } = "Non Japanese Shadow E-reader Pokémon. Unreleased encounter.";
         public static string LG3OTGender { get; set; } = "OT from Colosseum/XD cannot be female.";
         public static string LG4InvalidTileR45Surf { get; set; } = "Johto Route 45 surfing encounter. Unreachable Water tiles.";
         public static string LG5ID_N { get; set; } = "The Name/TID/SID of N is incorrect.";
         public static string LG5IVAll30 { get; set; } = "All IVs of N's Pokémon should be 30.";
+        public static string LG5OTGenderN { get; set; } = "N's Pokémon must have a male OT gender.";
         public static string LG5PIDShinyGrotto { get; set; } = "Hidden Grotto captures cannot be shiny.";
         public static string LG5PIDShinyN { get; set; } = "N's Pokémon cannot be shiny.";
         public static string LG5SparkleInvalid { get; set; } = "Special ingame N's Sparkle flag should not be checked.";
@@ -266,7 +269,7 @@ namespace PKHeX.Core
         public static string LItemEgg { get; set; } = "Eggs cannot hold items.";
         public static string LItemUnreleased { get; set; } = "Held item is unreleased.";
 
-        public static string LIVAllEqual { get; set; } = "All IVs are equal.";
+        public static string LIVAllEqual_0 { get; set; } = "All IVs are {0}.";
         public static string LIVNotCorrect { get; set; } = "IVs do not match encounter requirements.";
         public static string LIVF_COUNT0_31 { get; set; } = "Should have at least {0} IVs = 31.";
 
@@ -280,6 +283,7 @@ namespace PKHeX.Core
         public static string LMemoryArgBadHatch { get; set; } = "{0} Memory: {0} did not hatch this.";
         public static string LMemoryArgBadHT { get; set; } = "Memory: Can't have Handling Trainer Memory as Egg.";
         public static string LMemoryArgBadID { get; set; } = "{0} Memory: Can't obtain Memory on {0} Version.";
+        public static string LMemoryArgBadItem { get; set; } = "{0} Memory: Species can't hold this item.";
         public static string LMemoryArgBadLocation { get; set; } = "{0} Memory: Can't obtain Location on {0} Version.";
         public static string LMemoryArgBadMove { get; set; } = "{0} Memory: Species can't learn this move.";
         public static string LMemoryArgBadOTEgg { get; set; } = "{0} Memory: Link Trade is not a valid first memory.";
@@ -308,6 +312,9 @@ namespace PKHeX.Core
         public static string LMemoryStatAffectionOT0 { get; set; } = "OT Affection should be 0.";
         public static string LMemoryStatFriendshipHT0 { get; set; } = "Untraded: Handling Trainer Friendship should be 0.";
         public static string LMemoryStatFriendshipOTBaseEvent { get; set; } = "Event OT Friendship does not match base friendship.";
+
+        public static string LMemoryStatFullness { get; set; } = "Fullness should be {0}.";
+        public static string LMemoryStatEnjoyment { get; set; } = "Enjoyment should be {0}.";
 
         public static string LMoveEggFIncompatible0_1 { get; set; } = "{0} Inherited Move. Incompatible with {1} inherited moves.";
         public static string LMoveEggIncompatible { get; set; } = "Egg Move. Incompatible with event Egg moves.";
@@ -402,12 +409,17 @@ namespace PKHeX.Core
         public static string LRibbonEgg { get; set; } = "Can't receive Ribbon(s) as an Egg.";
         public static string LRibbonFInvalid_0 { get; set; } = "Invalid Ribbons: {0}";
         public static string LRibbonFMissing_0 { get; set; } = "Missing Ribbons: {0}";
+        public static string LRibbonMarkingFInvalid_0 { get; set; } = "Invalid Marking: {0}";
+        public static string LRibbonMarkingAffixedF_0 { get; set; } = "Invalid Affixed Ribbon/Marking: {0}";
 
         public static string LStatDynamaxInvalid { get; set; } = "Dynamax Level is not within the expected range.";
         public static string LStatIncorrectHeight { get; set; } = "Calculated Height does not match stored value.";
         public static string LStatIncorrectWeight { get; set; } = "Calculated Weight does not match stored value.";
         public static string LStatIncorrectCP { get; set; } = "Calculated CP does not match stored value.";
         public static string LStatGigantamaxInvalid { get; set; } = "Gigantamax Flag mismatch.";
+        public static string LStatGigantamaxValid { get; set; } = "Gigantamax Flag was changed via Max Soup.";
+        public static string LStatNatureInvalid { get; set; } = "Stat Nature is not within the expected range.";
+        public static string LStatBattleVersionInvalid { get; set; } = "Battle Version is not within the expected range.";
 
         public static string LSuperComplete { get; set; } = "Super Training complete flag mismatch.";
         public static string LSuperDistro { get; set; } = "Distribution Super Training missions are not released.";
@@ -425,14 +437,15 @@ namespace PKHeX.Core
         public static string LTransferMet { get; set; } = "Invalid Met Location, expected Poké Transfer or Crown.";
         public static string LTransferMetLocation { get; set; } = "Invalid Transfer Met Location.";
         public static string LTransferMove { get; set; } = "Incompatible transfer move.";
-        public static string LTransferMoveG4HM { get; set; } = "Defog and whirpool. One of the two moves should have been removed before transfered to Generation 5.";
-        public static string LTransferMoveHM { get; set; } = "Generation {0} HM. Should have been removed before transfered to Generation {1}.";
+        public static string LTransferMoveG4HM { get; set; } = "Defog and Whirlpool. One of the two moves should have been removed before transferred to Generation 5.";
+        public static string LTransferMoveHM { get; set; } = "Generation {0} HM. Should have been removed before transferred to Generation {1}.";
         public static string LTransferNature { get; set; } = "Invalid Nature for transfer Experience.";
         public static string LTransferOriginFInvalid0_1 { get; set; } = "{0} origin cannot exist in the currently loaded ({1}) savegame.";
         public static string LTransferPIDECBitFlip { get; set; } = "PID should be equal to EC [with top bit flipped]!";
         public static string LTransferPIDECEquals { get; set; } = "PID should be equal to EC!";
         public static string LTransferPIDECXor { get; set; } = "Encryption Constant matches shinyxored PID.";
         public static string LTransferTrackerMissing { get; set; } = "Pokémon HOME Transfer Tracker is missing.";
+        public static string LTransferTrackerShouldBeZero { get; set; } = "Pokémon HOME Transfer Tracker should be 0.";
         #endregion
 
     }

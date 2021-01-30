@@ -7,7 +7,7 @@ namespace PKHeX.Core
     /// </summary>
     public static class LearnsetReader
     {
-        private static readonly Learnset EMPTY = new Learnset(Array.Empty<int>(), Array.Empty<int>());
+        private static readonly Learnset EMPTY = new(Array.Empty<int>(), Array.Empty<int>());
 
         public static Learnset[] GetArray(byte[] input, int maxSpecies)
         {
@@ -60,7 +60,7 @@ namespace PKHeX.Core
         /// <remarks>Count of moves, followed by Moves and Levels which are 16-bit</remarks>
         private static Learnset ReadLearnset16(byte[] data)
         {
-            if (data.Length < 4 || data.Length % 4 != 0)
+            if (data.Length == 0)
                 return EMPTY;
             var Count = (data.Length / 4) - 1;
             var Moves = new int[Count];

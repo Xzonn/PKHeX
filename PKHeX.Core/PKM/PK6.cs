@@ -4,7 +4,8 @@ using System.Collections.Generic;
 namespace PKHeX.Core
 {
     /// <summary> Generation 6 <see cref="PKM"/> format. </summary>
-    public sealed class PK6 : G6PKM, IRibbonSetEvent3, IRibbonSetEvent4, IRibbonSetCommon3, IRibbonSetCommon4, IRibbonSetCommon6, IContestStats, IGeoTrack, ISuperTrain, IFormArgument
+    public sealed class PK6 : G6PKM, IRibbonSetEvent3, IRibbonSetEvent4, IRibbonSetCommon3, IRibbonSetCommon4, IRibbonSetCommon6,
+        IContestStats, IContestStatsMutable, IGeoTrack, ISuperTrain, IFormArgument, ITrainerMemories, IAffection
     {
         private static readonly ushort[] Unused =
         {
@@ -14,18 +15,16 @@ namespace PKHeX.Core
 
         public override IReadOnlyList<ushort> ExtraBytes => Unused;
         public override int Format => 6;
-        public override PersonalInfo PersonalInfo => PersonalTable.AO.GetFormeEntry(Species, AltForm);
+        public override PersonalInfo PersonalInfo => PersonalTable.AO.GetFormEntry(Species, Form);
 
-        public PK6() => Data = new byte[PokeCrypto.SIZE_6PARTY];
+        public PK6() : base(PokeCrypto.SIZE_6PARTY) { }
+        public PK6(byte[] data) : base(DecryptParty(data)) { }
 
-        public override byte[] Data { get; }
-
-        public PK6(byte[] data)
+        private static byte[] DecryptParty(byte[] data)
         {
             PokeCrypto.DecryptIfEncrypted67(ref data);
-            if (data.Length != PokeCrypto.SIZE_6PARTY)
-                Array.Resize(ref data, PokeCrypto.SIZE_6PARTY);
-            Data = data;
+            Array.Resize(ref data, PokeCrypto.SIZE_6PARTY);
+            return data;
         }
 
         public override PKM Clone() => new PK6((byte[])Data.Clone()){Identifier = Identifier};
@@ -97,19 +96,19 @@ namespace PKHeX.Core
         public override int Nature { get => Data[0x1C]; set => Data[0x1C] = (byte)value; }
         public override bool FatefulEncounter { get => (Data[0x1D] & 1) == 1; set => Data[0x1D] = (byte)((Data[0x1D] & ~0x01) | (value ? 1 : 0)); }
         public override int Gender { get => (Data[0x1D] >> 1) & 0x3; set => Data[0x1D] = (byte)((Data[0x1D] & ~0x06) | (value << 1)); }
-        public override int AltForm { get => Data[0x1D] >> 3; set => Data[0x1D] = (byte)((Data[0x1D] & 0x07) | (value << 3)); }
+        public override int Form { get => Data[0x1D] >> 3; set => Data[0x1D] = (byte)((Data[0x1D] & 0x07) | (value << 3)); }
         public override int EV_HP { get => Data[0x1E]; set => Data[0x1E] = (byte)value; }
         public override int EV_ATK { get => Data[0x1F]; set => Data[0x1F] = (byte)value; }
         public override int EV_DEF { get => Data[0x20]; set => Data[0x20] = (byte)value; }
         public override int EV_SPE { get => Data[0x21]; set => Data[0x21] = (byte)value; }
         public override int EV_SPA { get => Data[0x22]; set => Data[0x22] = (byte)value; }
         public override int EV_SPD { get => Data[0x23]; set => Data[0x23] = (byte)value; }
-        public int CNT_Cool { get => Data[0x24]; set => Data[0x24] = (byte)value; }
-        public int CNT_Beauty { get => Data[0x25]; set => Data[0x25] = (byte)value; }
-        public int CNT_Cute { get => Data[0x26]; set => Data[0x26] = (byte)value; }
-        public int CNT_Smart { get => Data[0x27]; set => Data[0x27] = (byte)value; }
-        public int CNT_Tough { get => Data[0x28]; set => Data[0x28] = (byte)value; }
-        public int CNT_Sheen { get => Data[0x29]; set => Data[0x29] = (byte)value; }
+        public byte CNT_Cool   { get => Data[0x24]; set => Data[0x24] = value; }
+        public byte CNT_Beauty { get => Data[0x25]; set => Data[0x25] = value; }
+        public byte CNT_Cute   { get => Data[0x26]; set => Data[0x26] = value; }
+        public byte CNT_Smart  { get => Data[0x27]; set => Data[0x27] = value; }
+        public byte CNT_Tough  { get => Data[0x28]; set => Data[0x28] = value; }
+        public byte CNT_Sheen  { get => Data[0x29]; set => Data[0x29] = value; }
         public override int MarkValue { get => Data[0x2A]; protected set => Data[0x2A] = (byte)value; }
         private byte PKRS { get => Data[0x2B]; set => Data[0x2B] = value; }
         public override int PKRS_Days { get => PKRS & 0xF; set => PKRS = (byte)((PKRS & ~0xF) | value); }
@@ -280,7 +279,7 @@ namespace PKHeX.Core
 
         public bool SecretSuperTrainingUnlocked { get => (Data[0x72] & 1) == 1; set => Data[0x72] = (byte)((Data[0x72] & ~1) | (value ? 1 : 0)); }
         public bool SecretSuperTrainingComplete { get => (Data[0x72] & 2) == 2; set => Data[0x72] = (byte)((Data[0x72] & ~2) | (value ? 2 : 0)); }
-        public byte _0x73 { get => Data[0x73]; set => Data[0x73] = value; }
+        // 0x73 Unused
         private uint IV32 { get => BitConverter.ToUInt32(Data, 0x74); set => BitConverter.GetBytes(value).CopyTo(Data, 0x74); }
         public override int IV_HP { get => (int)(IV32 >> 00) & 0x1F; set => IV32 = (IV32 & ~(0x1Fu << 00)) | ((value > 31 ? 31u : (uint)value) << 00); }
         public override int IV_ATK { get => (int)(IV32 >> 05) & 0x1F; set => IV32 = (IV32 & ~(0x1Fu << 05)) | ((value > 31 ? 31u : (uint)value) << 05); }
@@ -305,39 +304,39 @@ namespace PKHeX.Core
         public int Geo4_Country { get => Data[0x9B]; set => Data[0x9B] = (byte)value; }
         public int Geo5_Region { get => Data[0x9C]; set => Data[0x9C] = (byte)value; }
         public int Geo5_Country { get => Data[0x9D]; set => Data[0x9D] = (byte)value; }
-        public byte _0x9E { get => Data[0x9E]; set => Data[0x9E] = value; }
-        public byte _0x9F { get => Data[0x9F]; set => Data[0x9F] = value; }
-        public byte _0xA0 { get => Data[0xA0]; set => Data[0xA0] = value; }
-        public byte _0xA1 { get => Data[0xA1]; set => Data[0xA1] = value; }
+        // 0x9E Unused
+        // 0x9F Unused
+        // 0xA0 Unused
+        // 0xA1 Unused
         public override int HT_Friendship { get => Data[0xA2]; set => Data[0xA2] = (byte)value; }
-        public override int HT_Affection { get => Data[0xA3]; set => Data[0xA3] = (byte)value; }
-        public override int HT_Intensity { get => Data[0xA4]; set => Data[0xA4] = (byte)value; }
-        public override int HT_Memory { get => Data[0xA5]; set => Data[0xA5] = (byte)value; }
-        public override int HT_Feeling { get => Data[0xA6]; set => Data[0xA6] = (byte)value; }
-        public byte _0xA7 { get => Data[0xA7]; set => Data[0xA7] = value; }
-        public override int HT_TextVar { get => BitConverter.ToUInt16(Data, 0xA8); set => BitConverter.GetBytes((ushort)value).CopyTo(Data, 0xA8); }
-        public byte _0xAA { get => Data[0xAA]; set => Data[0xAA] = value; }
-        public byte _0xAB { get => Data[0xAB]; set => Data[0xAB] = value; }
-        public byte _0xAC { get => Data[0xAC]; set => Data[0xAC] = value; }
-        public byte _0xAD { get => Data[0xAD]; set => Data[0xAD] = value; }
+        public int HT_Affection { get => Data[0xA3]; set => Data[0xA3] = (byte)value; }
+        public int HT_Intensity { get => Data[0xA4]; set => Data[0xA4] = (byte)value; }
+        public int HT_Memory { get => Data[0xA5]; set => Data[0xA5] = (byte)value; }
+        public int HT_Feeling { get => Data[0xA6]; set => Data[0xA6] = (byte)value; }
+        // 0xA7 Unused
+        public int HT_TextVar { get => BitConverter.ToUInt16(Data, 0xA8); set => BitConverter.GetBytes((ushort)value).CopyTo(Data, 0xA8); }
+        // 0xAA Unused
+        // 0xAB Unused
+        // 0xAC Unused
+        // 0xAD Unused
         public override byte Fullness { get => Data[0xAE]; set => Data[0xAE] = value; }
         public override byte Enjoyment { get => Data[0xAF]; set => Data[0xAF] = value; }
         #endregion
         #region Block D
         public override string OT_Name { get => GetString(0xB0, 24); set => SetString(value, 12).CopyTo(Data, 0xB0); }
         public override int OT_Friendship { get => Data[0xCA]; set => Data[0xCA] = (byte)value; }
-        public override int OT_Affection { get => Data[0xCB]; set => Data[0xCB] = (byte)value; }
-        public override int OT_Intensity { get => Data[0xCC]; set => Data[0xCC] = (byte)value; }
-        public override int OT_Memory { get => Data[0xCD]; set => Data[0xCD] = (byte)value; }
-        public override int OT_TextVar { get => BitConverter.ToUInt16(Data, 0xCE); set => BitConverter.GetBytes((ushort)value).CopyTo(Data, 0xCE); }
-        public override int OT_Feeling { get => Data[0xD0]; set => Data[0xD0] = (byte)value; }
+        public int OT_Affection { get => Data[0xCB]; set => Data[0xCB] = (byte)value; }
+        public int OT_Intensity { get => Data[0xCC]; set => Data[0xCC] = (byte)value; }
+        public int OT_Memory { get => Data[0xCD]; set => Data[0xCD] = (byte)value; }
+        public int OT_TextVar { get => BitConverter.ToUInt16(Data, 0xCE); set => BitConverter.GetBytes((ushort)value).CopyTo(Data, 0xCE); }
+        public int OT_Feeling { get => Data[0xD0]; set => Data[0xD0] = (byte)value; }
         public override int Egg_Year { get => Data[0xD1]; set => Data[0xD1] = (byte)value; }
         public override int Egg_Month { get => Data[0xD2]; set => Data[0xD2] = (byte)value; }
         public override int Egg_Day { get => Data[0xD3]; set => Data[0xD3] = (byte)value; }
         public override int Met_Year { get => Data[0xD4]; set => Data[0xD4] = (byte)value; }
         public override int Met_Month { get => Data[0xD5]; set => Data[0xD5] = (byte)value; }
         public override int Met_Day { get => Data[0xD6]; set => Data[0xD6] = (byte)value; }
-        public byte _0xD7 { get => Data[0xD7]; set => Data[0xD7] = value; }
+        // 0xD7 Unused
         public override int Egg_Location { get => BitConverter.ToUInt16(Data, 0xD8); set => BitConverter.GetBytes((ushort)value).CopyTo(Data, 0xD8); }
         public override int Met_Location { get => BitConverter.ToUInt16(Data, 0xDA); set => BitConverter.GetBytes((ushort)value).CopyTo(Data, 0xDA); }
         public override int Ball { get => Data[0xDC]; set => Data[0xDC] = (byte)value; }
@@ -345,9 +344,9 @@ namespace PKHeX.Core
         public override int OT_Gender { get => Data[0xDD] >> 7; set => Data[0xDD] = (byte)((Data[0xDD] & ~0x80) | (value << 7)); }
         public override int EncounterType { get => Data[0xDE]; set => Data[0xDE] = (byte)value; }
         public override int Version { get => Data[0xDF]; set => Data[0xDF] = (byte)value; }
-        public override int Country { get => Data[0xE0]; set => Data[0xE0] = (byte)value; }
-        public override int Region { get => Data[0xE1]; set => Data[0xE1] = (byte)value; }
-        public override int ConsoleRegion { get => Data[0xE2]; set => Data[0xE2] = (byte)value; }
+        public int Country { get => Data[0xE0]; set => Data[0xE0] = (byte)value; }
+        public int Region { get => Data[0xE1]; set => Data[0xE1] = (byte)value; }
+        public int ConsoleRegion { get => Data[0xE2]; set => Data[0xE2] = (byte)value; }
         public override int Language { get => Data[0xE3]; set => Data[0xE3] = (byte)value; }
         #endregion
         #region Battle Stats
@@ -410,8 +409,11 @@ namespace PKHeX.Core
                 return false;
 
             CurrentHandler = 0;
-            if (!IsUntraded && (tr.Country != Geo1_Country || tr.SubRegion != Geo1_Region))
-                this.TradeGeoLocation(tr.Country, tr.SubRegion);
+            if (tr is IRegionOrigin o)
+            {
+                if (!IsUntraded && (o.Country != Geo1_Country || o.Region != Geo1_Region))
+                    this.TradeGeoLocation(o.Country, o.Region);
+            }
 
             return true;
         }
@@ -419,7 +421,10 @@ namespace PKHeX.Core
         protected override void TradeHT(ITrainerInfo tr)
         {
             if (tr.OT != HT_Name || tr.Gender != HT_Gender || (Geo1_Country == 0 && Geo1_Region == 0 && !IsUntradedEvent6))
-                this.TradeGeoLocation(tr.Country, tr.SubRegion);
+            {
+                if (tr is IRegionOrigin o)
+                    this.TradeGeoLocation(o.Country, o.Region);
+            }
 
             if (tr.OT != HT_Name)
             {
@@ -432,7 +437,7 @@ namespace PKHeX.Core
 
             // Make a memory if no memory already exists. Pretty terrible way of doing this but I'd rather not overwrite existing memories.
             if (HT_Memory == 0)
-                TradeMemory(false);
+                this.SetTradeMemory(false);
         }
 
         // Maximums
@@ -445,24 +450,23 @@ namespace PKHeX.Core
 
         public PK7 ConvertToPK7()
         {
-            PK7 pk7 = new PK7(Data)
+            PK7 pk7 = new(Data)
             {
                 Markings = Markings, // Clears old Super Training Bag & Hits Remaining
                 Data = { [0x2A] = 0 }, // Clears old Marking Value
             };
 
-            switch (AbilityNumber)
+            var an = AbilityNumber;
+            switch (an)
             {
-                case 1:
-                case 2:
-                case 4: // Valid Ability Numbers
-                    int index = AbilityNumber >> 1;
+                case 1 or 2 or 4: // Valid Ability Numbers
+                    int index = an >> 1;
                     if (PersonalInfo.Abilities[index] == Ability) // correct pair
                         pk7.Ability = pk7.PersonalInfo.Abilities[index];
                     break;
             }
 
-            pk7.TradeMemory(Bank: true); // oh no, memories on gen7 pkm
+            pk7.SetTradeMemory(bank: true); // oh no, memories on gen7 pkm
             PKMConverter.SetFirstCountryRegion(pk7);
 
             // Bank-accurate data zeroing

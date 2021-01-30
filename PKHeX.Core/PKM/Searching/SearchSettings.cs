@@ -9,38 +9,38 @@ namespace PKHeX.Core.Searching
     /// </summary>
     public sealed class SearchSettings
     {
-        public int Format { private get; set; }
-        public int Generation { private get; set; }
-        public int Species { get; set; } = -1;
-        public int Ability { private get; set; } = -1;
-        public int Nature { private get; set; } = -1;
-        public int Item { private get; set; } = -1;
-        public int Version { private get; set; } = -1;
-        public int HiddenPowerType { private get; set; } = -1;
+        public int Format { private get; init; }
+        public int Generation { private get; init; }
+        public int Species { get; init; } = -1;
+        public int Ability { private get; init; } = -1;
+        public int Nature { private get; init; } = -1;
+        public int Item { private get; init; } = -1;
+        public int Version { private get; init; } = -1;
+        public int HiddenPowerType { private get; init; } = -1;
 
-        public SearchComparison SearchFormat { private get; set; }
-        public SearchComparison SearchLevel { private get; set; }
+        public SearchComparison SearchFormat { private get; init; }
+        public SearchComparison SearchLevel { private get; init; }
 
         public bool? SearchShiny { private get; set; }
         public bool? SearchLegal { private get; set; }
         public bool? SearchEgg { get; set; }
         public int? ESV { private get; set; }
-        public int? Level { private get; set; }
+        public int? Level { private get; init; }
 
-        public int IVType { private get; set; }
-        public int EVType { private get; set; }
+        public int IVType { private get; init; }
+        public int EVType { private get; init; }
 
         public CloneDetectionMethod SearchClones { private get; set; }
-        public IList<string> BatchInstructions { private get; set; } = Array.Empty<string>();
+        public IList<string> BatchInstructions { private get; init; } = Array.Empty<string>();
 
-        public readonly List<int> Moves = new List<int>();
+        public readonly List<int> Moves = new();
 
         // ReSharper disable once CollectionNeverUpdated.Global
         /// <summary>
         /// Extra Filters to be checked after all other filters have been checked.
         /// </summary>
         /// <remarks>Collection is iterated right before clones are checked.</remarks>
-        public List<Func<PKM, bool>> ExtraFilters { get; } = new List<Func<PKM, bool>>();
+        public List<Func<PKM, bool>> ExtraFilters { get; } = new();
 
         /// <summary>
         /// Adds a move to the required move list.
@@ -115,12 +115,12 @@ namespace PKHeX.Core.Searching
                 res = FilterResultEgg(res);
 
             if (Level != null)
-                res = SearchUtil.FilterByLVL(res, SearchLevel, (int)Level);
+                res = SearchUtil.FilterByLevel(res, SearchLevel, (int)Level);
 
             if (SearchLegal != null)
                 res = res.Where(pk => new LegalityAnalysis(pk).Valid == SearchLegal);
 
-            if (BatchInstructions != null)
+            if (BatchInstructions.Count != 0)
                 res = SearchUtil.FilterByBatchInstruction(res, BatchInstructions);
 
             return res;
@@ -135,27 +135,33 @@ namespace PKHeX.Core.Searching
             return res.Where(pk => pk.IsEgg);
         }
 
-        public IReadOnlyList<GameVersion> GetVersions(SaveFile SAV) => GetVersions(SAV, GetFallbackVersion(SAV));
+        public IReadOnlyList<GameVersion> GetVersions(SaveFile sav) => GetVersions(sav, GetFallbackVersion(sav));
 
-        public IReadOnlyList<GameVersion> GetVersions(SaveFile SAV, GameVersion fallback)
+        public IReadOnlyList<GameVersion> GetVersions(SaveFile sav, GameVersion fallback)
         {
             if (Version > 0)
                 return new[] {(GameVersion) Version};
-            if (Generation != 0)
-            {
-                return fallback.GetGeneration() == Generation
-                    ? GameUtil.GetVersionsWithinRange(SAV, Generation).ToArray()
-                    : GameUtil.GameVersions;
-            }
 
-            return GameUtil.GameVersions;
+            return Generation switch
+            {
+                1 when !ParseSettings.AllowGen1Tradeback => new[] {GameVersion.RD, GameVersion.BU, GameVersion.GN, GameVersion.YW},
+                2 when sav is SAV2 {Korean: true} => new[] {GameVersion.GD, GameVersion.SV},
+                1 or 2 => new[]
+                {
+                    GameVersion.RD, GameVersion.BU, GameVersion.GN, GameVersion.YW,
+                    GameVersion.GD, GameVersion.SV, GameVersion.C
+                },
+
+                _ when fallback.GetGeneration() == Generation => GameUtil.GetVersionsWithinRange(sav, Generation).ToArray(),
+                _ => GameUtil.GameVersions,
+            };
         }
 
-        private static GameVersion GetFallbackVersion(SaveFile SAV)
+        private static GameVersion GetFallbackVersion(ITrainerInfo sav)
         {
-            var parent = GameUtil.GetMetLocationVersionGroup((GameVersion)SAV.Game);
+            var parent = GameUtil.GetMetLocationVersionGroup((GameVersion)sav.Game);
             if (parent == GameVersion.Invalid)
-                parent = GameUtil.GetMetLocationVersionGroup(GameUtil.GetVersion(SAV.Generation));
+                parent = GameUtil.GetMetLocationVersionGroup(GameUtil.GetVersion(sav.Generation));
             return parent;
         }
     }

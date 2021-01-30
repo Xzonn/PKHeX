@@ -45,7 +45,15 @@ namespace PKHeX.Core
                     break; // passes
             }
 
-            if (!info.FrameMatches && info.EncounterMatch is EncounterSlot && pkm.Version != (int)GameVersion.CXD) // if false, all valid RNG frame matches have already been consumed
+            // Sanity Check -- Some secondary checks might not be as thorough as the partial-match leak-through checks done by the encounter.
+            if (info.EncounterMatch is IEncounterMatch mx)
+            {
+                var match = mx.GetMatchRating(pkm);
+                if (match == EncounterMatchRating.PartialMatch)
+                    info.Parse.Add( new CheckResult(Severity.Invalid, LEncInvalid, CheckIdentifier.Encounter));
+            }
+
+            if (!info.FrameMatches && info.EncounterMatch is EncounterSlot {Version: not GameVersion.CXD}) // if false, all valid RNG frame matches have already been consumed
                 info.Parse.Add(new CheckResult(ParseSettings.RNGFrameNotFound, LEncConditionBadRNGFrame, CheckIdentifier.PID)); // todo for further confirmation
             if (!info.PIDIVMatches) // if false, all valid PIDIV matches have already been consumed
                 info.Parse.Add(new CheckResult(Severity.Invalid, LPIDTypeMismatch, CheckIdentifier.PID));
@@ -69,7 +77,7 @@ namespace PKHeX.Core
         {
             if (pkm.Format >= 6)
             {
-                info.Relearn = VerifyRelearnMoves.VerifyRelearn(pkm, info);
+                info.Relearn = VerifyRelearnMoves.VerifyRelearn(pkm, info.EncounterOriginal);
                 if (info.Relearn.Any(z => !z.Valid) && iterator.PeekIsNext())
                     return false;
             }
@@ -103,7 +111,7 @@ namespace PKHeX.Core
             string hint = GetHintWhyNotFound(pkm);
 
             info.Parse.Add(new CheckResult(Severity.Invalid, hint, CheckIdentifier.Encounter));
-            info.Relearn = VerifyRelearnMoves.VerifyRelearn(pkm, info);
+            info.Relearn = VerifyRelearnMoves.VerifyRelearn(pkm, info.EncounterOriginal);
             info.Moves = VerifyCurrentMoves.VerifyMoves(pkm, info);
             return info;
         }

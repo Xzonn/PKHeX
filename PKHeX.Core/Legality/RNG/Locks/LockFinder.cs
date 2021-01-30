@@ -6,6 +6,8 @@ namespace PKHeX.Core
     {
         public static bool IsAllShadowLockValid(EncounterStaticShadow s, PIDIV pv, PKM pkm)
         {
+            if (s.Version == GameVersion.XD && pkm.IsShiny)
+                return false; // no xd shiny shadow mons
             var teams = s.Locks;
             if (teams.Length == 0)
                 return true;
@@ -104,12 +106,12 @@ namespace PKHeX.Core
         private static uint GenerateStarterPID(ref uint uSeed, int TID, int SID)
         {
             uint PID;
-            const byte ratio = 0x20; // 12.5% F (can't be female)
+            const byte ratio = 0x1F; // 12.5% F (can't be female)
             while (true)
             {
                 var next = RNG.XDRNG.Next(uSeed);
                 PID = (uSeed & 0xFFFF0000) | (next >> 16);
-                if ((PID & 0xFF) > ratio && !IsShiny(TID, SID, PID))
+                if ((PID & 0xFF) >= ratio && !IsShiny(TID, SID, PID))
                     break;
                 uSeed = RNG.XDRNG.Next(next);
             }

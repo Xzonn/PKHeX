@@ -149,11 +149,11 @@ namespace PKHeX.Core
 
         #endregion
 
-        private static readonly HashSet<int> MemoryGeneral = new HashSet<int> { 1, 2, 3, 4, 19, 24, 31, 32, 33, 35, 36, 37, 38, 39, 42, 52, 59, 70, 86 };
-        private static readonly HashSet<int> MemorySpecific = new HashSet<int> { 6 };
-        private static readonly HashSet<int> MemoryMove = new HashSet<int> { 12, 16, 48, 49, 80, 81, 89 };
-        private static readonly HashSet<int> MemoryItem = new HashSet<int> { 5, 15, 26, 34, 40, 51, 84, 88 };
-        private static readonly HashSet<int> MemorySpecies = new HashSet<int> { 7, 9, 13, 14, 17, 21, 18, 25, 29, 44, 45, 50, 60, 70, 71, 72, 75, 82, 83, 87 };
+        private static readonly HashSet<int> MemoryGeneral = new() { 1, 2, 3, 4, 19, 24, 31, 32, 33, 35, 36, 37, 38, 39, 42, 52, 59, 70, 86 };
+        private static readonly HashSet<int> MemorySpecific = new() { 6 };
+        private static readonly HashSet<int> MemoryMove = new() { 12, 16, 48, 49, 80, 81, 89 };
+        private static readonly HashSet<int> MemoryItem = new() { 5, 15, 26, 34, 40, 51, 84, 88 };
+        private static readonly HashSet<int> MemorySpecies = new() { 7, 9, 13, 14, 17, 21, 18, 25, 29, 44, 45, 50, 60, 70, 71, 72, 75, 82, 83, 87 };
 
         public static MemoryArgType GetMemoryArgType(int memory, int format)
         {
@@ -218,17 +218,12 @@ namespace PKHeX.Core
             Feeling = f;
         }
 
-        public static MemoryVariableSet Read(PKM pkm) => Read(pkm, pkm.CurrentHandler);
-
-        public static MemoryVariableSet Read(PKM pkm, int handler)
+        public static MemoryVariableSet Read(ITrainerMemories pkm, int handler) => handler switch
         {
-            return handler switch
-            {
-                0 => new MemoryVariableSet(LegalityCheckStrings.L_XOT, pkm.OT_Memory, pkm.OT_TextVar, pkm.OT_Intensity, pkm.OT_Feeling), // OT
-                1 => new MemoryVariableSet(LegalityCheckStrings.L_XOT, pkm.HT_Memory, pkm.HT_TextVar, pkm.HT_Intensity, pkm.HT_Feeling), // HT
-                _ => new MemoryVariableSet(LegalityCheckStrings.L_XOT, 0, 0, 0, 0)
-            };
-        }
+            0 => new MemoryVariableSet(LegalityCheckStrings.L_XOT, pkm.OT_Memory, pkm.OT_TextVar, pkm.OT_Intensity, pkm.OT_Feeling), // OT
+            1 => new MemoryVariableSet(LegalityCheckStrings.L_XOT, pkm.HT_Memory, pkm.HT_TextVar, pkm.HT_Intensity, pkm.HT_Feeling), // HT
+            _ => new MemoryVariableSet(LegalityCheckStrings.L_XOT, 0, 0, 0, 0)
+        };
 
         public bool Equals(MemoryVariableSet v) => v.Handler == Handler
                                                    && v.MemoryID == MemoryID

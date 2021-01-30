@@ -7,10 +7,10 @@ namespace PKHeX.WinForms
 {
     public partial class SAV_HallOfFame7 : Form
     {
-        private readonly SaveFile Origin;
+        private readonly SAV7 Origin;
         private readonly SAV7 SAV;
 
-        public SAV_HallOfFame7(SaveFile sav)
+        public SAV_HallOfFame7(SAV7 sav)
         {
             InitializeComponent();
             WinFormsUtil.TranslateInterface(this, Main.CurrentLanguage);
@@ -61,7 +61,7 @@ namespace PKHeX.WinForms
             int ofs = SAV.HoF;
 
             SAV.Data[ofs] &= 0xFE;
-            SAV.Data[ofs] |= (byte)(CHK_Flag.Checked ? 1 : 0);
+            SAV.Data[ofs] |= CHK_Flag.Checked ? 1 : 0;
             BitConverter.GetBytes((ushort)NUD_Count.Value).CopyTo(SAV.Data, ofs + 2);
             for (int i = 0; i < entries.Length; i++)
             {

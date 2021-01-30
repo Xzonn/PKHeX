@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace PKHeX.Core
 {
@@ -14,11 +13,6 @@ namespace PKHeX.Core
         internal const int MaxAbilityID_7b = MaxAbilityID_7_USUM;
         internal static readonly ushort[] HeldItems_GG = Array.Empty<ushort>();
         public const int AwakeningMax = 200;
-
-        internal static readonly HashSet<int> WildPokeballs7b = new HashSet<int>
-        {
-            (int)Ball.Master, (int)Ball.Ultra, (int)Ball.Great, (int)Ball.Poke, (int)Ball.Premier,
-        };
 
         #region Met Locations
 
@@ -78,7 +72,7 @@ namespace PKHeX.Core
             1057,
         };
 
-        internal static readonly ushort[] Pouch_Candy_GG = Pouch_Candy_GG_Regular.Concat(Pouch_Candy_GG_Species).ToArray();
+        internal static readonly ushort[] Pouch_Candy_GG = ArrayUtil.ConcatAll(Pouch_Candy_GG_Regular, Pouch_Candy_GG_Species);
 
         internal static readonly ushort[] Pouch_Medicine_GG =
         {
@@ -248,7 +242,7 @@ namespace PKHeX.Core
             // 741, // Veevee Volley -- Joycon Shake
         };
 
-        internal static readonly HashSet<short> AllowedMovesGG = new HashSet<short>
+        internal static readonly HashSet<short> AllowedMovesGG = new()
         {
             000, 001, 002, 003, 004, 005, 006, 007, 008, 009,
             010, 011, 012, 013, 014, 015, 016, 017, 018, 019,
@@ -278,42 +272,5 @@ namespace PKHeX.Core
         };
 
         #endregion
-
-        internal static readonly HashSet<int> GoTransferSpeciesShinyBan = new HashSet<int>
-        {
-            013, // Weedle
-            014, // Kakuna
-            015, // Beedrill
-            021, // Spearow
-            022, // Fearow
-            037, // Vulpix
-            038, // Ninetales
-            046, // Paras
-            047, // Parasect
-            048, // Venonat
-            049, // Venomoth
-            069, // Bellsprout
-            070, // Weepinbell
-            071, // Victreebel
-            079, // Slowpoke
-            080, // Slowbro
-            084, // Doduo
-            085, // Dodrio
-            100, // Voltorb
-            101, // Electrode
-            102, // Exeggcute
-            103, // Exeggutor
-            106, // Hitmonlee
-            107, // Hitmonchan
-            114, // Tangela
-            118, // Goldeen
-            119, // Seaking
-            120, // Staryu
-            121, // Starmie
-            132, // Ditto
-            137, // Porygon
-            143, // Snorlax
-            151, // Mew
-        };
     }
 }

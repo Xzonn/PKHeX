@@ -1,84 +1,118 @@
-﻿using System.Collections.Generic;
-using System.Linq;
+﻿using System;
+using System.Collections.Generic;
 
 namespace PKHeX.Core
 {
-    /// <inheritdoc />
+    /// <inheritdoc cref="EncounterArea" />
     /// <summary>
     /// <see cref="GameVersion.XY"/> encounter area
     /// </summary>
-    public sealed class EncounterArea6XY : EncounterArea32
+    public sealed record EncounterArea6XY : EncounterArea
     {
-        protected override IEnumerable<EncounterSlot> GetFilteredSlots(PKM pkm, IEnumerable<EncounterSlot> slots, int minLevel)
+        public static EncounterArea6XY[] GetAreas(byte[][] input, GameVersion game, EncounterArea6XY safari)
         {
-            EncounterSlot? slotMax = null;
-            void CachePressureSlot(EncounterSlot s)
+            var result = new EncounterArea6XY[input.Length + 1];
+            for (int i = 0; i < input.Length; i++)
+                result[i] = new EncounterArea6XY(input[i], game);
+            result[result.Length - 1] = safari;
+            return result;
+        }
+
+        public EncounterArea6XY(ICollection<int> species) : base(GameVersion.XY)
+        {
+            Location = 148;
+            Type = SlotType.FriendSafari;
+
+            var slots = new EncounterSlot6XY[species.Count];
+            int ctr = 0;
+            foreach (var s in species)
+                slots[ctr++] = new EncounterSlot6XY(this, s, 0, 30, 30);
+
+            // Find Vivillon and replace form to be region-random
+            var idx = Array.FindIndex(slots, z => z.Species == (int)Species.Vivillon);
+            slots[idx] = new EncounterSlot6XY(this, (int)Species.Vivillon, 30, 30, 30);
+            Slots = slots;
+        }
+
+        private EncounterArea6XY(byte[] data, GameVersion game) : base(game)
+        {
+            Location = data[0] | (data[1] << 8);
+            Type = (SlotType)data[2];
+
+            Slots = ReadSlots(data);
+        }
+
+        private EncounterSlot6XY[] ReadSlots(byte[] data)
+        {
+            const int size = 4;
+            int count = (data.Length - 4) / size;
+            var slots = new EncounterSlot6XY[count];
+            for (int i = 0; i < slots.Length; i++)
             {
-                if (slotMax == null || s.LevelMax > slotMax.LevelMax)
-                    slotMax = s;
+                int offset = 4 + (size * i);
+                ushort SpecForm = BitConverter.ToUInt16(data, offset);
+                int species = SpecForm & 0x3FF;
+                int form = SpecForm >> 11;
+                int min = data[offset + 2];
+                int max = data[offset + 3];
+                slots[i] = new EncounterSlot6XY(this, species, form, min, max);
             }
 
-            int species = pkm.Species;
-            int form = pkm.AltForm;
-            bool ShouldMatchSlotForm() => Legal.WildForms.Contains(species);
+            return slots;
+        }
 
-            if (ShouldMatchSlotForm()) // match slot form
+        private const int RandomForm = 31;
+        private const int RandomFormVivillon = RandomForm - 1;
+
+        public override IEnumerable<EncounterSlot> GetMatchingSlots(PKM pkm, IReadOnlyList<EvoCriteria> chain)
+        {
+            foreach (var slot in Slots)
             {
-                foreach (var slot in slots)
+                foreach (var evo in chain)
                 {
-                    if (slot.Form == form)
-                        yield return slot;
-                    CachePressureSlot(slot);
+                    if (slot.Species != evo.Species)
+                        continue;
+
+                    if (!slot.IsLevelWithinRange(pkm.Met_Level))
+                        break;
+
+                    if (slot.Form != evo.Form && slot.Form < RandomFormVivillon && !FormInfo.WildChangeFormAfter.Contains(slot.Species))
+                    {
+                        if (slot.Species != (int)Species.Flabébé)
+                            break;
+
+                        var maxLevel = slot.LevelMax;
+                        if (!ExistsPressureSlot(evo, ref maxLevel))
+                            break;
+
+                        if (maxLevel != pkm.Met_Level)
+                            break;
+
+                        yield return ((EncounterSlot6XY)slot).CreatePressureFormCopy(evo.Form);
+                        break;
+                    }
+
+                    yield return slot;
+                    break;
                 }
             }
-            else
-            {
-                foreach (var slot in slots)
-                {
-                    yield return slot; // no form checking
-                    CachePressureSlot(slot);
-                }
-            }
-
-            // Filter for Form Specific
-            // Pressure Slot
-            if (slotMax == null)
-                yield break;
-
-            if (ShouldMatchSlotForm()) // match slot form
-            {
-                if (slotMax.Form == form)
-                    yield return GetPressureSlot(slotMax, pkm);
-            }
-            else
-            {
-                yield return GetPressureSlot(slotMax, pkm);
-            }
         }
 
-        public static bool WasFriendSafari(PKM pkm)
+        private bool ExistsPressureSlot(DexLevel evo, ref int level)
         {
-            if (!pkm.XY)
-                return false;
-            if (pkm.Met_Location != 148)
-                return false;
-            if (pkm.Met_Level != 30)
-                return false;
-            if (pkm.Egg_Location != 0)
-                return false;
-            return true;
-        }
-
-        public static IEnumerable<EncounterSlot> GetValidFriendSafari(PKM pkm)
-        {
-            var vs = EvolutionChain.GetValidPreEvolutions(pkm);
-            return GetValidFriendSafari(vs);
-        }
-
-        public static IEnumerable<EncounterSlot> GetValidFriendSafari(IEnumerable<EvoCriteria> vs)
-        {
-            var evos = vs.Where(d => d.Level >= 30);
-            return evos.SelectMany(z => Encounters6.FriendSafari[z.Species]);
+            bool existsForm = false;
+            foreach (var z in Slots)
+            {
+                if (z.Species != evo.Species)
+                    continue;
+                if (z.Form == evo.Form)
+                    continue;
+                if (z.LevelMax < level)
+                    continue;
+                level = z.LevelMax;
+                existsForm = true;
+            }
+            return existsForm;
         }
     }
 }

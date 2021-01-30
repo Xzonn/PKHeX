@@ -3,29 +3,29 @@
     /// <summary>
     /// Object that can be fed to a <see cref="IEncounterable"/> converter to ensure that the resulting <see cref="PKM"/> meets rough specifications.
     /// </summary>
-    public sealed class EncounterCriteria
+    public sealed record EncounterCriteria
     {
-        public static readonly EncounterCriteria Unrestricted = new EncounterCriteria();
+        public static readonly EncounterCriteria Unrestricted = new();
 
-        public int Ability { get; set; } = -1;
-        public int Gender { get; set; } = -1;
-        public Nature Nature { get; set; } = Nature.Random;
-        public Shiny Shiny { get; set; } = Shiny.Random;
+        public int Ability { get; init; } = -1;
+        public int Gender { get; init; } = -1;
+        public Nature Nature { get; init; } = Nature.Random;
+        public Shiny Shiny { get; init; } = Shiny.Random;
 
-        public int IV_HP  { get; set; } = RandomIV;
-        public int IV_ATK { get; set; } = RandomIV;
-        public int IV_DEF { get; set; } = RandomIV;
-        public int IV_SPA { get; set; } = RandomIV;
-        public int IV_SPD { get; set; } = RandomIV;
-        public int IV_SPE { get; set; } = RandomIV;
+        public int IV_HP  { get; init; } = RandomIV;
+        public int IV_ATK { get; init; } = RandomIV;
+        public int IV_DEF { get; init; } = RandomIV;
+        public int IV_SPA { get; init; } = RandomIV;
+        public int IV_SPD { get; init; } = RandomIV;
+        public int IV_SPE { get; init; } = RandomIV;
 
-        public int HPType { get; set; } = -1;
+        public int HPType { get; init; } = -1;
 
         private const int RandomIV = -1;
 
-        public bool IsIVsCompatible(int[] encounterIV, int gen)
+        public bool IsIVsCompatible(int[] encounterIVs, int generation)
         {
-            var IVs = encounterIV;
+            var IVs = encounterIVs;
             if (!ivCanMatch(IV_HP , IVs[0])) return false;
             if (!ivCanMatch(IV_ATK, IVs[1])) return false;
             if (!ivCanMatch(IV_DEF, IVs[2])) return false;
@@ -33,17 +33,17 @@
             if (!ivCanMatch(IV_SPA, IVs[4])) return false;
             if (!ivCanMatch(IV_SPD, IVs[5])) return false;
 
-            bool ivCanMatch(int spec, int enc)
+            bool ivCanMatch(int requestedIV, int encounterIV)
             {
-                if (spec >= 30 && gen >= 6) // hyper training possible
+                if (requestedIV >= 30 && generation >= 6) // hyper training possible
                     return true;
-                return enc == RandomIV || spec == enc;
+                return encounterIV == RandomIV || requestedIV == encounterIV;
             }
 
             return true;
         }
 
-        public static EncounterCriteria GetCriteria(ShowdownSet s)
+        public static EncounterCriteria GetCriteria(IBattleTemplate s)
         {
             int gender = string.IsNullOrWhiteSpace(s.Gender) ? -1 : PKX.GetGenderFromString(s.Gender);
             return new EncounterCriteria
@@ -83,17 +83,40 @@
             return pkPersonalInfo.RandomGender();
         }
 
-        public int GetAbility(int abilityType, PersonalInfo pkPersonalInfo)
+        public int GetAbilityFromNumber(int num, PersonalInfo pkPersonalInfo)
         {
-            if (abilityType < 3)
-                return abilityType;
+            if (num > 0) // fixed number
+                return num >> 1;
 
             var abils = pkPersonalInfo.Abilities;
-            if (abilityType == 4 && abils.Length > 2 && abils[2] == Ability) // hidden allowed
+            if (abils.Count > 2 && abils[2] == Ability && num == -1) // hidden allowed
                 return 2;
-            if (abils[1] == Ability)
-                return 1;
-            return 0;
+            if (abils.Count > 0 && abils[0] == Ability)
+                return 0;
+            return 1;
+        }
+
+        public int GetAbilityFromType(int type, PersonalInfo pkPersonalInfo)
+        {
+            if ((uint)type < 3)
+                return type;
+
+            var abils = pkPersonalInfo.Abilities;
+            if (type == 4 && abils.Count > 2 && abils[2] == Ability) // hidden allowed
+                return 2;
+            if (abils[0] == Ability)
+                return 0;
+            return 1;
+        }
+
+        public void SetRandomIVs(PKM pk)
+        {
+            pk.IV_HP = IV_HP != RandomIV ? IV_HP : Util.Rand.Next(32);
+            pk.IV_ATK = IV_ATK != RandomIV ? IV_ATK : Util.Rand.Next(32);
+            pk.IV_DEF = IV_DEF != RandomIV ? IV_DEF : Util.Rand.Next(32);
+            pk.IV_SPA = IV_SPA != RandomIV ? IV_SPA : Util.Rand.Next(32);
+            pk.IV_SPD = IV_SPD != RandomIV ? IV_SPD : Util.Rand.Next(32);
+            pk.IV_SPE = IV_SPE != RandomIV ? IV_SPE : Util.Rand.Next(32);
         }
     }
 }
