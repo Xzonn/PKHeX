@@ -8,8 +8,24 @@ namespace PKHeX.Core
     public static partial class Util
     {
         private static readonly Assembly thisAssembly = typeof(Util).GetTypeInfo().Assembly;
-        private static readonly string[] manifestResourceNames = thisAssembly.GetManifestResourceNames();
-        private static readonly Dictionary<string, string> resourceNameMap = new();
+        private static readonly Dictionary<string, string> resourceNameMap = BuildLookup(thisAssembly.GetManifestResourceNames());
+
+        private static Dictionary<string, string> BuildLookup(IReadOnlyCollection<string> manifestNames)
+        {
+            var result = new Dictionary<string, string>(manifestNames.Count);
+            foreach (var resName in manifestNames)
+            {
+                var period = resName.LastIndexOf('.', resName.Length - 5);
+                var start = period + 1;
+                System.Diagnostics.Debug.Assert(start != 0);
+
+                // text file fetch excludes ".txt" (mixed case...); other extensions are used (all lowercase).
+                var fileName = resName.EndsWith(".txt") ? resName[start..^4].ToLowerInvariant() : resName[start..];
+                result.Add(fileName, resName);
+            }
+            return result;
+        }
+
         private static readonly Dictionary<string, string[]> stringListCache = new();
 
         private static readonly object getStringListLoadLock = new();
@@ -72,6 +88,11 @@ namespace PKHeX.Core
         /// <returns>An array of strings whose indexes correspond to the IDs of each item.</returns>
         public static string[] GetItemsList(string language) => GetStringList("items", language);
 
+        /// <summary>
+        /// Retrieves the localization index list for all requested strings for the <see cref="fileName"/> through Spanish.
+        /// </summary>
+        /// <param name="fileName">Base file name</param>
+        /// <remarks>Ignores Korean Language.</remarks>
         public static string[][] GetLanguageStrings7(string fileName)
         {
             return new[]
@@ -87,6 +108,10 @@ namespace PKHeX.Core
             };
         }
 
+        /// <summary>
+        /// Retrieves the localization index list for all requested strings for the <see cref="fileName"/> through Korean.
+        /// </summary>
+        /// <param name="fileName">Base file name</param>
         public static string[][] GetLanguageStrings8(string fileName)
         {
             return new[]
@@ -103,6 +128,11 @@ namespace PKHeX.Core
             };
         }
 
+        /// <summary>
+        /// Retrieves the localization index list for all requested strings for the <see cref="fileName"/> through Chinese.
+        /// </summary>
+        /// <param name="fileName">Base file name</param>
+        /// <param name="zh2">String to use for the second Chinese localization.</param>
         public static string[][] GetLanguageStrings10(string fileName, string zh2 = "zh")
         {
             return new[]
@@ -137,13 +167,24 @@ namespace PKHeX.Core
                 return stringListCache.TryGetValue(fileName, out result);
         }
 
+        /// <summary>
+        /// Loads a text <see cref="file"/> into the program with a value of <see cref="txt"/>.
+        /// </summary>
+        /// <remarks>Caches the result array for future fetches.</remarks>
         public static string[] LoadStringList(string file, string? txt)
         {
             if (txt == null)
                 return Array.Empty<string>();
             string[] raw = txt.Split('\n');
             for (int i = 0; i < raw.Length; i++)
-                raw[i] = raw[i].TrimEnd('\r');
+            {
+                // check for extra trimming; not all resources are "clean" with only \n line breaks.
+                var line = raw[i];
+                if (line.Length == 0)
+                    continue;
+                if (line[^1] == '\r')
+                    raw[i] = line[..^1];
+            }
 
             lock (getStringListLoadLock) // Make sure only one thread can write to the cache
             {
@@ -151,14 +192,22 @@ namespace PKHeX.Core
                     stringListCache.Add(file, raw);
             }
 
-            return (string[])raw.Clone();
+            return raw;
         }
 
-        public static string[] GetStringList(string fileName, string lang2char, string type = "text") => GetStringList($"{type}_{fileName}_{lang2char}");
+        public static string[] GetStringList(string fileName, string lang2char, string type = "text") => GetStringList(GetFullResourceName(fileName, lang2char, type));
+
+        private static string GetFullResourceName(string fileName, string lang2char, string type) => $"{type}_{fileName}_{lang2char}";
 
         public static byte[] GetBinaryResource(string name)
         {
-            using var resource = thisAssembly.GetManifestResourceStream($"PKHeX.Core.Resources.byte.{name}");
+            if (!resourceNameMap.TryGetValue(name, out var resName))
+                return Array.Empty<byte>();
+
+            using var resource = thisAssembly.GetManifestResourceStream(resName);
+            if (resource is null)
+                return Array.Empty<byte>();
+
             var buffer = new byte[resource.Length];
             resource.Read(buffer, 0, (int)resource.Length);
             return buffer;
@@ -166,17 +215,11 @@ namespace PKHeX.Core
 
         public static string? GetStringResource(string name)
         {
-            if (!resourceNameMap.TryGetValue(name, out var resourceName))
-            {
-                bool Match(string x) => x.StartsWith("PKHeX.Core.Resources.text.") && x.EndsWith($"{name}.txt", StringComparison.OrdinalIgnoreCase);
-                resourceName = Array.Find(manifestResourceNames, Match);
-                if (resourceName == null)
-                    return null;
-                resourceNameMap.Add(name, resourceName);
-            }
+            if (!resourceNameMap.TryGetValue(name.ToLowerInvariant(), out var resourceName))
+                return null;
 
             using var resource = thisAssembly.GetManifestResourceStream(resourceName);
-            if (resource == null)
+            if (resource is null)
                 return null;
             using var reader = new StreamReader(resource);
             return reader.ReadToEnd();

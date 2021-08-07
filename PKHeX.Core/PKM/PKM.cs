@@ -8,20 +8,17 @@ namespace PKHeX.Core
     /// <summary>
     /// Object representing a <see cref="PKM"/>'s data and derived properties.
     /// </summary>
-    public abstract class PKM : ISpeciesForm, ITrainerID, IGeneration, ILangNick, IGameValueLimit, INature
+    public abstract class PKM : ISpeciesForm, ITrainerID, IGeneration, IShiny, ILangNick, IGameValueLimit, INature
     {
         public static readonly string[] Extensions = PKX.GetPKMExtensions();
         public abstract int SIZE_PARTY { get; }
         public abstract int SIZE_STORED { get; }
-        public string Extension => GetType().Name.ToLower();
+        public string Extension => GetType().Name.ToLowerInvariant();
         public abstract PersonalInfo PersonalInfo { get; }
         public virtual IReadOnlyList<ushort> ExtraBytes => Array.Empty<ushort>();
 
         // Internal Attributes set on creation
         public readonly byte[] Data; // Raw Storage
-        public string? Identifier; // User or Form Custom Attribute
-        public int Box { get; set; } = -1; // Batch Editor
-        public int Slot { get; set; } = -1; // Batch Editor
 
         protected PKM(byte[] data) => Data = data;
         protected PKM(int size) => Data = new byte[size];
@@ -34,11 +31,9 @@ namespace PKHeX.Core
         public virtual bool Valid { get => ChecksumValid && Sanity == 0; set { if (!value) return; Sanity = 0; RefreshChecksum(); } }
 
         // Trash Bytes
-        public abstract byte[] Nickname_Trash { get; set; }
-        public abstract byte[] OT_Trash { get; set; }
-        public virtual byte[] HT_Trash { get => Array.Empty<byte>(); set { } }
-
-        protected byte[] GetData(int Offset, int Length) => Data.Slice(Offset, Length);
+        public abstract Span<byte> Nickname_Trash { get; set; }
+        public abstract Span<byte> OT_Trash { get; set; }
+        public virtual Span<byte> HT_Trash { get => Span<byte>.Empty; set { } }
 
         protected virtual ushort CalculateChecksum() => PokeCrypto.GetCHK(Data, SIZE_STORED);
 
@@ -155,7 +150,7 @@ namespace PKHeX.Core
             get
             {
                 // Check to see if date is valid
-                if (!Util.IsDateValid(2000 + Met_Year, Met_Month, Met_Day))
+                if (!DateUtil.IsDateValid(2000 + Met_Year, Met_Month, Met_Day))
                     return null;
                 return new DateTime(2000 + Met_Year, Met_Month, Met_Day);
             }
@@ -198,7 +193,7 @@ namespace PKHeX.Core
             get
             {
                 // Check to see if date is valid
-                if (!Util.IsDateValid(2000 + Egg_Year, Egg_Month, Egg_Day))
+                if (!DateUtil.IsDateValid(2000 + Egg_Year, Egg_Month, Egg_Day))
                     return null;
                 return new DateTime(2000 + Egg_Year, Egg_Month, Egg_Day);
             }
@@ -226,7 +221,6 @@ namespace PKHeX.Core
         public virtual int RelearnMove2 { get => 0; set { } }
         public virtual int RelearnMove3 { get => 0; set { } }
         public virtual int RelearnMove4 { get => 0; set { } }
-        public virtual int EncounterType { get => 0; set { } }
 
         // Exposed but not Present in all
         public abstract int CurrentHandler { get; set; }
@@ -248,8 +242,6 @@ namespace PKHeX.Core
         public int SpecForm { get => Species + (Form << 11); set { Species = value & 0x7FF; Form = value >> 11; } }
         public virtual int SpriteItem => HeldItem;
         public virtual bool IsShiny => TSV == PSV;
-        public StorageSlotFlag StorageFlags { get; internal set; }
-        public bool Locked => StorageFlags.HasFlagFast(StorageSlotFlag.Locked);
         public int TrainerID7 { get => (int)((uint)(TID | (SID << 16)) % 1000000); set => SetID7(TrainerSID7, value); }
         public int TrainerSID7 { get => (int)((uint)(TID | (SID << 16)) / 1000000); set => SetID7(value, TrainerID7); }
 
@@ -298,7 +290,6 @@ namespace PKHeX.Core
         public bool LGPE => Version is (int)GP or (int)GE;
         public bool SWSH => Version is (int)SW or (int)SH;
 
-        protected bool PtHGSS => Pt || HGSS;
         public bool GO_LGPE => GO && Met_Location == Locations.GO7;
         public bool GO_HOME => GO && Met_Location == Locations.GO8;
         public bool VC => VC1 || VC2;
@@ -332,7 +323,7 @@ namespace PKHeX.Core
         }
 
         public int DebutGeneration => Legal.GetDebutGeneration(Species);
-        public bool PKRS_Infected { get => PKRS_Strain > 0; set => PKRS_Strain = value ? Math.Max(PKRS_Strain, 1) : 0; }
+        public bool PKRS_Infected { get => PKRS_Strain != 0; set => PKRS_Strain = value ? Math.Max(PKRS_Strain, 1) : 0; }
 
         public bool PKRS_Cured
         {
@@ -374,15 +365,7 @@ namespace PKHeX.Core
 
         public string FileName => $"{FileNameWithoutExtension}.{Extension}";
 
-        public virtual string FileNameWithoutExtension
-        {
-            get
-            {
-                string form = Form > 0 ? $"-{Form:00}" : string.Empty;
-                string star = IsShiny ? " ★" : string.Empty;
-                return $"{Species:000}{form}{star} - {Nickname} - {Checksum:X4}{EncryptionConstant:X8}";
-            }
-        }
+        public string FileNameWithoutExtension => EntityFileNamer.GetName(this);
 
         public int[] IVs
         {
@@ -491,13 +474,14 @@ namespace PKHeX.Core
             get => 15 * HPBitValType / 63;
             set
             {
-                var dlb = HiddenPower.DefaultLowBits;
-                IV_HP =  (IV_HP  & ~1) + dlb[value, 0];
-                IV_ATK = (IV_ATK & ~1) + dlb[value, 1];
-                IV_DEF = (IV_DEF & ~1) + dlb[value, 2];
-                IV_SPE = (IV_SPE & ~1) + dlb[value, 3];
-                IV_SPA = (IV_SPA & ~1) + dlb[value, 4];
-                IV_SPD = (IV_SPD & ~1) + dlb[value, 5];
+                var arr = HiddenPower.DefaultLowBits;
+                var bits = (uint)value >= arr.Length ? 0 : arr[value];
+                IV_HP = (IV_HP & ~1)   + ((bits >> 0) & 1);
+                IV_ATK = (IV_ATK & ~1) + ((bits >> 1) & 1);
+                IV_DEF = (IV_DEF & ~1) + ((bits >> 2) & 1);
+                IV_SPE = (IV_SPE & ~1) + ((bits >> 3) & 1);
+                IV_SPA = (IV_SPA & ~1) + ((bits >> 4) & 1);
+                IV_SPD = (IV_SPD & ~1) + ((bits >> 5) & 1);
             }
         }
 
@@ -505,81 +489,16 @@ namespace PKHeX.Core
         public TradebackType TradebackStatus { get; set; } = TradebackType.Any;
         public bool Gen1_NotTradeback => TradebackStatus == TradebackType.Gen1_NotTradeback;
         public bool Gen2_NotTradeback => TradebackStatus == TradebackType.Gen2_NotTradeback;
-        public virtual bool WasLink => false;
 
-        public bool WasEgg
-        {
-            get
-            {
-                int loc = Egg_Location;
-                return Generation switch
-                {
-                    4 => (Legal.EggLocations4.Contains(loc) || (Species == (int) Core.Species.Manaphy && loc == Locations.Ranger4) || (loc == Locations.Faraway4 && PtHGSS)), // faraway
-                    5 => Legal.EggLocations5.Contains(loc),
-                    6 => Legal.EggLocations6.Contains(loc),
-                    7 => Legal.EggLocations7.Contains(loc),
-                    8 => Legal.EggLocations8.Contains(loc),
-                    // Gen 1/2 and pal park Gen 3
-                    _ => false
-                };
-            }
-        }
-
-        public bool WasBredEgg
-        {
-            get
-            {
-                int loc = Egg_Location;
-                return Generation switch
-                {
-                    4 => loc is Locations.Daycare4 or Locations.LinkTrade4 || (loc == Locations.Faraway4 && PtHGSS),
-                    5 => loc is Locations.Daycare5 or Locations.LinkTrade5,
-                    6 or 7 or 8 => loc is Locations.Daycare5 or Locations.LinkTrade6,
-                    _ => false,// Gen 1/2 and pal park Gen 3
-                };
-            }
-        }
-
-        public virtual bool WasGiftEgg
-        {
-            get
-            {
-                if (!WasEgg)
-                    return false;
-                int loc = Egg_Location;
-                return Generation switch
-                {
-                    4 => Legal.GiftEggLocation4.Contains(loc) || (loc == Locations.Faraway4 && HGSS),
-                    5 => loc == 60003,
-                    6 or 7 or 8 => loc == 60004,
-                    _ => false,
-                };
-            }
-        }
-
-        public virtual bool WasEvent => Locations.IsEventLocation5(Met_Location) || FatefulEncounter;
-
-        public virtual bool WasEventEgg
-        {
-            get
-            {
-                if (Gen4)
-                    return WasEgg && Species == (int) Core.Species.Manaphy;
-                // Gen5+
-                if (Met_Level != 1)
-                    return false;
-                int loc = Egg_Location;
-                return Locations.IsEventLocation5(loc) || (FatefulEncounter && loc != 0);
-            }
-        }
-
+        // Misc Egg Facts
+        public bool WasEgg => IsEgg || Egg_Location != 0;
         public bool WasTradedEgg => Egg_Location == GetTradedEggLocation();
         public bool IsTradedEgg => Met_Location == GetTradedEggLocation();
         private int GetTradedEggLocation() => Locations.TradedEggLocation(Generation);
 
         public virtual bool IsUntraded => false;
         public bool IsNative => Generation == Format;
-        public bool IsOriginValid => Species <= Legal.GetMaxSpeciesOrigin(Format);
+        public bool IsOriginValid => Species <= MaxSpeciesID;
 
         /// <summary>
         /// Checks if the <see cref="PKM"/> could inhabit a set of games.
@@ -643,11 +562,11 @@ namespace PKHeX.Core
         {
             int gender = Gender;
             int gv = PersonalInfo.Gender;
-            if (gv == 255)
+            if (gv == PersonalInfo.RatioMagicGenderless)
                 return gender == 2;
-            if (gv == 254)
+            if (gv == PersonalInfo.RatioMagicFemale)
                 return gender == 1;
-            if (gv == 0)
+            if (gv == PersonalInfo.RatioMagicMale)
                 return gender == 0;
 
             int gen = Generation;
@@ -719,18 +638,13 @@ namespace PKHeX.Core
         /// Gets the IV Judge Rating value.
         /// </summary>
         /// <remarks>IV Judge scales his response 0 (worst) to 3 (best).</remarks>
-        public int PotentialRating
+        public int PotentialRating => IVTotal switch
         {
-            get
-            {
-                int ivTotal = IVTotal;
-                if (ivTotal <= 90)
-                    return 0;
-                if (ivTotal <= 120)
-                    return 1;
-                return ivTotal <= 150 ? 2 : 3;
-            }
-        }
+            <=  90 => 0,
+            <= 120 => 1,
+            <= 150 => 2,
+            _      => 3
+        };
 
         /// <summary>
         /// Gets the current Battle Stats.
@@ -955,7 +869,8 @@ namespace PKHeX.Core
         /// </remarks>
         public void SetPIDUnown3(int form)
         {
-            do PID = Util.Rand32(); while (PKX.GetUnownForm(PID) != form);
+            var rnd = Util.Rand;
+            do PID = Util.Rand32(rnd); while (PKX.GetUnownForm(PID) != form);
             if (Format >= 6 && (Gen3 || Gen4 || Gen5))
                 EncryptionConstant = PID;
         }
@@ -980,7 +895,7 @@ namespace PKHeX.Core
             {
                 for (int i = 0; i < count; i++)
                     ivs[i] = MaxIV;
-                Util.Shuffle(ivs); // Randomize IV order
+                Util.Shuffle(ivs, 0, ivs.Length, rnd); // Randomize IV order
             }
             return IVs = ivs;
         }
@@ -1046,8 +961,8 @@ namespace PKHeX.Core
             // Only transfer declared properties not defined in PKM.cs but in the actual type
             var srcType = GetType();
             var destType = Destination.GetType();
-            var srcProperties = ReflectUtil.GetAllPropertyInfoPublic(srcType).Select(z => z.Name);
-            var destProperties = ReflectUtil.GetAllPropertyInfoPublic(destType).Where(z => z.SetMethod != null).Select(z => z.Name);
+            var srcProperties = ReflectUtil.GetPropertiesCanWritePublicDeclared(srcType);
+            var destProperties = ReflectUtil.GetPropertiesCanWritePublicDeclared(destType);
 
             // Transfer properties in the order they are defined in the destination PKM format for best conversion
             var shared = destProperties.Intersect(srcProperties);
@@ -1056,9 +971,13 @@ namespace PKHeX.Core
                 if (!BatchEditing.TryGetHasProperty(this, property, out var src))
                     continue;
                 var prop = src.GetValue(this);
-                if (prop is not byte[] && BatchEditing.TryGetHasProperty(Destination, property, out var pi))
+                if (prop is not (byte[] or null) && BatchEditing.TryGetHasProperty(Destination, property, out var pi))
                     ReflectUtil.SetValue(pi, Destination, prop);
             }
+
+            // set shared properties for the Gen1/2 base class
+            if (Destination is GBPKM l)
+                l.ImportFromFuture(this);
         }
 
         /// <summary>

@@ -11,10 +11,18 @@ namespace PKHeX.Core
     public static class GameUtil
     {
         /// <summary>
-        /// List of possible <see cref="GameVersion"/> values a <see cref="PKM.Version"/> can have.
+        /// All possible <see cref="GameVersion"/> values a <see cref="PKM.Version"/> can have.
         /// </summary>
         /// <remarks>Ordered roughly by most recent games first.</remarks>
-        public static readonly IReadOnlyList<GameVersion> GameVersions = ((GameVersion[])Enum.GetValues(typeof(GameVersion))).Where(IsValidSavedVersion).Reverse().ToArray();
+        public static readonly GameVersion[] GameVersions = GetValidGameVersions();
+
+        private static GameVersion[] GetValidGameVersions()
+        {
+            var all = (GameVersion[])Enum.GetValues(typeof(GameVersion));
+            var valid = Array.FindAll(all, IsValidSavedVersion);
+            Array.Reverse(valid);
+            return valid;
+        }
 
         /// <summary>
         /// Indicates if the <see cref="GameVersion"/> value is a value used by the games or is an aggregate indicator.
@@ -25,7 +33,7 @@ namespace PKHeX.Core
         /// <summary>
         /// Most recent game ID utilized by official games.
         /// </summary>
-        private const GameVersion HighestGameID = RB - 1;
+        internal const GameVersion HighestGameID = RB - 1;
 
         /// <summary>Determines the Version Grouping of an input Version ID</summary>
         /// <param name="version">Version of which to determine the group</param>
@@ -203,7 +211,7 @@ namespace PKHeX.Core
         {
             if (Gen7b.Contains(pkVersion))
                 return new[] {GO, GP, GE};
-            return GameVersions.Where(z => z.GetGeneration() == generation).ToArray();
+            return Array.FindAll(GameVersions, z => z.GetGeneration() == generation);
         }
 
         /// <summary>

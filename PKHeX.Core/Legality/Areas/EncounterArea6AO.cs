@@ -9,6 +9,10 @@ namespace PKHeX.Core
     /// </summary>
     public sealed record EncounterArea6AO : EncounterArea
     {
+        public readonly EncounterSlot6AO[] Slots;
+
+        protected override IReadOnlyList<EncounterSlot> Raw => Slots;
+
         public static EncounterArea6AO[] GetAreas(byte[][] input, GameVersion game)
         {
             var result = new EncounterArea6AO[input.Length];
@@ -48,8 +52,6 @@ namespace PKHeX.Core
         private const int FluteBoostMax = 4; // Black Flute increases levels.
         private const int DexNavBoost = 30; // Maximum DexNav chain
 
-        private const int RandomForm = 31;
-
         public override IEnumerable<EncounterSlot> GetMatchingSlots(PKM pkm, IReadOnlyList<EvoCriteria> chain)
         {
             foreach (var slot in Slots)
@@ -64,16 +66,15 @@ namespace PKHeX.Core
                     if (!slot.IsLevelWithinRange(pkm.Met_Level, boostMin, boostMax))
                         break;
 
-                    if (slot.Form != evo.Form && slot.Form != RandomForm)
+                    if (slot.Form != evo.Form && !slot.IsRandomUnspecificForm)
                         break;
 
                     // Track some metadata about how this slot was matched.
-                    var ao = (EncounterSlot6AO)slot;
-                    var clone = ao with
+                    var clone = slot with
                     {
                         WhiteFlute = evo.MinLevel < slot.LevelMin,
                         BlackFlute = evo.MinLevel > slot.LevelMax && evo.MinLevel <= slot.LevelMax + FluteBoostMax,
-                        DexNav = ao.CanDexNav && (evo.MinLevel != slot.LevelMax || pkm.RelearnMove1 != 0 || pkm.AbilityNumber == 4),
+                        DexNav = slot.CanDexNav && (evo.MinLevel != slot.LevelMax || pkm.RelearnMove1 != 0 || pkm.AbilityNumber == 4),
                     };
                     yield return clone;
                     break;

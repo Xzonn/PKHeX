@@ -1,9 +1,8 @@
 ﻿using System;
-using System.Linq;
 
 namespace PKHeX.Core
 {
-    public sealed class MyStatus7 : SaveBlock
+    public sealed class MyStatus7 : SaveBlock, IRegionOrigin
     {
         public const int GameSyncIDSize = 16; // 64 bits
         public const int NexUniqueIDSize = 32; // 128 bits
@@ -61,34 +60,28 @@ namespace PKHeX.Core
             }
         }
 
-        public byte[] FestaID // 12byte
+        public uint FestaID
         {
-            get => Data.Skip(Offset + 0x28).Take(4).Concat(Data.Skip(Offset + 0x18).Take(8)).ToArray();
-            set
-            {
-                if (value.Length != 12)
-                    return;
-                Array.Copy(value, 0, Data, Offset + 0x28, 4);
-                Array.Copy(value, 4, Data, Offset + 0x18, 8);
-            }
+            get => BitConverter.ToUInt32(Data, Offset + 0x28);
+            set => BitConverter.GetBytes(value).CopyTo(Data, Offset + 0x28);
         }
 
-        public int SubRegion
+        public byte Region
         {
             get => Data[Offset + 0x2E];
-            set => Data[Offset + 0x2E] = (byte)value;
+            set => Data[Offset + 0x2E] = value;
         }
 
-        public int Country
+        public byte Country
         {
             get => Data[Offset + 0x2F];
-            set => Data[Offset + 0x2F] = (byte)value;
+            set => Data[Offset + 0x2F] = value;
         }
 
-        public int ConsoleRegion
+        public byte ConsoleRegion
         {
             get => Data[Offset + 0x34];
-            set => Data[Offset + 0x34] = (byte)value;
+            set => Data[Offset + 0x34] = value;
         }
 
         public int Language

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace PKHeX.Core
 {
@@ -21,16 +20,6 @@ namespace PKHeX.Core
 
         public sealed override IReadOnlyList<ushort> ExtraBytes => Array.Empty<ushort>();
 
-        public sealed override string FileNameWithoutExtension
-        {
-            get
-            {
-                string form = Form > 0 ? $"-{Form:00}" : string.Empty;
-                string star = IsShiny ? " ★" : string.Empty;
-                return $"{Species:000}{form}{star} - {Nickname} - {Checksums.CRC16_CCITT(Encrypt()):X4}";
-            }
-        }
-
         protected GBPKM(int size) : base(size) { }
         protected GBPKM(byte[] data) : base(data) { }
 
@@ -39,7 +28,7 @@ namespace PKHeX.Core
         public sealed override byte[] DecryptedBoxData => Encrypt();
         public sealed override byte[] DecryptedPartyData => Encrypt();
 
-        protected abstract IEnumerable<byte> GetNonNickname(int language);
+        protected abstract byte[] GetNonNickname(int language);
 
         private bool? _isnicknamed;
 
@@ -96,13 +85,13 @@ namespace PKHeX.Core
             get
             {
                 int gv = PersonalInfo.Gender;
-                if (gv == 255)
-                    return 2;
-                if (gv == 254)
-                    return 1;
-                if (gv == 0)
-                    return 0;
-                return IV_ATK > gv >> 4 ? 0 : 1;
+                return gv switch
+                {
+                    PersonalInfo.RatioMagicGenderless => 2,
+                    PersonalInfo.RatioMagicFemale => 1,
+                    PersonalInfo.RatioMagicMale => 0,
+                    _ => IV_ATK > gv >> 4 ? 0 : 1
+                };
             }
             set { }
         }
@@ -225,6 +214,8 @@ namespace PKHeX.Core
             return pp + (ppUpCount * Math.Min(7, pp / 5));
         }
 
+        public void MaxEVs() => EV_HP = EV_ATK = EV_DEF = EV_SPC = EV_SPE = MaxEV;
+
         /// <summary>
         /// Applies <see cref="PKM.IVs"/> to the <see cref="PKM"/> to make it shiny.
         /// </summary>
@@ -234,6 +225,20 @@ namespace PKHeX.Core
             IV_DEF = 10;
             IV_SPE = 10;
             IV_SPA = 10;
+        }
+
+        internal void ImportFromFuture(PKM pkm)
+        {
+            Nickname = pkm.Nickname;
+            OT_Name = pkm.OT_Name;
+            IV_ATK = pkm.IV_ATK / 2;
+            IV_DEF = pkm.IV_DEF / 2;
+            IV_SPC = pkm.IV_SPA / 2;
+          //IV_SPD = pkm.IV_ATK / 2;
+            IV_SPE = pkm.IV_SPE / 2;
+
+            if (pkm.HasMove((int)Move.HiddenPower))
+                HPType = pkm.HPType;
         }
     }
 }

@@ -60,6 +60,7 @@ namespace PKHeX.Core
             Items = new MyItem7USUM(sav, 0);
             Situation = new Situation7(sav, bi[01].Offset);
             MyStatus = new MyStatus7(sav, bi[03].Offset);
+            Fame = new HallOfFame7(sav, bi[05].Offset + 0xA3C);
             Zukan = new Zukan7(sav, bi[06].Offset, 0x550);
             Misc = new Misc7(sav, bi[09].Offset);
             FieldMenu = new FieldMenu7(sav, bi[10].Offset);
@@ -76,6 +77,7 @@ namespace PKHeX.Core
             Records = new RecordBlock6(sav, bi[28].Offset);
             BattleTree = new BattleTree7(sav, bi[32].Offset);
             Daycare = new Daycare7(sav, bi[33].Offset);
+            BattleAgency = new BattleAgency7(sav, bi[37].Offset);
         }
 
         public IReadOnlyList<BlockInfo7> BlockInfo => BlockInfoUSUM;
@@ -99,5 +101,7 @@ namespace PKHeX.Core
         public ResortSave7 ResortSave { get; }
         public FieldMenu7 FieldMenu { get; }
         public FashionBlock7 Fashion { get; }
+        public HallOfFame7 Fame { get; }
+        public BattleAgency7 BattleAgency { get; }
     }
 }

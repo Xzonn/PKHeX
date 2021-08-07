@@ -6,7 +6,7 @@ namespace PKHeX.Core
     /// Wild Encounter data <see cref="EncounterSlot"/> Type
     /// </summary>
     /// <remarks>
-    /// Different from <see cref="EncounterType"/>, this corresponds to the method that the <see cref="IEncounterable"/> may be encountered.</remarks>
+    /// Different from <see cref="GroundTilePermission"/>, this corresponds to the method that the <see cref="IEncounterTemplate"/> may be encountered.</remarks>
     [Flags]
 #pragma warning disable RCS1191 // Declare enum value as combination of names.
     public enum SlotType : byte
@@ -61,14 +61,41 @@ namespace PKHeX.Core
         /// </summary>
         BugContest = 9,
 
+        /// <summary>
+        /// Slot is encountered via Generation 5 Hidden Grotto.
+        /// </summary>
         HiddenGrotto = 10,
-        // GoPark = 11,
-        FriendSafari = 12,
-        Horde = 13,
-        // Pokeradar = 14,
-        SOS = 15,
-        // always used as a modifier to another slot type
 
+        // GoPark = 11, UNUSED, now EncounterSlot7g
+
+        /// <summary>
+        /// Slot is encountered via Generation 6 Friend Safari.
+        /// </summary>
+        FriendSafari = 12,
+
+        /// <summary>
+        /// Slot is encountered via Generation 6 Horde Battle.
+        /// </summary>
+        Horde = 13,
+
+        // Pokeradar = 14, // UNUSED, don't need to differentiate Gen4 Radar Slots
+
+        /// <summary>
+        /// Slot is encountered via Generation 7 SOS triggers only.
+        /// </summary>
+        SOS = 15,
+
+        // Modifiers
+
+        /// <summary>
+        /// Used to differentiate the two types of headbutt tree encounters.
+        /// </summary>
+        /// <remarks><see cref="Headbutt"/></remarks>
+        Special = 1 << 6,
+
+        /// <summary>
+        /// Used to identify encounters that are triggered via alternate ESV proc calculations.
+        /// </summary>
         Swarm = 1 << 7,
     }
 
@@ -87,18 +114,6 @@ namespace PKHeX.Core
             SlotType.BugContest => true,
 
             _ => false,
-        };
-
-        public static Ball GetRequiredBallValueWild(this SlotType t, int generation, int location) => generation switch
-        {
-            3 when Locations.IsSafariZoneLocation3(location) => Ball.Safari,
-            4 when Locations.IsSafariZoneLocation4(location) => Ball.Safari,
-            4 when t == SlotType.BugContest => Ball.Sport,
-
-            // Poké Pelago
-            7 when location == 30016 => Ball.Poke,
-
-            _ => Ball.None,
         };
     }
 }

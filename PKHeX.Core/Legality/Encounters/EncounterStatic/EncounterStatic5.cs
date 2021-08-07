@@ -27,6 +27,23 @@ namespace PKHeX.Core
             return Roaming_MetLocation_BW.Contains(pk.Met_Location);
         }
 
+        protected override bool IsMatchEggLocation(PKM pkm)
+        {
+            var eggloc = pkm.Egg_Location;
+            if (!EggEncounter)
+                return eggloc == EggLocation;
+
+            if (!pkm.IsEgg) // hatched
+                return eggloc == EggLocation || eggloc == Locations.LinkTrade5;
+
+            // Unhatched:
+            if (eggloc != EggLocation)
+                return false;
+            if (pkm.Met_Location is not 0 or Locations.LinkTrade5)
+                return false;
+            return true;
+        }
+
         private static readonly int[] Roaming_MetLocation_BW =
         {
             25,26,27,28, // Route 12, 13, 14, 15 Night latter half

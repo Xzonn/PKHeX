@@ -22,7 +22,7 @@ namespace PKHeX.Core
         public GameVersion Version { get; }
 
         public int CurrentLevel { get; init; } = -1;
-        public int Location { get; init; }
+        public abstract int Location { get; }
         public int Ability { get; init; }
         public int Gender { get; init; } = -1;
         public Nature Nature { get; init; } = Nature.Random;
@@ -34,7 +34,6 @@ namespace PKHeX.Core
         public int OTGender { get; init; } = -1;
 
         public IReadOnlyList<int> IVs { get; init; } = Array.Empty<int>();
-        public int FlawlessIVCount { get; init; }
 
         public bool EggEncounter => false;
         public int EggLocation { get; init; }
@@ -53,6 +52,7 @@ namespace PKHeX.Core
         public string Name => _name;
         public string LongName => _name;
         public bool IsNicknamed { get; init; } = true;
+        public bool IsShiny => Shiny.IsShiny();
 
         public IReadOnlyList<string> Nicknames { get; internal set; } = Array.Empty<string>();
         public IReadOnlyList<string> TrainerNames { get; internal set; } = Array.Empty<string>();
@@ -62,19 +62,6 @@ namespace PKHeX.Core
         public bool HasTrainerName => TrainerNames.Count != 0;
 
         protected EncounterTrade(GameVersion game) => Version = game;
-
-        private static int GetDefaultMetLocation(int generation) => generation switch
-        {
-            1 => 0,
-            2 => Locations.LinkTrade2NPC,
-            3 => Locations.LinkTrade3NPC,
-            4 => Locations.LinkTrade4NPC,
-            5 => Locations.LinkTrade5NPC,
-            6 => Locations.LinkTrade6NPC,
-            7 => Locations.LinkTrade6NPC, // 7 is same as 6
-            8 => Locations.LinkTrade6NPC, // 8 is same as 6
-            _ => throw new IndexOutOfRangeException(nameof(generation)),
-        };
 
         public PKM ConvertToPKM(ITrainerInfo sav) => ConvertToPKM(sav, EncounterCriteria.Unrestricted);
 
@@ -90,7 +77,7 @@ namespace PKHeX.Core
         protected virtual void ApplyDetails(ITrainerInfo sav, EncounterCriteria criteria, PKM pk)
         {
             var version = this.GetCompatibleVersion((GameVersion)sav.Game);
-            int lang = (int)Language.GetSafeLanguage(Generation, (LanguageID)sav.Language);
+            int lang = (int)Language.GetSafeLanguage(Generation, (LanguageID)sav.Language, version);
             int level = CurrentLevel > 0 ? CurrentLevel : LevelMin;
             if (level == 0)
                 level = Math.Max(1, LevelMin);
@@ -120,8 +107,7 @@ namespace PKHeX.Core
             var time = DateTime.Now;
             if (pk.Format != 2 || version == GameVersion.C)
             {
-                var location = Location != 0 ? Location : GetDefaultMetLocation(Generation);
-                SetMetData(pk, level, location, time);
+                SetMetData(pk, level, Location, time);
             }
             else
             {
@@ -146,7 +132,7 @@ namespace PKHeX.Core
             var pi = pk.PersonalInfo;
             int gender = criteria.GetGender(Gender, pi);
             int nature = (int)criteria.GetNature(Nature);
-            int ability = criteria.GetAbilityFromNumber(Ability, pi);
+            int ability = criteria.GetAbilityFromNumber(Ability);
 
             PIDGenerator.SetRandomWildPID(pk, Generation, nature, ability, gender);
             pk.Nature = pk.StatNature = nature;
@@ -226,8 +212,7 @@ namespace PKHeX.Core
             if (!pkm.HasOriginalMetLocation)
                 return evo.Level >= Level;
 
-            var loc = Location != 0 ? Location : GetDefaultMetLocation(Generation);
-            if (loc != pkm.Met_Location)
+            if (Location != pkm.Met_Location)
                 return false;
 
             if (pkm.Format < 5)

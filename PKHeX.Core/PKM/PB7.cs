@@ -39,10 +39,10 @@ namespace PKHeX.Core
             return data;
         }
 
-        public override PKM Clone() => new PB7((byte[])Data.Clone()){Identifier = Identifier};
+        public override PKM Clone() => new PB7((byte[])Data.Clone());
 
-        private string GetString(int Offset, int Count) => StringConverter.GetString7(Data, Offset, Count);
-        private byte[] SetString(string value, int maxLength, bool chinese = false) => StringConverter.SetString7b(value, maxLength, Language, chinese: chinese);
+        private string GetString(int offset, int count) => StringConverter.GetString7b(Data, offset, count);
+        private static byte[] SetString(string value, int maxLength) => StringConverter.SetString7b(value, maxLength);
 
         // Structure
         #region Block A
@@ -131,6 +131,10 @@ namespace PKHeX.Core
         public int HeightScalar { get => Data[0x3A]; set => Data[0x3A] = (byte)value; }
         public int WeightScalar { get => Data[0x3B]; set => Data[0x3B] = (byte)value; }
         public uint FormArgument { get => BitConverter.ToUInt32(Data, 0x3C); set => BitConverter.GetBytes(value).CopyTo(Data, 0x3C); }
+        public byte FormArgumentRemain { get => (byte)FormArgument; set => FormArgument = (FormArgument & ~0xFFu) | value; }
+        public byte FormArgumentElapsed { get => (byte)(FormArgument >> 8); set => FormArgument = (FormArgument & ~0xFF00u) | (uint)(value << 8); }
+        public byte FormArgumentMaximum { get => (byte)(FormArgument >> 16); set => FormArgument = (FormArgument & ~0xFF0000u) | (uint)(value << 16); }
+
         #endregion
         #region Block B
         public override string Nickname
@@ -289,7 +293,7 @@ namespace PKHeX.Core
         public override int Stat_SPA { get => BitConverter.ToUInt16(Data, 0xFA); set => BitConverter.GetBytes((ushort)value).CopyTo(Data, 0xFA); }
         public override int Stat_SPD { get => BitConverter.ToUInt16(Data, 0xFC); set => BitConverter.GetBytes((ushort)value).CopyTo(Data, 0xFC); }
         public int Stat_CP { get => BitConverter.ToUInt16(Data, 0xFE); set => BitConverter.GetBytes((ushort)value).CopyTo(Data, 0xFE); }
-        public bool Stat_Mega { get => Data[0x100] != 0; set => Data[0x100] = value ? 1 : 0; }
+        public bool Stat_Mega { get => Data[0x100] != 0; set => Data[0x100] = value ? (byte)1 : (byte)0; }
         public int Stat_MegaForm { get => Data[0x101]; set => Data[0x101] = (byte)value; }
         // 102/103 unused
         #endregion

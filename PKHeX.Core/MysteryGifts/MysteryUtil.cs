@@ -63,21 +63,26 @@ namespace PKHeX.Core
                 catch { result.Add(MsgMysteryGiftParseFail); }
 #pragma warning restore CA1031 // Do not catch general exception types
             }
-            else if (gift.IsBP)
+            else switch (gift)
             {
-                result.Add($"BP: {gift.BP}");
+                case WC7 { IsBP: true } w7bp:
+                    result.Add($"BP: {w7bp.BP}");
+                    break;
+                case WC7 { IsBean: true } w7bean:
+                    result.Add($"Bean ID: {w7bean.Bean}");
+                    result.Add($"Quantity: {w7bean.Quantity}");
+                    break;
+                default:
+                    result.Add(MsgMysteryGiftParseTypeUnknown);
+                    break;
             }
-            else if (gift.IsBean)
+            switch (gift)
             {
-                result.Add($"Bean ID: {gift.Bean}");
-                result.Add($"Quantity: {gift.Quantity}");
-            }
-            else { result.Add(MsgMysteryGiftParseTypeUnknown); }
-            if (gift is WC7 w7)
-            {
-                result.Add($"Repeatable: {w7.GiftRepeatable}");
-                result.Add($"Collected: {w7.GiftUsed}");
-                result.Add($"Once Per Day: {w7.GiftOncePerDay}");
+                case WC7 w7:
+                    result.Add($"Repeatable: {w7.GiftRepeatable}");
+                    result.Add($"Collected: {w7.GiftUsed}");
+                    result.Add($"Once Per Day: {w7.GiftOncePerDay}");
+                    break;
             }
             return result;
         }
@@ -99,7 +104,7 @@ namespace PKHeX.Core
             var id = gift.Generation < 7 ? $"{gift.TID:D5}/{gift.SID:D5}" : $"[{gift.TrainerSID7:D4}]{gift.TrainerID7:D6}";
 
             var first =
-                $"{strings.Species[gift.Species]} @ {strings.Item[gift.HeldItem]}  --- "
+                $"{strings.Species[gift.Species]} @ {strings.Item[gift.HeldItem >= 0 ? gift.HeldItem : 0]}  --- "
                 + (gift.IsEgg ? strings.EggName : $"{gift.OT_Name} - {id}");
             result.Add(first);
             result.Add(string.Join(" / ", gift.Moves.Select(z => strings.Move[z])));

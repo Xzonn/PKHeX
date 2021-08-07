@@ -8,7 +8,7 @@ namespace PKHeX.Core
     /// <summary>
     /// Generation 8 Mystery Gift Template File
     /// </summary>
-    public sealed class WC8 : DataMysteryGift, ILangNick, INature, IGigantamax, IDynamaxLevel, IRibbonIndex, IMemoryOT,
+    public sealed class WC8 : DataMysteryGift, ILangNick, INature, IGigantamax, IDynamaxLevel, IRibbonIndex, IMemoryOT, ILangNicknamedTemplate,
         IRibbonSetEvent3, IRibbonSetEvent4, IRibbonSetCommon3, IRibbonSetCommon4, IRibbonSetCommon6, IRibbonSetCommon7, IRibbonSetCommon8, IRibbonSetMark8
     {
         public const int Size = 0x2D0;
@@ -30,12 +30,7 @@ namespace PKHeX.Core
 
         // TODO: public byte RestrictVersion?
 
-        public bool CanBeReceivedByVersion(int v)
-        {
-            if (v < (int)GameVersion.SW || v > (int)GameVersion.SH)
-                return false;
-            return true;
-        }
+        public bool CanBeReceivedByVersion(int v) => v is (int) GameVersion.SW or (int) GameVersion.SH;
 
         // General Card Properties
         public override int CardID
@@ -163,7 +158,7 @@ namespace PKHeX.Core
         public override int Form { get => Data[CardStart + 0x242]; set => Data[CardStart + 0x242] = (byte)value; }
         public override int Gender { get => Data[CardStart + 0x243]; set => Data[CardStart + 0x243] = (byte)value; }
         public override int Level { get => Data[CardStart + 0x244]; set => Data[CardStart + 0x244] = (byte)value; }
-        public override bool IsEgg { get => Data[CardStart + 0x245] == 1; set => Data[CardStart + 0x245] = value ? 1 : 0; }
+        public override bool IsEgg { get => Data[CardStart + 0x245] == 1; set => Data[CardStart + 0x245] = value ? (byte)1 : (byte)0; }
         public int Nature { get => (sbyte)Data[CardStart + 0x246]; set => Data[CardStart + 0x246] = (byte)value; }
         public override int AbilityType { get => Data[CardStart + 0x247]; set => Data[CardStart + 0x247] = (byte)value; }
 
@@ -179,7 +174,7 @@ namespace PKHeX.Core
 
         public int MetLevel { get => Data[CardStart + 0x249]; set => Data[CardStart + 0x249] = (byte)value; }
         public byte DynamaxLevel { get => Data[CardStart + 0x24A]; set => Data[CardStart + 0x24A] = value; }
-        public bool CanGigantamax { get => Data[CardStart + 0x24B] != 0; set => Data[CardStart + 0x24B] = value ? 1 : 0; }
+        public bool CanGigantamax { get => Data[CardStart + 0x24B] != 0; set => Data[CardStart + 0x24B] = value ? (byte)1 : (byte)0; }
 
         // Ribbons 0x24C-0x26C
         private const int RibbonBytesOffset = 0x24C;
@@ -259,7 +254,38 @@ namespace PKHeX.Core
 
         public bool GetIsNicknamed(int language) => BitConverter.ToUInt16(Data, GetNicknameOffset(language)) != 0;
 
-        public int GetNicknameLanguage(int language) => Data[GetNicknameOffset(language) + 0x1A];
+        public bool CanBeAnyLanguage()
+        {
+            for (int i = 0; i < 9; i++)
+            {
+                var ofs = GetLanguageOffset(i);
+                var lang = BitConverter.ToInt16(Data, ofs);
+                if (lang != 0)
+                    return false;
+            }
+            return true;
+        }
+
+        public bool CanHaveLanguage(int language)
+        {
+            if (language is < (int)LanguageID.Japanese or > (int)LanguageID.ChineseT)
+                return false;
+
+            if (CanBeAnyLanguage())
+                return true;
+
+            for (int i = 0; i < 9; i++)
+            {
+                var ofs = GetLanguageOffset(i);
+                var lang = BitConverter.ToInt16(Data, ofs);
+                if (lang == language)
+                    return true;
+            }
+            return false;
+        }
+
+        public int GetLanguage(int redeemLanguage) => Data[GetLanguageOffset(GetLanguageIndex(redeemLanguage))];
+        private static int GetLanguageOffset(int index) => 0x30 + (index * 0x1C) + 0x1A;
 
         public bool GetHasOT(int language) => BitConverter.ToUInt16(Data, GetOTOffset(language)) != 0;
 
@@ -302,10 +328,10 @@ namespace PKHeX.Core
         public bool IsNicknamed => false;
         public int Language => 2;
 
-        public string GetNickname(int language) => StringConverter.GetString7(Data, GetNicknameOffset(language), 0x1A);
+        public string GetNickname(int language) => StringConverter.GetString7b(Data, GetNicknameOffset(language), 0x1A);
         public void SetNickname(int language, string value) => StringConverter.SetString7b(value, 12, 13).CopyTo(Data, GetNicknameOffset(language));
 
-        public string GetOT(int language) => StringConverter.GetString7(Data, GetOTOffset(language), 0x1A);
+        public string GetOT(int language) => StringConverter.GetString7b(Data, GetOTOffset(language), 0x1A);
         public void SetOT(int language, string value) => StringConverter.SetString7b(value, 12, 13).CopyTo(Data, GetOTOffset(language));
 
         private static int GetNicknameOffset(int language)
@@ -320,17 +346,27 @@ namespace PKHeX.Core
             return 0x12C + (index * 0x1C);
         }
 
-        public bool IsHOMEGift => Location == Locations.HOME8 || GetOT(2) == "HOME";
+        public bool IsHOMEGift => CardID >= 9000;
+
+        public bool CanHandleOT(int language) => !GetHasOT(language);
+
+        public override GameVersion Version
+        {
+            get => OriginGame != 0 ? (GameVersion)OriginGame : GameVersion.SWSH;
+            set { }
+        }
 
         public override PKM ConvertToPKM(ITrainerInfo sav, EncounterCriteria criteria)
         {
             if (!IsPokémon)
                 throw new ArgumentException(nameof(IsPokémon));
 
-            int currentLevel = Level > 0 ? Level : Util.Rand.Next(1, 101);
+            int currentLevel = Level > 0 ? Level : (1 + Util.Rand.Next(100));
             int metLevel = MetLevel > 0 ? MetLevel : currentLevel;
             var pi = PersonalTable.SWSH.GetFormEntry(Species, Form);
-            var OT = GetOT(sav.Language);
+            var language = sav.Language;
+            var OT = GetOT(language);
+            bool hasOT = GetHasOT(language);
 
             var pk = new PK8
             {
@@ -359,10 +395,10 @@ namespace PKHeX.Core
 
                 OT_Name = OT.Length > 0 ? OT : sav.OT,
                 OT_Gender = OTGender < 2 ? OTGender : sav.Gender,
-                HT_Name = GetHasOT(Language) ? sav.OT : string.Empty,
-                HT_Gender = GetHasOT(Language) ? sav.Gender : 0,
-                HT_Language = GetHasOT(Language) ? sav.Language : 0,
-                CurrentHandler = GetHasOT(Language) ? 1 : 0,
+                HT_Name = hasOT ? sav.OT : string.Empty,
+                HT_Gender = hasOT ? sav.Gender : 0,
+                HT_Language = hasOT ? language : 0,
+                CurrentHandler = hasOT ? 1 : 0,
                 OT_Friendship = pi.BaseFriendship,
 
                 OT_Intensity = OT_Intensity,
@@ -399,7 +435,7 @@ namespace PKHeX.Core
                     pk.TrainerSID7 = 0;
                     while (pk.TSV == 0)
                     {
-                        pk.TrainerID7 = Util.Rand.Next(16, 999_999);
+                        pk.TrainerID7 = Util.Rand.Next(16, 999_999 + 1);
                     }
                 }
             }
@@ -410,10 +446,10 @@ namespace PKHeX.Core
 
             pk.MetDate = DateTime.Now;
 
-            var nickname_language = GetNicknameLanguage(sav.Language);
+            var nickname_language = GetLanguage(language);
             pk.Language = nickname_language != 0 ? nickname_language : sav.Language;
-            pk.IsNicknamed = GetIsNicknamed(pk.Language);
-            pk.Nickname = pk.IsNicknamed ? Nickname : SpeciesName.GetSpeciesNameGeneration(Species, pk.Language, Generation);
+            pk.IsNicknamed = GetIsNicknamed(language);
+            pk.Nickname = pk.IsNicknamed ? GetNickname(language) : SpeciesName.GetSpeciesNameGeneration(Species, pk.Language, Generation);
 
             for (var i = 0; i < RibbonBytesCount; i++)
             {
@@ -453,16 +489,16 @@ namespace PKHeX.Core
             pk.Nature = (int)criteria.GetNature(Nature == -1 ? Core.Nature.Random : (Nature)Nature);
             pk.StatNature = pk.Nature;
             pk.Gender = criteria.GetGender(Gender, pi);
-            var av = GetAbilityIndex(criteria, pi);
+            var av = GetAbilityIndex(criteria);
             pk.RefreshAbility(av);
             SetPID(pk);
             SetIVs(pk);
         }
 
-        private int GetAbilityIndex(EncounterCriteria criteria, PersonalInfo pi) => AbilityType switch
+        private int GetAbilityIndex(EncounterCriteria criteria) => AbilityType switch
         {
             00 or 01 or 02 => AbilityType, // Fixed 0/1/2
-            03 or 04 => criteria.GetAbilityFromType(AbilityType, pi), // 0/1 or 0/1/H
+            03 or 04 => criteria.GetAbilityFromType(AbilityType), // 0/1 or 0/1/H
             _ => throw new ArgumentException(nameof(AbilityType)),
         };
 
@@ -524,6 +560,10 @@ namespace PKHeX.Core
                     if (TID != pkm.TID) return false;
                     if (OTGender != pkm.OT_Gender) return false;
                 }
+
+                if (!CanBeAnyLanguage() && !CanHaveLanguage(pkm.Language))
+                    return false;
+
                 var OT = GetOT(pkm.Language); // May not be guaranteed to work.
                 if (!string.IsNullOrEmpty(OT) && OT != pkm.OT_Name) return false;
                 if (OriginGame != 0 && OriginGame != pkm.Version) return false;
@@ -551,9 +591,6 @@ namespace PKHeX.Core
                         if (pkm.IsShiny && !(TID == 0 && SID == 0 && PID != 0))
                             return false;
                     }
-
-                    if (OTGender >= 2 && pkm.TrainerSID7 != 0)
-                        return false;
                 }
             }
 
@@ -604,6 +641,10 @@ namespace PKHeX.Core
                     return false;
             }
 
+            // Duplicate card; one with Nickname specified and another without.
+            if (CardID == 0122 && pkm.IsNicknamed != GetIsNicknamed(pkm.Language))
+                return false;
+
             // PID Types 0 and 1 do not use the fixed PID value.
             // Values 2,3 are specific shiny states, and 4 is fixed value.
             // 2,3,4 can change if it is a traded egg to ensure the same shiny state.
@@ -613,7 +654,7 @@ namespace PKHeX.Core
             return pkm.PID == GetPID(pkm, type);
         }
 
-        protected override bool IsMatchDeferred(PKM pkm) => pkm.Species == Species;
+        protected override bool IsMatchDeferred(PKM pkm) => Species != pkm.Species;
         protected override bool IsMatchPartial(PKM pkm) => false; // no version compatibility checks yet.
 
         #region Lazy Ribbon Implementation
@@ -632,7 +673,7 @@ namespace PKHeX.Core
         public bool RibbonWorld { get => this.GetRibbonIndex(World); set => this.SetRibbonIndex(World, value); }
         public bool RibbonChampionWorld { get => this.GetRibbonIndex(ChampionWorld); set => this.SetRibbonIndex(ChampionWorld, value); }
         public bool RibbonSouvenir { get => this.GetRibbonIndex(Souvenir); set => this.SetRibbonIndex(Souvenir, value); }
-        public bool RibbonChampionG3Hoenn { get => this.GetRibbonIndex(ChampionG3Hoenn); set => this.SetRibbonIndex(ChampionG3Hoenn, value); }
+        public bool RibbonChampionG3 { get => this.GetRibbonIndex(ChampionG3); set => this.SetRibbonIndex(ChampionG3, value); }
         public bool RibbonArtist { get => this.GetRibbonIndex(Artist); set => this.SetRibbonIndex(Artist, value); }
         public bool RibbonEffort { get => this.GetRibbonIndex(Effort); set => this.SetRibbonIndex(Effort, value); }
         public bool RibbonChampionSinnoh { get => this.GetRibbonIndex(ChampionSinnoh); set => this.SetRibbonIndex(ChampionSinnoh, value); }

@@ -107,16 +107,24 @@ namespace PKHeX.Core
 
         private static int[]? GetSuggestedHiddenPowerIVs(int hpVal, int[] IVs)
         {
-            var flawless = IVs.Select((v, i) => v == 31 ? i : -1).Where(v => v != -1).ToArray();
-            var permutations = GetPermutations(flawless, flawless.Length);
-            int flawedCount = 0;
-            int[]? best = null;
+            const int max = 31;
+            var flawless = new int[IVs.Length]; // future: stackalloc
+            int flawlessCount = 0;
+            for (int i = 0; i < IVs.Length; i++)
+            {
+                if (IVs[i] == max)
+                    flawless[++flawlessCount] = i;
+            }
+
+            var permutations = GetPermutations(flawless, flawlessCount);
+            int flawedCount = 0; // result tracking
+            int[]? best = null; // result tracking
             int[] ivs = (int[])IVs.Clone();
             foreach (var permute in permutations)
             {
-                foreach (var item in permute)
+                foreach (var index in permute)
                 {
-                    ivs[item] ^= 1;
+                    ivs[index] ^= 1;
                     if (hpVal != GetType(ivs))
                         continue;
 
@@ -129,7 +137,7 @@ namespace PKHeX.Core
                     break; // any further flaws are always worse
                 }
                 // Restore IVs for another iteration
-                Array.Copy(IVs, 0, ivs, 0, ivs.Length);
+                Buffer.BlockCopy(IVs, 0, ivs, 0, ivs.Length);
             }
             return best;
         }
@@ -157,8 +165,10 @@ namespace PKHeX.Core
                 ivs[2] = (ivs[2] & ~3) | (type & 3);
                 return ivs;
             }
+
+            var bits = DefaultLowBits[type];
             for (int i = 0; i < 6; i++)
-                ivs[i] = (ivs[i] & 0x1E) + DefaultLowBits[type, i];
+                ivs[i] = (ivs[i] & 0x1E) + ((bits >> i) & 1);
             return ivs;
         }
 
@@ -170,24 +180,24 @@ namespace PKHeX.Core
         /// These are just precomputed for fast modification.
         /// Individual Values (H/A/B/S/C/D)
         /// </remarks>
-        public static readonly byte[,] DefaultLowBits =
+        public static readonly byte[] DefaultLowBits =
         {
-            { 1, 1, 0, 0, 0, 0 }, // Fighting
-            { 0, 0, 0, 1, 0, 0 }, // Flying
-            { 1, 1, 0, 1, 0, 0 }, // Poison
-            { 1, 1, 1, 1, 0, 0 }, // Ground
-            { 1, 1, 0, 0, 1, 0 }, // Rock
-            { 1, 0, 0, 1, 1, 0 }, // Bug
-            { 1, 0, 1, 1, 1, 0 }, // Ghost
-            { 1, 1, 1, 1, 1, 0 }, // Steel
-            { 1, 0, 1, 0, 0, 1 }, // Fire
-            { 1, 0, 0, 1, 0, 1 }, // Water
-            { 1, 0, 1, 1, 0, 1 }, // Grass
-            { 1, 1, 1, 1, 0, 1 }, // Electric
-            { 1, 0, 1, 0, 1, 1 }, // Psychic
-            { 1, 0, 0, 1, 1, 1 }, // Ice
-            { 1, 0, 1, 1, 1, 1 }, // Dragon
-            { 1, 1, 1, 1, 1, 1 }, // Dark
+            0b000011, // Fighting
+            0b001000, // Flying
+            0b001011, // Poison
+            0b001111, // Ground
+            0b010011, // Rock
+            0b011001, // Bug
+            0b011101, // Ghost
+            0b011111, // Steel
+            0b100101, // Fire
+            0b101001, // Water
+            0b101101, // Grass
+            0b101111, // Electric
+            0b110101, // Psychic
+            0b111001, // Ice
+            0b111101, // Dragon
+            0b111111, // Dark
         };
     }
 }

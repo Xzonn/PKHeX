@@ -1,4 +1,5 @@
 ﻿using System.Linq;
+using System.Runtime.CompilerServices;
 
 namespace PKHeX.Core
 {
@@ -59,16 +60,7 @@ namespace PKHeX.Core
                 isShiny = shiny == Shiny.Always;
             }
 
-            if (isShiny)
-            {
-                if (!GetIsShiny(pk.TID, pk.SID, pid))
-                    pid = GetShinyPID(pk.TID, pk.SID, pid, 0);
-            }
-            else
-            {
-                if (GetIsShiny(pk.TID, pk.SID, pid))
-                    pid ^= 0x1000_0000;
-            }
+            ForceShinyState(pk, isShiny, ref pid);
 
             if (pk.PID != pid)
                 return false;
@@ -102,13 +94,12 @@ namespace PKHeX.Core
             if (pk.IV_SPE != ivs[5])
                 return false;
 
-            int abil;
-            if (ability_param == 254)
-                abil = (int)rng.NextInt(3);
-            else if (ability_param == 255)
-                abil = (int)rng.NextInt(2);
-            else
-                abil = ability_param;
+            int abil = ability_param switch
+            {
+                254 => (int)rng.NextInt(3),
+                255 => (int)rng.NextInt(2),
+                _ => ability_param
+            };
             abil <<= 1; // 1/2/4
 
             var current = pk.AbilityNumber;
@@ -121,15 +112,15 @@ namespace PKHeX.Core
 
             switch (gender_ratio)
             {
-                case 255 when pk.Gender != 2:
+                case PersonalInfo.RatioMagicGenderless when pk.Gender != 2:
                     if (pk.Gender != 2)
                         return false;
                     break;
-                case 254 when pk.Gender != 1:
+                case PersonalInfo.RatioMagicFemale when pk.Gender != 1:
                     if (pk.Gender != 1)
                         return false;
                     break;
-                case 000:
+                case PersonalInfo.RatioMagicMale:
                     if (pk.Gender != 0)
                         return false;
                     break;
@@ -180,6 +171,21 @@ namespace PKHeX.Core
             }
 
             return true;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void ForceShinyState(PKM pk, bool isShiny, ref uint pid)
+        {
+            if (isShiny)
+            {
+                if (!GetIsShiny(pk.TID, pk.SID, pid))
+                    pid = GetShinyPID(pk.TID, pk.SID, pid, 0);
+            }
+            else
+            {
+                if (GetIsShiny(pk.TID, pk.SID, pid))
+                    pid ^= 0x1000_0000;
+            }
         }
 
         private static bool ApplyDetailsTo(PKM pk, ulong seed, int[] ivs, int iv_count, int ability_param, int gender_ratio, sbyte nature_param = -1, Shiny shiny = Shiny.Random)
@@ -248,9 +254,9 @@ namespace PKHeX.Core
 
             pk.Gender = gender_ratio switch
             {
-                255 => 2,
-                254 => 1,
-                000 => 0,
+                PersonalInfo.RatioMagicGenderless => 2,
+                PersonalInfo.RatioMagicFemale => 1,
+                PersonalInfo.RatioMagicMale => 0,
                 _ => (int) rng.NextInt(252) + 1 < gender_ratio ? 1 : 0
             };
 

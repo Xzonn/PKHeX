@@ -2,9 +2,13 @@
 {
     public interface IRegionOrigin
     {
-        int ConsoleRegion { get; set; }
-        int Country { get; set; }
-        int Region { get; set; }
+        /// <summary> Console hardware region. </summary>
+        /// <see cref="Region3DSIndex"/>
+        byte ConsoleRegion { get; set; }
+        /// <summary> Console's configured Country via System Settings. </summary>
+        byte Country { get; set; }
+        /// <summary> Console's configured Region within <see cref="Country"/> via System Settings. </summary>
+        byte Region { get; set; }
     }
 
     public static partial class Extensions

@@ -160,15 +160,16 @@ namespace PKHeX.Core
             if (pk.HeldItem > Legal.MaxItemID_6_AO)
                 return true;
 
-            int et = pk.EncounterType;
+            // Ground Tile property is replaced with Hyper Training PK6->PK7
+            var et = pk.GroundTile;
             if (et != 0)
             {
                 if (pk.CurrentLevel < 100) // can't be hyper trained
                     return false;
 
-                if (!pk.Gen4) // can't have encounter type
+                if (!pk.Gen4) // can't have GroundTile
                     return true;
-                if (et > 24) // invalid gen4 EncounterType
+                if (et > GroundTileType.Max_Pt) // invalid gen4 GroundTile
                     return true;
             }
 
@@ -241,7 +242,7 @@ namespace PKHeX.Core
             Debug.WriteLine($"Trying to convert {srcName} to {destName}.");
 
             // All types that inherit PKM have the generation specifier as the last char in their class name.
-            int destGeneration = destName[destName.Length - 1] - '0';
+            int destGeneration = destName[^1] - '0';
             var pkm = ConvertPKM(pk, destType, destGeneration, ref comment);
             var msg = pkm == null ? MsgPKMConvertFailFormat : MsgPKMConvertSuccess;
             var formatted = string.Format(msg, srcName, destName);
@@ -346,10 +347,10 @@ namespace PKHeX.Core
                 pk.HeldItem = 0;
 
             if (pk.Nickname.Length > limit.NickLength)
-                pk.Nickname = pk.Nickname.Substring(0, pk.NickLength);
+                pk.Nickname = pk.Nickname[..pk.NickLength];
 
             if (pk.OT_Name.Length > limit.OTLength)
-                pk.OT_Name = pk.OT_Name.Substring(0, pk.OTLength);
+                pk.OT_Name = pk.OT_Name[..pk.OTLength];
 
             if (pk.Moves.Any(move => move > limit.MaxMoveID))
                 pk.ClearInvalidMoves();
@@ -439,6 +440,9 @@ namespace PKHeX.Core
         public static PKM GetBlank(int gen)
         {
             var type = Type.GetType($"PKHeX.Core.PK{gen}");
+            if (type is null)
+                throw new InvalidCastException($"Unable to get the type for PK{gen}.");
+
             return GetBlank(type);
         }
     }

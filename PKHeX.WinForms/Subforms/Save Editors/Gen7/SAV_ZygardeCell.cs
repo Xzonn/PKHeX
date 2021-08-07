@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using System.Windows.Forms;
 using PKHeX.Core;
 
@@ -20,7 +19,7 @@ namespace PKHeX.WinForms
             // Cell Data @ 0x1D8C
             // Use constants 0x18C/2 = 198 thru +95
             ushort[] constants = SAV.GetEventConsts();
-            ushort[] cells = constants.Skip(celloffset).Take(CellCount).ToArray();
+            var cells = constants.AsSpan(celloffset, CellCount);
 
             int cellCount = constants[cellstotal];
             int cellCollected = constants[cellscollected];

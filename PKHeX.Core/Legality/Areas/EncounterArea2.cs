@@ -16,6 +16,9 @@ namespace PKHeX.Core
         internal readonly EncounterTime Time;
         public readonly int Rate;
         public readonly IReadOnlyList<byte> Rates;
+        public readonly EncounterSlot2[] Slots;
+
+        protected override IReadOnlyList<EncounterSlot> Raw => Slots;
 
         public static EncounterArea2[] GetAreas(byte[][] input, GameVersion game)
         {
@@ -29,10 +32,10 @@ namespace PKHeX.Core
         {
             Location = data[0];
             Time = (EncounterTime)data[1];
-            var type = Type = (SlotType)data[2];
+            var type = (Type = (SlotType)data[2]) & (SlotType)0xF;
             var rate = data[3];
 
-            if (type > SlotType.Surf) // Not Grass/Surf
+            if (type is > SlotType.Surf and not SlotType.BugContest) // Not Grass/Surf
             {
                 const int size = 5;
                 int count = (data.Length - 4) / size;
@@ -50,7 +53,12 @@ namespace PKHeX.Core
 
                 const int size = 4;
                 int count = (data.Length - 4) / size;
-                Rates = type == SlotType.BugContest ? BCC_SlotRates : (type == SlotType.Grass) ? RatesGrass : RatesSurf;
+                Rates = type switch
+                {
+                    SlotType.BugContest => BCC_SlotRates,
+                    SlotType.Grass => RatesGrass,
+                    _ => RatesSurf
+                };
                 Slots = ReadSlots(data, count, 4);
             }
         }
@@ -81,7 +89,7 @@ namespace PKHeX.Core
             return GetSlotsSpecificLevelTime(chain, pk2.Met_TimeOfDay, pk2.Met_Level);
         }
 
-        private IEnumerable<EncounterSlot> GetSlotsSpecificLevelTime(IReadOnlyList<EvoCriteria> chain, int time, int lvl)
+        private IEnumerable<EncounterSlot2> GetSlotsSpecificLevelTime(IReadOnlyList<EvoCriteria> chain, int time, int lvl)
         {
             foreach (var slot in Slots)
             {
@@ -108,7 +116,7 @@ namespace PKHeX.Core
             }
         }
 
-        private IEnumerable<EncounterSlot> GetSlotsFuzzy(IReadOnlyList<EvoCriteria> chain)
+        private IEnumerable<EncounterSlot2> GetSlotsFuzzy(IReadOnlyList<EvoCriteria> chain)
         {
             foreach (var slot in Slots)
             {

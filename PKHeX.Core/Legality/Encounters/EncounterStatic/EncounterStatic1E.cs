@@ -60,9 +60,26 @@ namespace PKHeX.Core
             _ => true
         };
 
+        protected override PKM GetBlank(ITrainerInfo tr) => Language switch
+        {
+            EncounterGBLanguage.Japanese => new PK1(true),
+            EncounterGBLanguage.International => new PK1(),
+            _ => new PK1(tr.Language == 1),
+        };
+
         protected override void ApplyDetails(ITrainerInfo sav, EncounterCriteria criteria, PKM pk)
         {
             base.ApplyDetails(sav, criteria, pk);
+
+            if (Version == GameVersion.Stadium)
+            {
+                var pk1 = (PK1)pk;
+                // Amnesia Psyduck has different catch rates depending on language
+                if (Species == (int)Core.Species.Psyduck)
+                    pk1.Catch_Rate = pk1.Japanese ? 167 : 168;
+                else
+                    pk1.Catch_Rate = 167 + Util.Rand.Next(2); // 167 or 168
+            }
 
             if (TID != -1)
                 pk.TID = TID;

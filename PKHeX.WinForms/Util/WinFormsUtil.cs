@@ -62,14 +62,14 @@ namespace PKHeX.WinForms
             {
                 switch (sender)
                 {
+                    case T p:
+                        return p;
                     case ToolStripItem t:
                         sender = t.Owner;
                         continue;
                     case ContextMenuStrip c:
                         sender = c.SourceControl;
                         continue;
-                    case T p:
-                        return p;
                     default:
                         return default;
                 }
@@ -229,8 +229,12 @@ namespace PKHeX.WinForms
         public static void AddSaveFileExtensions(IEnumerable<string> exts)
         {
             // Only add new (unique) extensions
-            var newExtensions = exts.Distinct().Except(CustomSaveExtensions);
-            CustomSaveExtensions.AddRange(newExtensions);
+            var dest = CustomSaveExtensions;
+            foreach (var ext in exts)
+            {
+                if (!dest.Contains(ext))
+                    dest.Add(ext);
+            }
         }
 
         private static readonly List<string> CustomSaveExtensions = new()
@@ -301,7 +305,7 @@ namespace PKHeX.WinForms
             string pkx = pk.Extension;
             bool allowEncrypted = pk.Format >= 3 && pkx[0] == 'p';
             var genericFilter = $"Decrypted PKM File|*.{pkx}" +
-                         (allowEncrypted ? $"|Encrypted PKM File|*.e{pkx.Substring(1)}" : string.Empty) +
+                         (allowEncrypted ? $"|Encrypted PKM File|*.e{pkx[1..]}" : string.Empty) +
                          "|Binary File|*.bin" +
                          "|All Files|*.*";
             using var sfd = new SaveFileDialog
@@ -371,7 +375,7 @@ namespace PKHeX.WinForms
 
         private static void ExportSAV(SaveFile sav, string path)
         {
-            var ext = Path.GetExtension(path).ToLower();
+            var ext = Path.GetExtension(path).ToLowerInvariant();
             var flags = sav.Metadata.GetSuggestedFlags(ext);
 
             try

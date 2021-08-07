@@ -9,6 +9,10 @@ namespace PKHeX.Core
     /// </summary>
     public sealed record EncounterArea7 : EncounterArea
     {
+        public readonly EncounterSlot7[] Slots;
+
+        protected override IReadOnlyList<EncounterSlot> Raw => Slots;
+
         public static EncounterArea7[] GetAreas(byte[][] input, GameVersion game)
         {
             var result = new EncounterArea7[input.Length];
@@ -58,7 +62,7 @@ namespace PKHeX.Core
 
                     if (slot.Form != evo.Form && !FormInfo.WildChangeFormAfter.Contains(slot.Species))
                     {
-                        if (slot.Species != (int)Species.Minior) // Random Color, edge case
+                        if (!slot.IsRandomUnspecificForm) // Minior, etc
                             break;
                     }
 

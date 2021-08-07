@@ -40,6 +40,7 @@ namespace PKHeX.Core
             if (ball != Ball.None)
                 pk.Ball = (int)ball;
 
+            pk8.SetRandomEC();
             pk8.HeightScalar = PokeSizeUtil.GetRandomScalar();
             pk8.WeightScalar = PokeSizeUtil.GetRandomScalar();
         }
@@ -55,7 +56,7 @@ namespace PKHeX.Core
         {
             if (IsMatchPartial(pkm))
                 return EncounterMatchRating.PartialMatch;
-            return EncounterMatchRating.Match;
+            return base.GetMatchRating(pkm) == EncounterMatchRating.PartialMatch ? EncounterMatchRating.PartialMatch : EncounterMatchRating.Match;
         }
 
         private bool IsMatchPartial(PKM pk)
@@ -65,13 +66,10 @@ namespace PKHeX.Core
                 return true;
             if (!GetIVsAboveMinimum(pk))
                 return true;
-            
+
             // Eevee & Glaceon have different base friendships. Make sure if it is invalid that we yield the other encounter before.
             if (PersonalTable.SWSH.GetFormEntry(Species, Form).BaseFriendship != pk.OT_Friendship)
                 return true;
-
-            if (Species == (int)Core.Species.Wurmple)
-                return !WurmpleUtil.IsWurmpleEvoValid(pk);
 
             return Species switch
             {

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 
 namespace PKHeX.Core
 {
@@ -16,6 +15,13 @@ namespace PKHeX.Core
         {
             Species = species;
             Level = level;
+        }
+
+        public override bool IsMatchExact(PKM pkm, DexLevel evo)
+        {
+            if (Shiny == Shiny.Always && !pkm.IsShiny)
+                return false;
+            return base.IsMatchExact(pkm, evo);
         }
 
         protected override bool IsMatchEggLocation(PKM pkm)
@@ -50,16 +56,6 @@ namespace PKHeX.Core
             return true;
         }
 
-        protected override void SetMetData(PKM pk, int level, DateTime today)
-        {
-            if (Version != GameVersion.C)
-                return;
-            var pk2 = (PK2)pk;
-            pk2.Met_Location = Location;
-            pk2.Met_Level = level;
-            pk2.Met_TimeOfDay = EncounterTime.Any.RandomValidTime();
-        }
-
         protected override bool IsMatchLevel(PKM pkm, DexLevel evo)
         {
             if (pkm is ICaughtData2 {CaughtData: not 0})
@@ -80,6 +76,24 @@ namespace PKHeX.Core
         }
 
         protected override bool IsMatchPartial(PKM pkm) => false;
+
+        protected override void ApplyDetails(ITrainerInfo sav, EncounterCriteria criteria, PKM pk)
+        {
+            base.ApplyDetails(sav, criteria, pk);
+            var pk2 = (PK2)pk;
+            if (Shiny == Shiny.Always)
+                pk2.SetShiny();
+        }
+
+        protected override void SetMetData(PKM pk, int level, DateTime today)
+        {
+            if (Version != GameVersion.C && pk.OT_Gender != 1)
+                return;
+            var pk2 = (PK2)pk;
+            pk2.Met_Location = Location;
+            pk2.Met_Level = level;
+            pk2.Met_TimeOfDay = EncounterTime.Any.RandomValidTime();
+        }
     }
 
     public sealed record EncounterStatic2Odd : EncounterStatic2
@@ -109,14 +123,11 @@ namespace PKHeX.Core
 
     public sealed record EncounterStatic2Roam : EncounterStatic2
     {
-        private static readonly int[] Roaming_MetLocation_GSC_Grass =
-        {
-            // Routes 29, 30-31, 33, 34, 35, 36-37, 38-39, 42, 43, 44, 45-46 can be encountered in grass
-            2, 4, 5, 8, 11, 15, 18, 20, 21,
-            25, 26, 34, 37, 39, 43, 45,
-        };
-
-        public override int Location => Roaming_MetLocation_GSC_Grass[0];
+        // Routes 29-46, except 40 & 41; total 16.
+        // 02, 04, 05, 08, 11, 15, 18, 20,
+        // 21, 25, 26, 34, 37, 39, 43, 45,
+        private const ulong RoamLocations = 0b10_1000_1010_0100_0000_0110_0011_0100_1000_1001_0011_0100;
+        public override int Location => 2;
 
         public EncounterStatic2Roam(int species, int level, GameVersion ver) : base(species, level, ver) { }
 
@@ -124,7 +135,9 @@ namespace PKHeX.Core
         {
             if (!pkm.HasOriginalMetLocation)
                 return true;
-            return Roaming_MetLocation_GSC_Grass.Contains(Location);
+            // Gen2 met location is always u8
+            var loc = pkm.Met_Location;
+            return loc <= 45 && ((RoamLocations & (1UL << loc)) != 0);
         }
     }
 }

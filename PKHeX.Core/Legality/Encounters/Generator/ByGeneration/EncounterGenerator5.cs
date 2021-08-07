@@ -16,16 +16,16 @@ namespace PKHeX.Core
             int ctr = 0;
 
             var chain = EncounterOrigin.GetOriginChain(pkm);
-            if (pkm.WasEvent || pkm.WasEventEgg)
+            if (pkm.FatefulEncounter)
             {
                 foreach (var z in GetValidGifts(pkm, chain))
                 { yield return z; ++ctr; }
                 if (ctr != 0) yield break;
             }
 
-            if (pkm.WasBredEgg)
+            if (Locations.IsEggLocationBred5(pkm.Egg_Location))
             {
-                foreach (var z in GenerateEggs(pkm))
+                foreach (var z in GenerateEggs(pkm, 5))
                 { yield return z; ++ctr; }
                 if (ctr == 0) yield break;
             }
@@ -42,7 +42,6 @@ namespace PKHeX.Core
                     case Deferred: deferred ??= z; break;
                     case PartialMatch: partial ??= z; break;
                 }
-                ++ctr;
             }
             if (ctr != 0) yield break;
 
@@ -55,7 +54,6 @@ namespace PKHeX.Core
                     case Deferred: deferred ??= z; break;
                     case PartialMatch: partial ??= z; break;
                 }
-                ++ctr;
             }
             if (ctr != 0) yield break;
 

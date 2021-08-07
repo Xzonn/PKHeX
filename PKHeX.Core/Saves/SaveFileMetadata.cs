@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Linq;
 
 namespace PKHeX.Core
 {
@@ -52,13 +51,13 @@ namespace PKHeX.Core
         /// </summary>
         /// <param name="data">Finalized save file data (with fixed checksums) to be written to a file</param>
         /// <param name="flags">Toggle flags </param>
-        /// <returns></returns>
+        /// <returns>Final save file data.</returns>
         public byte[] Finalize(byte[] data, ExportFlags flags)
         {
             if (Footer.Length > 0 && flags.HasFlagFast(ExportFlags.IncludeFooter))
-                return data.Concat(Footer).ToArray();
+                return ArrayUtil.ConcatAll(data, Footer);
             if (Header.Length > 0 && flags.HasFlagFast(ExportFlags.IncludeHeader))
-                return Header.Concat(data).ToArray();
+                return ArrayUtil.ConcatAll(Header, data);
             return data;
         }
 
@@ -94,13 +93,11 @@ namespace PKHeX.Core
             FileName = GetFileName(path, BAKSuffix);
         }
 
-        private static string? GetFileName(string path, string bak)
+        private static string GetFileName(string path, string bak)
         {
             var bakName = Util.CleanFileName(bak);
             var fn = Path.GetFileName(path);
-            if (fn == null)
-                return null;
-            return fn.EndsWith(bakName) ? fn.Substring(0, fn.Length - bakName.Length) : fn;
+            return fn.EndsWith(bakName) ? fn[..^bakName.Length] : fn;
         }
 
         private void SetAsBlank()
@@ -133,7 +130,7 @@ namespace PKHeX.Core
             var flags = ExportFlags.None;
             if (ext == ".dsv")
                 flags |= ExportFlags.IncludeFooter;
-            if (ext == ".gci" || SAV is IGCSaveFile {IsMemoryCardSave: false})
+            if (ext == ".gci" || SAV is IGCSaveFile {MemoryCard: null})
                 flags |= ExportFlags.IncludeHeader;
             return flags;
         }

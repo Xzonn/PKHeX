@@ -5,7 +5,7 @@ namespace PKHeX.Core
 {
     /// <summary> Generation 6 <see cref="PKM"/> format. </summary>
     public sealed class PK6 : G6PKM, IRibbonSetEvent3, IRibbonSetEvent4, IRibbonSetCommon3, IRibbonSetCommon4, IRibbonSetCommon6,
-        IContestStats, IContestStatsMutable, IGeoTrack, ISuperTrain, IFormArgument, ITrainerMemories, IAffection
+        IContestStats, IContestStatsMutable, IGeoTrack, ISuperTrain, IFormArgument, ITrainerMemories, IAffection, IGroundTile
     {
         private static readonly ushort[] Unused =
         {
@@ -27,10 +27,10 @@ namespace PKHeX.Core
             return data;
         }
 
-        public override PKM Clone() => new PK6((byte[])Data.Clone()){Identifier = Identifier};
+        public override PKM Clone() => new PK6((byte[])Data.Clone());
 
-        private string GetString(int Offset, int Count) => StringConverter.GetString6(Data, Offset, Count);
-        private byte[] SetString(string value, int maxLength) => StringConverter.SetString6(value, maxLength);
+        private string GetString(int offset, int count) => StringConverter.GetString6(Data, offset, count);
+        private static byte[] SetString(string value, int maxLength) => StringConverter.SetString6(value, maxLength);
 
         // Structure
         #region Block A
@@ -157,7 +157,7 @@ namespace PKHeX.Core
         private byte RIB4 { get => Data[0x34]; set => Data[0x34] = value; }
         private byte RIB5 { get => Data[0x35]; set => Data[0x35] = value; }
         public bool RibbonChampionKalos { get => (RIB0 & (1 << 0)) == 1 << 0; set => RIB0 = (byte)((RIB0 & ~(1 << 0)) | (value ? 1 << 0 : 0)); }
-        public bool RibbonChampionG3Hoenn { get => (RIB0 & (1 << 1)) == 1 << 1; set => RIB0 = (byte)((RIB0 & ~(1 << 1)) | (value ? 1 << 1 : 0)); }
+        public bool RibbonChampionG3 { get => (RIB0 & (1 << 1)) == 1 << 1; set => RIB0 = (byte)((RIB0 & ~(1 << 1)) | (value ? 1 << 1 : 0)); }
         public bool RibbonChampionSinnoh { get => (RIB0 & (1 << 2)) == 1 << 2; set => RIB0 = (byte)((RIB0 & ~(1 << 2)) | (value ? 1 << 2 : 0)); }
         public bool RibbonBestFriends { get => (RIB0 & (1 << 3)) == 1 << 3; set => RIB0 = (byte)((RIB0 & ~(1 << 3)) | (value ? 1 << 3 : 0)); }
         public bool RibbonTraining { get => (RIB0 & (1 << 4)) == 1 << 4; set => RIB0 = (byte)((RIB0 & ~(1 << 4)) | (value ? 1 << 4 : 0)); }
@@ -216,6 +216,7 @@ namespace PKHeX.Core
         public bool Dist7 { get => (DistByte & (1 << 6)) == 1 << 6; set => DistByte = (byte)((DistByte & ~(1 << 6)) | (value ? 1 << 6 : 0)); }
         public bool Dist8 { get => (DistByte & (1 << 7)) == 1 << 7; set => DistByte = (byte)((DistByte & ~(1 << 7)) | (value ? 1 << 7 : 0)); }
         public uint FormArgument { get => BitConverter.ToUInt32(Data, 0x3C); set => BitConverter.GetBytes(value).CopyTo(Data, 0x3C); }
+        public byte FormArgumentMaximum { get => (byte)FormArgument; set => FormArgument = value & 0xFFu; }
         #endregion
         #region Block B
         public override string Nickname { get => GetString(0x40, 24); set => SetString(value, 12).CopyTo(Data, 0x40); }
@@ -294,16 +295,16 @@ namespace PKHeX.Core
         public override string HT_Name { get => GetString(0x78, 24); set => SetString(value, 12).CopyTo(Data, 0x78); }
         public override int HT_Gender { get => Data[0x92]; set => Data[0x92] = (byte)value; }
         public override int CurrentHandler { get => Data[0x93]; set => Data[0x93] = (byte)value; }
-        public int Geo1_Region { get => Data[0x94]; set => Data[0x94] = (byte)value; }
-        public int Geo1_Country { get => Data[0x95]; set => Data[0x95] = (byte)value; }
-        public int Geo2_Region { get => Data[0x96]; set => Data[0x96] = (byte)value; }
-        public int Geo2_Country { get => Data[0x97]; set => Data[0x97] = (byte)value; }
-        public int Geo3_Region { get => Data[0x98]; set => Data[0x98] = (byte)value; }
-        public int Geo3_Country { get => Data[0x99]; set => Data[0x99] = (byte)value; }
-        public int Geo4_Region { get => Data[0x9A]; set => Data[0x9A] = (byte)value; }
-        public int Geo4_Country { get => Data[0x9B]; set => Data[0x9B] = (byte)value; }
-        public int Geo5_Region { get => Data[0x9C]; set => Data[0x9C] = (byte)value; }
-        public int Geo5_Country { get => Data[0x9D]; set => Data[0x9D] = (byte)value; }
+        public byte Geo1_Region  { get => Data[0x94]; set => Data[0x94] = value; }
+        public byte Geo1_Country { get => Data[0x95]; set => Data[0x95] = value; }
+        public byte Geo2_Region  { get => Data[0x96]; set => Data[0x96] = value; }
+        public byte Geo2_Country { get => Data[0x97]; set => Data[0x97] = value; }
+        public byte Geo3_Region  { get => Data[0x98]; set => Data[0x98] = value; }
+        public byte Geo3_Country { get => Data[0x99]; set => Data[0x99] = value; }
+        public byte Geo4_Region  { get => Data[0x9A]; set => Data[0x9A] = value; }
+        public byte Geo4_Country { get => Data[0x9B]; set => Data[0x9B] = value; }
+        public byte Geo5_Region  { get => Data[0x9C]; set => Data[0x9C] = value; }
+        public byte Geo5_Country { get => Data[0x9D]; set => Data[0x9D] = value; }
         // 0x9E Unused
         // 0x9F Unused
         // 0xA0 Unused
@@ -342,16 +343,18 @@ namespace PKHeX.Core
         public override int Ball { get => Data[0xDC]; set => Data[0xDC] = (byte)value; }
         public override int Met_Level { get => Data[0xDD] & ~0x80; set => Data[0xDD] = (byte)((Data[0xDD] & 0x80) | value); }
         public override int OT_Gender { get => Data[0xDD] >> 7; set => Data[0xDD] = (byte)((Data[0xDD] & ~0x80) | (value << 7)); }
-        public override int EncounterType { get => Data[0xDE]; set => Data[0xDE] = (byte)value; }
+        public GroundTileType GroundTile { get => (GroundTileType)Data[0xDE]; set => Data[0xDE] = (byte)value; }
         public override int Version { get => Data[0xDF]; set => Data[0xDF] = (byte)value; }
-        public int Country { get => Data[0xE0]; set => Data[0xE0] = (byte)value; }
-        public int Region { get => Data[0xE1]; set => Data[0xE1] = (byte)value; }
-        public int ConsoleRegion { get => Data[0xE2]; set => Data[0xE2] = (byte)value; }
+        public byte Country { get => Data[0xE0]; set => Data[0xE0] = value; }
+        public byte Region { get => Data[0xE1]; set => Data[0xE1] = value; }
+        public byte ConsoleRegion { get => Data[0xE2]; set => Data[0xE2] = value; }
         public override int Language { get => Data[0xE3]; set => Data[0xE3] = (byte)value; }
         #endregion
         #region Battle Stats
         public override int Status_Condition { get => BitConverter.ToInt32(Data, 0xE8); set => BitConverter.GetBytes(value).CopyTo(Data, 0xE8); }
         public override int Stat_Level { get => Data[0xEC]; set => Data[0xEC] = (byte)value; }
+        public byte FormArgumentRemain { get => Data[0xED]; set => Data[0xED] = value; }
+        public byte FormArgumentElapsed { get => Data[0xEE]; set => Data[0xEE] = value; }
         public override int Stat_HPCurrent { get => BitConverter.ToUInt16(Data, 0xF0); set => BitConverter.GetBytes((ushort)value).CopyTo(Data, 0xF0); }
         public override int Stat_HPMax { get => BitConverter.ToUInt16(Data, 0xF2); set => BitConverter.GetBytes((ushort)value).CopyTo(Data, 0xF2); }
         public override int Stat_ATK { get => BitConverter.ToUInt16(Data, 0xF4); set => BitConverter.GetBytes((ushort)value).CopyTo(Data, 0xF4); }
@@ -363,9 +366,11 @@ namespace PKHeX.Core
 
         public int SuperTrainingMedalCount(int maxCount = 30)
         {
-            uint value = SuperTrainBitFlags;
+            uint value = SuperTrainBitFlags >> 2;
+#if NET5
+            return System.Numerics.BitOperations.PopCount(value);
+#else
             int TrainCount = 0;
-            value >>= 2;
             for (int i = 0; i < maxCount; i++)
             {
                 if ((value & 1) != 0)
@@ -374,6 +379,7 @@ namespace PKHeX.Core
             }
 
             return TrainCount;
+#endif
         }
 
         public bool IsUntradedEvent6 => Geo1_Country == 0 && Geo1_Region == 0 && Met_Location / 10000 == 4 && Gen6;
@@ -385,7 +391,7 @@ namespace PKHeX.Core
             if (IsEgg) // No memories if is egg.
             {
                 Geo1_Country = Geo2_Country = Geo3_Country = Geo4_Country = Geo5_Country =
-                Geo1_Region = Geo2_Region = Geo3_Region = Geo4_Region = Geo5_Region =
+                Geo1_Region = Geo2_Region = Geo3_Region = Geo4_Region = Geo5_Region = 0;
                 HT_Friendship = HT_Affection = HT_TextVar = HT_Memory = HT_Intensity = HT_Feeling =
                 /* OT_Friendship */ OT_Affection = OT_TextVar = OT_Memory = OT_Intensity = OT_Feeling = 0;
 
@@ -450,10 +456,13 @@ namespace PKHeX.Core
 
         public PK7 ConvertToPK7()
         {
-            PK7 pk7 = new(Data)
+            PK7 pk7 = new((byte[])Data.Clone())
             {
                 Markings = Markings, // Clears old Super Training Bag & Hits Remaining
                 Data = { [0x2A] = 0 }, // Clears old Marking Value
+                FormArgument = 0, // Clears old style Form Argument
+                DirtType = 0, // Clears old Form Argument byte
+                DirtLocation = 0, // Clears old Form Argument byte
             };
 
             var an = AbilityNumber;
@@ -475,6 +484,11 @@ namespace PKHeX.Core
             for (var i = 0xE4; i < 0xE8; i++) pk7.Data[i] = 0; /* Unused. */
             pk7.Data[0x72] &= 0xFC; /* Clear lower two bits of Super training flags. */
             pk7.Data[0xDE] = 0; /* Gen IV encounter type. */
+
+            // Copy Form Argument data for Furfrou and Hoopa, since we're nice.
+            pk7.FormArgumentRemain = FormArgumentRemain;
+            pk7.FormArgumentElapsed = FormArgumentElapsed;
+            pk7.FormArgumentMaximum = FormArgumentMaximum;
 
             pk7.HealPP();
             // Fix Checksum

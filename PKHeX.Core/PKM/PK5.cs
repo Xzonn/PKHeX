@@ -4,7 +4,9 @@ using System.Collections.Generic;
 namespace PKHeX.Core
 {
     /// <summary> Generation 5 <see cref="PKM"/> format. </summary>
-    public sealed class PK5 : PKM, IRibbonSetEvent3, IRibbonSetEvent4, IRibbonSetUnique3, IRibbonSetUnique4, IRibbonSetCommon3, IRibbonSetCommon4, IContestStats, IContestStatsMutable
+    public sealed class PK5 : PKM,
+        IRibbonSetEvent3, IRibbonSetEvent4, IRibbonSetUnique3, IRibbonSetUnique4, IRibbonSetCommon3, IRibbonSetCommon4,
+        IContestStats, IContestStatsMutable, IGroundTile
     {
         private static readonly ushort[] Unused =
         {
@@ -33,14 +35,14 @@ namespace PKHeX.Core
             return data;
         }
 
-        public override PKM Clone() => new PK5((byte[])Data.Clone()){Identifier = Identifier};
+        public override PKM Clone() => new PK5((byte[])Data.Clone());
 
-        private string GetString(int Offset, int Count) => StringConverter.GetString5(Data, Offset, Count);
-        private byte[] SetString(string value, int maxLength) => StringConverter.SetString5(value, maxLength);
+        private string GetString(int offset, int count) => StringConverter.GetString5(Data, offset, count);
+        private static byte[] SetString(string value, int maxLength) => StringConverter.SetString5(value, maxLength);
 
         // Trash Bytes
-        public override byte[] Nickname_Trash { get => GetData(0x48, 22); set { if (value.Length == 22) value.CopyTo(Data, 0x48); } }
-        public override byte[] OT_Trash { get => GetData(0x68, 16); set { if (value.Length == 16) value.CopyTo(Data, 0x68); } }
+        public override Span<byte> Nickname_Trash { get => Data.AsSpan(0x48, 22); set { if (value.Length == 22) value.CopyTo(Data.AsSpan(0x48)); } }
+        public override Span<byte> OT_Trash { get => Data.AsSpan(0x68, 16); set { if (value.Length == 16) value.CopyTo(Data.AsSpan(0x68)); } }
 
         // Future Attributes
         public override uint EncryptionConstant { get => PID; set { } }
@@ -161,7 +163,7 @@ namespace PKHeX.Core
         public bool RibbonG3ToughSuper      { get => (RIB6 & (1 << 1)) == 1 << 1; set => RIB6 = (byte)((RIB6 & ~(1 << 1)) | (value ? 1 << 1 : 0)); }
         public bool RibbonG3ToughHyper      { get => (RIB6 & (1 << 2)) == 1 << 2; set => RIB6 = (byte)((RIB6 & ~(1 << 2)) | (value ? 1 << 2 : 0)); }
         public bool RibbonG3ToughMaster     { get => (RIB6 & (1 << 3)) == 1 << 3; set => RIB6 = (byte)((RIB6 & ~(1 << 3)) | (value ? 1 << 3 : 0)); }
-        public bool RibbonChampionG3Hoenn   { get => (RIB6 & (1 << 4)) == 1 << 4; set => RIB6 = (byte)((RIB6 & ~(1 << 4)) | (value ? 1 << 4 : 0)); }
+        public bool RibbonChampionG3        { get => (RIB6 & (1 << 4)) == 1 << 4; set => RIB6 = (byte)((RIB6 & ~(1 << 4)) | (value ? 1 << 4 : 0)); }
         public bool RibbonWinning           { get => (RIB6 & (1 << 5)) == 1 << 5; set => RIB6 = (byte)((RIB6 & ~(1 << 5)) | (value ? 1 << 5 : 0)); }
         public bool RibbonVictory           { get => (RIB6 & (1 << 6)) == 1 << 6; set => RIB6 = (byte)((RIB6 & ~(1 << 6)) | (value ? 1 << 6 : 0)); }
         public bool RibbonArtist            { get => (RIB6 & (1 << 7)) == 1 << 7; set => RIB6 = (byte)((RIB6 & ~(1 << 7)) | (value ? 1 << 7 : 0)); }
@@ -184,7 +186,7 @@ namespace PKHeX.Core
         #endregion
 
         #region Block C
-        public override string Nickname { get => GetString(0x48, 22); set => SetString(value, 11).CopyTo(Data, 0x48); }
+        public override string Nickname { get => GetString(0x48, 20); set => SetString(value, 10).CopyTo(Data, 0x48); }
         // 0x5E unused
         public override int Version { get => Data[0x5F]; set => Data[0x5F] = (byte)value; }
         private byte RIB8 { get => Data[0x60]; set => Data[0x60] = value; } // Sinnoh 3
@@ -227,7 +229,7 @@ namespace PKHeX.Core
         #endregion
 
         #region Block D
-        public override string OT_Name { get => GetString(0x68, 0x16); set => SetString(value, 7).CopyTo(Data, 0x68); }
+        public override string OT_Name { get => GetString(0x68, 14); set => SetString(value, 7).CopyTo(Data, 0x68); }
         public override int Egg_Year { get => Data[0x78]; set => Data[0x78] = (byte)value; }
         public override int Egg_Month { get => Data[0x79]; set => Data[0x79] = (byte)value; }
         public override int Egg_Day { get => Data[0x7A]; set => Data[0x7A] = (byte)value; }
@@ -242,10 +244,10 @@ namespace PKHeX.Core
         public override int Ball { get => Data[0x83]; set => Data[0x83] = (byte)value; }
         public override int Met_Level { get => Data[0x84] & ~0x80; set => Data[0x84] = (byte)((Data[0x84] & 0x80) | value); }
         public override int OT_Gender { get => Data[0x84] >> 7; set => Data[0x84] = (byte)((Data[0x84] & ~0x80) | value << 7); }
-        public override int EncounterType { get => Data[0x85]; set => Data[0x85] = (byte)value; }
+        public GroundTileType GroundTile { get => (GroundTileType)Data[0x85]; set => Data[0x85] = (byte)value; }
         // 0x86 Unused
         public byte PokeStarFame { get => Data[0x87]; set => Data[0x87] = value; }
-        public bool IsPokeStar { get => PokeStarFame > 250; set => PokeStarFame = value ? 255 : 0; }
+        public bool IsPokeStar { get => PokeStarFame > 250; set => PokeStarFame = value ? (byte)255 : (byte)0; }
         #endregion
 
         #region Battle Stats
@@ -394,14 +396,14 @@ namespace PKHeX.Core
                 // OT Gender & Encounter Level
                 Met_Level = Met_Level,
                 OT_Gender = OT_Gender,
-                EncounterType = EncounterType,
+                GroundTile = GroundTile,
 
                 // Fill the Ribbon Counter Bytes
                 RibbonCountMemoryContest = CountContestRibbons(),
                 RibbonCountMemoryBattle = CountBattleRibbons(),
 
                 // Copy Ribbons to their new locations.
-                RibbonChampionG3Hoenn = RibbonChampionG3Hoenn,
+                RibbonChampionG3 = RibbonChampionG3,
                 RibbonChampionSinnoh = RibbonChampionSinnoh,
                 RibbonEffort = RibbonEffort,
 

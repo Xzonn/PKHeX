@@ -66,20 +66,23 @@ namespace PKHeX.Core
 
         private static List<SlotInfoMisc> GetExtraSlots3(SAV3 sav)
         {
-            if (!sav.FRLG)
+            if (sav is not SAV3FRLG)
                 return None;
             return new List<SlotInfoMisc>
             {
-                new(sav.Data, 0, sav.GetBlockOffset(4) + 0xE18) {Type = StorageSlotType.Daycare }
+                new(sav.Large, 0, 0x3C98) {Type = StorageSlotType.Daycare}
             };
         }
 
         private static List<SlotInfoMisc> GetExtraSlots4(SAV4 sav)
         {
-            return new()
+            var list = new List<SlotInfoMisc>
             {
-                new SlotInfoMisc(sav.General, 0, sav.GTS) {Type = StorageSlotType.GTS },
+                new(sav.General, 0, sav.GTS) {Type = StorageSlotType.GTS},
             };
+            if (sav is SAV4HGSS)
+                list.Add(new SlotInfoMisc(sav.General, 1, SAV4HGSS.WalkerPair) {Type = StorageSlotType.Misc});
+            return list;
         }
 
         private static List<SlotInfoMisc> GetExtraSlots5(SAV5 sav)
@@ -104,7 +107,7 @@ namespace PKHeX.Core
             {
                 new SlotInfoMisc(sav.Data, 0, sav.GTS) {Type = StorageSlotType.GTS},
                 new SlotInfoMisc(sav.Data, 0, sav.Fused) {Type = StorageSlotType.Fused},
-                new SlotInfoMisc(sav.Data, 0, sav.SUBE.Offset + 0x90) {Type = StorageSlotType.Misc}, // Old Man
+                new SlotInfoMisc(sav.Data, 0, sav.SUBE.Give) {Type = StorageSlotType.Misc}, // Old Man
 
                 new SlotInfoMisc(sav.Data, 0, sav.GetBattleBoxSlot(0)) {Type = StorageSlotType.BattleBox},
                 new SlotInfoMisc(sav.Data, 1, sav.GetBattleBoxSlot(1)) {Type = StorageSlotType.BattleBox},
@@ -119,8 +122,9 @@ namespace PKHeX.Core
         {
             return new()
             {
-                new SlotInfoMisc(sav.Data, 0, sav.GTS) {Type = StorageSlotType.GTS},
-                new SlotInfoMisc(sav.Data, 0, sav.Fused) {Type = StorageSlotType.Fused},
+                new SlotInfoMisc(sav.Data, 0, SAV6AO.GTS) {Type = StorageSlotType.GTS},
+                new SlotInfoMisc(sav.Data, 0, SAV6AO.Fused) {Type = StorageSlotType.Fused},
+                new SlotInfoMisc(sav.Data, 0, sav.SUBE.Give) {Type = StorageSlotType.Misc},
 
                 new SlotInfoMisc(sav.Data, 0, sav.GetBattleBoxSlot(0)) {Type = StorageSlotType.BattleBox},
                 new SlotInfoMisc(sav.Data, 1, sav.GetBattleBoxSlot(1)) {Type = StorageSlotType.BattleBox},
@@ -138,12 +142,19 @@ namespace PKHeX.Core
                 new(sav.Data, 0, sav.AllBlocks[07].Offset) {Type = StorageSlotType.GTS},
                 new(sav.Data, 0, sav.GetFusedSlotOffset(0)) {Type = StorageSlotType.Fused}
             };
-            if (sav is SAV7USUM)
+            if (sav is SAV7USUM uu)
             {
                 list.AddRange(new[]
                {
-                    new SlotInfoMisc(sav.Data, 1, sav.GetFusedSlotOffset(1)) {Type = StorageSlotType.Fused},
-                    new SlotInfoMisc(sav.Data, 2, sav.GetFusedSlotOffset(2)) {Type = StorageSlotType.Fused},
+                    new SlotInfoMisc(uu.Data, 1, uu.GetFusedSlotOffset(1)) {Type = StorageSlotType.Fused},
+                    new SlotInfoMisc(uu.Data, 2, uu.GetFusedSlotOffset(2)) {Type = StorageSlotType.Fused},
+                });
+                var ba = uu.BattleAgency;
+                list.AddRange(new[]
+                {
+                    new SlotInfoMisc(uu.Data, 0, ba.GetSlotOffset(0)) {Type = StorageSlotType.Misc},
+                    new SlotInfoMisc(uu.Data, 1, ba.GetSlotOffset(1)) {Type = StorageSlotType.Misc},
+                    new SlotInfoMisc(uu.Data, 2, ba.GetSlotOffset(2)) {Type = StorageSlotType.Misc},
                 });
             }
 

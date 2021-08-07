@@ -15,7 +15,7 @@ namespace PKHeX.Core
         public int LevelMax { get; }
         public abstract int Generation { get; }
         public bool EggEncounter => false;
-        public override string ToString() => $"{(Species) Species} @ {LevelMin}-{LevelMax}";
+        public virtual bool IsShiny => false;
 
         protected EncounterSlot(EncounterArea area, int species, int form, int min, int max)
         {
@@ -26,12 +26,13 @@ namespace PKHeX.Core
             LevelMax = max;
         }
 
-        internal readonly EncounterArea Area;
+        protected readonly EncounterArea Area;
         public GameVersion Version => Area.Version;
         public int Location => Area.Location;
         public int EggLocation => 0;
 
-        public bool FixedLevel => LevelMin == LevelMax;
+        public bool IsFixedLevel => LevelMin == LevelMax;
+        public bool IsRandomLevel => LevelMin != LevelMax;
 
         private protected const string wild = "Wild Encounter";
         public string Name => wild;
@@ -74,11 +75,17 @@ namespace PKHeX.Core
         {
             get
             {
-                if (Area!.Type == SlotType.Any)
+                if (Area.Type == SlotType.Any)
                     return wild;
-                return $"{wild} {Area!.Type.ToString().Replace('_', ' ')}";
+                return $"{wild} {Area.Type.ToString().Replace('_', ' ')}";
             }
         }
+
+        /// <summary>
+        /// Returns a required ball if the wild encounter can only be caught in certain scenarios.
+        /// </summary>
+        /// <returns><see cref="Ball.None"/> if unrestricted, otherwise, a specific ball value.</returns>
+        public virtual Ball GetRequiredBallValue() => Ball.None;
 
         public PKM ConvertToPKM(ITrainerInfo sav) => ConvertToPKM(sav, EncounterCriteria.Unrestricted);
 
@@ -93,7 +100,7 @@ namespace PKHeX.Core
         protected virtual void ApplyDetails(ITrainerInfo sav, EncounterCriteria criteria, PKM pk)
         {
             var version = this.GetCompatibleVersion((GameVersion) sav.Game);
-            int lang = (int)Language.GetSafeLanguage(Generation, (LanguageID) sav.Language);
+            int lang = (int)Language.GetSafeLanguage(Generation, (LanguageID) sav.Language, version);
             int level = LevelMin;
             pk.Species = Species;
             pk.Language = lang;
@@ -101,11 +108,11 @@ namespace PKHeX.Core
             pk.Version = (int)version;
             pk.Nickname = SpeciesName.GetSpeciesNameGeneration(Species, lang, Generation);
 
-            var ball = Area.Type.GetRequiredBallValueWild(Generation, Location);
+            var ball = GetRequiredBallValue();
             pk.Ball = (int)(ball == Ball.None ? Ball.Poke : ball);
             pk.Language = lang;
-            pk.OT_Friendship = pk.PersonalInfo.BaseFriendship;
             pk.Form = GetWildForm(pk, Form, sav);
+            pk.OT_Friendship = pk.PersonalInfo.BaseFriendship;
 
             SetMetData(pk, level, Location);
             SetPINGA(pk, criteria);
@@ -117,7 +124,6 @@ namespace PKHeX.Core
                 return;
 
             sav.ApplyHandlingTrainerInfo(pk);
-            pk.SetRandomEC();
         }
 
         protected virtual void SetEncounterMoves(PKM pk, GameVersion version, int level)
@@ -131,12 +137,10 @@ namespace PKHeX.Core
 
         protected virtual void SetPINGA(PKM pk, EncounterCriteria criteria)
         {
-            int gender = criteria.GetGender(-1, pk.PersonalInfo);
+            var pi = pk.PersonalInfo;
+            int gender = criteria.GetGender(-1, pi);
             int nature = (int)criteria.GetNature(Nature.Random);
-
-            var ability = Util.Rand.Next(2);
-            if (Area!.Type == SlotType.HiddenGrotto) // don't force hidden for DexNav
-                ability = 2;
+            var ability = criteria.GetAbilityFromNumber(Ability);
 
             if (Generation == 3 && Species == (int)Unown)
             {
@@ -167,26 +171,28 @@ namespace PKHeX.Core
                 pk.MetDate = DateTime.Today;
         }
 
+        public bool IsRandomUnspecificForm => Form >= FormDynamic;
         private const int FormDynamic = FormVivillon;
         private const int FormVivillon = 30;
-        private const int FormRandom = 31;
+        protected const int FormRandom = 31;
 
         private static int GetWildForm(PKM pk, int form, ITrainerInfo sav)
         {
             if (form < FormDynamic) // specified form
+                return form;
+
+            if (form == FormRandom) // flagged as totally random
             {
                 if (pk.Species == (int)Minior)
-                    return Util.Rand.Next(7, 14);
-                return form;
-            }
-            if (form == FormRandom) // flagged as totally random
+                    return 7 + Util.Rand.Next(7);
                 return Util.Rand.Next(pk.PersonalInfo.FormCount);
+            }
 
             int species = pk.Species;
             if (species is >= (int)Scatterbug and <= (int)Vivillon)
             {
                 if (sav is IRegionOrigin o)
-                    return Vivillon3DS.GetPattern((byte)o.Country, (byte)o.Region);
+                    return Vivillon3DS.GetPattern(o.Country, o.Region);
             }
             return 0;
         }
@@ -203,14 +209,29 @@ namespace PKHeX.Core
         {
             if (IsDeferredWurmple(pkm))
                 return EncounterMatchRating.PartialMatch;
-            if (IsDeferredHiddenAbility(pkm.AbilityNumber == 4))
-                return EncounterMatchRating.Deferred;
+
+            if (pkm.Format >= 5)
+            {
+                bool isHidden = pkm.AbilityNumber == 4;
+                if (isHidden && this.IsPartialMatchHidden(pkm.Species, Species))
+                    return EncounterMatchRating.PartialMatch;
+                if (IsDeferredHiddenAbility(isHidden))
+                    return EncounterMatchRating.Deferred;
+            }
+
             return EncounterMatchRating.Match;
         }
 
         protected virtual HiddenAbilityPermission IsHiddenAbilitySlot() => HiddenAbilityPermission.Never;
 
-        protected bool IsDeferredWurmple(PKM pkm) => Species == (int)Wurmple && pkm.Species != (int)Wurmple && !WurmpleUtil.IsWurmpleEvoValid(pkm);
+        public int Ability => IsHiddenAbilitySlot() switch
+        {
+            HiddenAbilityPermission.Never => 0,
+            HiddenAbilityPermission.Always => 4,
+            _ => -1,
+        };
+
+        private bool IsDeferredWurmple(PKM pkm) => Species == (int)Wurmple && pkm.Species != (int)Wurmple && !WurmpleUtil.IsWurmpleEvoValid(pkm);
 
         private bool IsDeferredHiddenAbility(bool IsHidden) => IsHiddenAbilitySlot() switch
         {

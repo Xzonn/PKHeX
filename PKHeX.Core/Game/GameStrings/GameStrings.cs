@@ -11,7 +11,7 @@ namespace PKHeX.Core
         // PKM Info
         public readonly string[] specieslist, movelist, itemlist, abilitylist, types, natures, forms,
             memories, genloc, trainingbags, trainingstage, characteristics,
-            encountertypelist, balllist, gamelist, pokeblocks, ribbons;
+            groundtiletypes, balllist, gamelist, pokeblocks, ribbons;
 
         private readonly string[] g4items, g3coloitems, g3xditems, g3items, g2items, g1items;
 
@@ -44,7 +44,7 @@ namespace PKHeX.Core
         /// <summary>
         /// Item IDs that correspond to the <see cref="Ball"/> value.
         /// </summary>
-        private static readonly int[] Items_Ball =
+        private static readonly ushort[] Items_Ball =
         {
             000, 001, 002, 003, 004, 005, 006, 007, 008, 009, 010, 011, 012,
             013, 014, 015, 016, 492, 493, 494, 495, 496, 497, 498, 499, 576,
@@ -56,24 +56,12 @@ namespace PKHeX.Core
             lang = l;
             LanguageIndex = GameLanguage.GetLanguageIndex(l);
             ribbons = Get("ribbons");
+
             // Past Generation strings
             g3items = Get("ItemsG3");
-            // XD and Colosseum
-            {
-                g3coloitems = (string[])g3items.Clone();
-                string[] tmp = Get("ItemsG3Colosseum");
-                Array.Resize(ref g3coloitems, 500 + tmp.Length);
-                for (int i = g3items.Length; i < g3coloitems.Length; i++)
-                    g3coloitems[i] = $"UNUSED {i}";
-                tmp.CopyTo(g3coloitems, g3coloitems.Length - tmp.Length);
+            g3coloitems = GetG3CXD(g3items, "ItemsG3Colosseum");
+            g3xditems = GetG3CXD(g3items, "ItemsG3XD");
 
-                g3xditems = (string[])g3items.Clone();
-                string[] tmp2 = Get("ItemsG3XD");
-                Array.Resize(ref g3xditems, 500 + tmp2.Length);
-                for (int i = g3items.Length; i < g3xditems.Length; i++)
-                    g3xditems[i] = $"UNUSED {i}";
-                tmp2.CopyTo(g3xditems, g3xditems.Length - tmp2.Length);
-            }
             g2items = Get("ItemsG2");
             g1items = Get("ItemsG1");
             metRSEFRLG_00000 = Get("rsefrlg_00000");
@@ -96,7 +84,7 @@ namespace PKHeX.Core
             characteristics = Get("character");
             specieslist = Get("species");
             wallpapernames = Get("wallpaper");
-            encountertypelist = Get("encountertype");
+            groundtiletypes = Get("groundtile");
             gamelist = Get("games");
 
             balllist = new string[Items_Ball.Length];
@@ -151,6 +139,17 @@ namespace PKHeX.Core
             Get("mail4").CopyTo(g4items, 137);
         }
 
+        private string[] GetG3CXD(string[] arr, string fileName)
+        {
+            string[] item500 = Get(fileName);
+            var result = new string[500 + item500.Length];
+            for (int i = arr.Length; i < result.Length; i++)
+                result[i] = $"UNUSED {i}";
+            arr.CopyTo(result, 0);
+            item500.CopyTo(result, 500);
+            return result;
+        }
+
         private static void SanitizeMetStringsCXD(string[] cxd)
         {
             // Less than 10% of met location values are unique.
@@ -183,7 +182,7 @@ namespace PKHeX.Core
         {
             // Fix Item Names (Duplicate entries)
             var HM06 = itemlist[425];
-            var HM0 = HM06.Substring(0, HM06.Length - 1); // language ambiguous!
+            var HM0 = HM06[..^1]; // language ambiguous!
             itemlist[426] = $"{HM0}7 (G4)";
             itemlist[427] = $"{HM0}8 (G4)";
             itemlist[456] += " (HG/SS)"; // S.S. Ticket
@@ -384,18 +383,15 @@ namespace PKHeX.Core
             // metSWSH_30000[17] += " (-)"; // Pokémon HOME -- duplicate with 40000's entry
         }
 
-        public IReadOnlyList<string> GetItemStrings(int generation, GameVersion game = GameVersion.Any)
+        public string[] GetItemStrings(int generation, GameVersion game = GameVersion.Any) => generation switch
         {
-            return generation switch
-            {
-                0 => Array.Empty<string>(),
-                1 => g1items,
-                2 => g2items,
-                3 => GetItemStrings3(game),
-                4 => g4items, // mail names changed 4->5
-                _ => itemlist
-            };
-        }
+            0 => Array.Empty<string>(),
+            1 => g1items,
+            2 => g2items,
+            3 => GetItemStrings3(game),
+            4 => g4items, // mail names changed 4->5
+            _ => itemlist
+        };
 
         private string[] GetItemStrings3(GameVersion game)
         {

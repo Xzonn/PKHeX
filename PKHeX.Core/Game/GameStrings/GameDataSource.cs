@@ -8,13 +8,32 @@ namespace PKHeX.Core
     /// </summary>
     public sealed class GameDataSource
     {
-        public static readonly IReadOnlyList<ComboItem> Regions = Util.GetCSVUnsortedCBList("regions3ds");
-        private static readonly List<ComboItem> LanguageList = Util.GetCSVUnsortedCBList("languages");
+        public static readonly IReadOnlyList<ComboItem> Regions = new List<ComboItem>
+        {
+            new ("Japan (日本)",      0),
+            new ("Americas (NA/SA)",  1),
+            new ("Europe (EU/AU)",    2),
+            new ("China (中国大陆)",   4),
+            new ("Korea (한국)",       5),
+            new ("Taiwan (香港/台灣)", 6),
+        };
+
+        private static readonly List<ComboItem> LanguageList = new()
+        {
+            new ComboItem("JPN (日本語)",   (int)LanguageID.Japanese),
+            new ComboItem("ENG (English)",  (int)LanguageID.English),
+            new ComboItem("FRE (Français)", (int)LanguageID.French),
+            new ComboItem("ITA (Italiano)", (int)LanguageID.Italian),
+            new ComboItem("GER (Deutsch)",  (int)LanguageID.German),
+            new ComboItem("ESP (Español)",  (int)LanguageID.Spanish),
+            new ComboItem("KOR (한국어)",    (int)LanguageID.Korean),
+            new ComboItem("CHS (简体中文)",  (int)LanguageID.ChineseS),
+            new ComboItem("CHT (繁體中文)",  (int)LanguageID.ChineseT),
+        };
 
         // ignores Poke/Great/Ultra
         private static readonly ushort[] ball_nums = { 007, 576, 013, 492, 497, 014, 495, 493, 496, 494, 011, 498, 008, 006, 012, 015, 009, 005, 499, 010, 001, 016, 851 };
         private static readonly byte[] ball_vals = { 007, 025, 013, 017, 022, 014, 020, 018, 021, 019, 011, 023, 008, 006, 012, 015, 009, 005, 024, 010, 001, 016, 026 };
-        private static readonly byte[] Gen4EncounterTypes = { 0, 1, 2, 4, 5, 7, 9, 10, 12, 23, 24 };
 
         public GameDataSource(GameStrings s)
         {
@@ -23,7 +42,7 @@ namespace PKHeX.Core
             SpeciesDataSource = Util.GetCBList(s.specieslist);
             NatureDataSource = Util.GetCBList(s.natures);
             AbilityDataSource = Util.GetCBList(s.abilitylist);
-            EncounterTypeDataSource = Util.GetUnsortedCBList(s.encountertypelist, Gen4EncounterTypes);
+            GroundTileDataSource = Util.GetUnsortedCBList(s.groundtiletypes, GroundTileTypeExtensions.ValidTileTypes);
 
             var moves = Util.GetCBList(s.movelist);
             HaXMoveDataSource = moves;
@@ -54,7 +73,7 @@ namespace PKHeX.Core
         public readonly IReadOnlyList<ComboItem> VersionDataSource;
         public readonly IReadOnlyList<ComboItem> LegalMoveDataSource;
         public readonly IReadOnlyList<ComboItem> HaXMoveDataSource;
-        public readonly IReadOnlyList<ComboItem> EncounterTypeDataSource;
+        public readonly IReadOnlyList<ComboItem> GroundTileDataSource;
 
         private static IReadOnlyList<ComboItem> GetVersionList(GameStrings s)
         {

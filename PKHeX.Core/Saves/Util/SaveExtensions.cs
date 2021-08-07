@@ -37,7 +37,7 @@ namespace PKHeX.Core
                 if (msg != null)
                 {
                     var itemstr = GameInfo.Strings.GetItemStrings(pkm.Format, (GameVersion)pkm.Version);
-                    errata.Add($"{msg} {(held >= itemstr.Count ? held.ToString() : itemstr[held])}");
+                    errata.Add($"{msg} {(held >= itemstr.Length ? held.ToString() : itemstr[held])}");
                 }
             }
 
@@ -172,13 +172,13 @@ namespace PKHeX.Core
                 return LoadTemplateInternal(sav);
 
             var di = new DirectoryInfo(templatePath);
-            string path = Path.Combine(templatePath, $"{di.Name}.{sav.PKMType.Name.ToLower()}");
+            string path = Path.Combine(templatePath, $"{di.Name}.{sav.PKMType.Name.ToLowerInvariant()}");
 
             if (!File.Exists(path) || !PKX.IsPKM(new FileInfo(path).Length))
                 return LoadTemplateInternal(sav);
 
             var pk = PKMConverter.GetPKMfromBytes(File.ReadAllBytes(path), prefer: sav.Generation);
-            if (pk == null)
+            if (pk?.Species is not > 0)
                 return LoadTemplateInternal(sav);
 
             return PKMConverter.ConvertToType(pk, sav.BlankPKM.GetType(), out _) ?? LoadTemplateInternal(sav);

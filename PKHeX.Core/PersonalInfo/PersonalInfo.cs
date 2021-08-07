@@ -261,11 +261,11 @@ namespace PKHeX.Core
         /// <param name="form"><see cref="PKM.Form"/> to retrieve for</param>
         public bool HasForm(int form)
         {
-            if (form <= 0) // no forme requested
+            if (form <= 0) // no form requested
                 return false;
-            if (FormStatsIndex <= 0) // no formes present
+            if (FormStatsIndex <= 0) // no forms present
                 return false;
-            if (form >= FormCount) // beyond range of species' formes
+            if (form >= FormCount) // beyond range of species' forms
                 return false;
             return true;
         }
@@ -279,8 +279,9 @@ namespace PKHeX.Core
             return fix >= 0 ? fix : Util.Rand.Next(2);
         }
 
-        public bool IsDualGender => FixedGender < 0;
-
+        /// <summary>
+        /// Gets a gender value. Returns -1 if the entry <see cref="IsDualGender"/>.
+        /// </summary>
         public int FixedGender
         {
             get
@@ -295,23 +296,34 @@ namespace PKHeX.Core
             }
         }
 
+        public const int RatioMagicGenderless = 255;
+        public const int RatioMagicFemale = 254;
+        public const int RatioMagicMale = 0;
+
+        public static bool IsSingleGender(int gt) => (uint)(gt - 1) >= 253;
+
+        /// <summary>
+        /// Indicates that the entry has two genders.
+        /// </summary>
+        public bool IsDualGender => (uint)(Gender - 1) < 253;
+
         /// <summary>
         /// Indicates that the entry is exclusively Genderless.
         /// </summary>
-        public bool Genderless => Gender == 255;
+        public bool Genderless => Gender == RatioMagicGenderless;
 
         /// <summary>
         /// Indicates that the entry is exclusively Female gendered.
         /// </summary>
-        public bool OnlyFemale => Gender == 254;
+        public bool OnlyFemale => Gender == RatioMagicFemale;
 
         /// <summary>
         /// Indicates that the entry is exclusively Male gendered.
         /// </summary>
-        public bool OnlyMale => Gender == 0;
+        public bool OnlyMale => Gender == RatioMagicMale;
 
         /// <summary>
-        /// Indicates if the entry has Formes or not.
+        /// Indicates if the entry has forms or not.
         ///  </summary>
         public bool HasForms => FormCount > 1;
 
@@ -324,7 +336,6 @@ namespace PKHeX.Core
         /// Checks to see if the <see cref="PKM.Form"/> is valid within the <see cref="FormCount"/>
         /// </summary>
         /// <param name="form"></param>
-        /// <returns></returns>
         public bool IsFormWithinRange(int form)
         {
             if (form == 0)
@@ -335,7 +346,7 @@ namespace PKHeX.Core
         /// <summary>
         /// Checks to see if the provided Types match the entry's types.
         /// </summary>
-        /// <remarks>Input order matters! If input order does not matter, use <see cref="o:IsType(type1, type2)"/>.</remarks>
+        /// <remarks>Input order matters! If input order does not matter, use <see cref="IsType(int, int)"/> instead.</remarks>
         /// <param name="type1">First type</param>
         /// <param name="type2">Second type</param>
         /// <returns>Typing is an exact match</returns>

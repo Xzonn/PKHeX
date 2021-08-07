@@ -4,6 +4,9 @@ using System.Linq;
 
 namespace PKHeX.Core
 {
+    /// <summary>
+    /// Logic for getting valid movesets.
+    /// </summary>
     public static class MoveSetApplicator
     {
         /// <summary>
@@ -57,27 +60,43 @@ namespace PKHeX.Core
         /// Fetches <see cref="PKM.RelearnMoves"/> based on the provided <see cref="LegalityAnalysis"/>.
         /// </summary>
         /// <param name="pk">Pokémon to modify.</param>
+        /// <param name="enc">Encounter the relearn moves should be suggested for. If not provided, will try to detect it via legality analysis. </param>
         /// <returns><see cref="PKM.RelearnMoves"/> best suited for the current <see cref="PKM"/> data.</returns>
-        public static IReadOnlyList<int> GetSuggestedRelearnMoves(this PKM pk) => GetSuggestedRelearnMoves(new LegalityAnalysis(pk));
+        public static IReadOnlyList<int> GetSuggestedRelearnMoves(this PKM pk, IEncounterTemplate? enc = null) => GetSuggestedRelearnMoves(new LegalityAnalysis(pk), enc);
 
         /// <summary>
         /// Fetches <see cref="PKM.RelearnMoves"/> based on the provided <see cref="LegalityAnalysis"/>.
         /// </summary>
         /// <param name="legal"><see cref="LegalityAnalysis"/> which contains parsed information pertaining to legality.</param>
+        /// <param name="enc">Encounter the relearn moves should be suggested for. If not provided, will try to detect it via legality analysis. </param>
         /// <returns><see cref="PKM.RelearnMoves"/> best suited for the current <see cref="PKM"/> data.</returns>
-        public static IReadOnlyList<int> GetSuggestedRelearnMoves(this LegalityAnalysis legal)
+        public static IReadOnlyList<int> GetSuggestedRelearnMoves(this LegalityAnalysis legal, IEncounterTemplate? enc = null)
         {
-            var m = legal.GetSuggestedRelearnMovesFromEncounter();
+            enc ??= legal.EncounterOriginal;
+            var m = legal.GetSuggestedRelearnMovesFromEncounter(enc);
             if (m.Any(z => z != 0))
                 return m;
 
-            var enc = legal.EncounterMatch;
-            if (enc is MysteryGift || enc is EncounterEgg)
+            if (enc is MysteryGift or EncounterEgg)
                 return m;
 
+            if (enc is EncounterSlot6AO {CanDexNav: true} dn)
+            {
+                var moves = legal.Info.Moves;
+                for (int i = 0; i < moves.Length; i++)
+                {
+                    if (!moves[i].ShouldBeInRelearnMoves())
+                        continue;
+
+                    var move = legal.pkm.GetMove(i);
+                    if (dn.CanBeDexNavMove(move))
+                        return new[] { move, 0, 0, 0 };
+                }
+            }
+
             var encounter = EncounterSuggestion.GetSuggestedMetInfo(legal.pkm);
-            if (encounter is IRelearn r && r.Relearn.Count > 0)
-                return r.Relearn;
+            if (encounter is IRelearn {Relearn: {Count: > 0} r})
+                return r;
 
             return m;
         }

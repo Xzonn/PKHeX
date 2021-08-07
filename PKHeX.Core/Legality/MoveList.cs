@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using static PKHeX.Core.Legal;
+using static PKHeX.Core.GameVersion;
 
 namespace PKHeX.Core
 {
@@ -10,7 +11,7 @@ namespace PKHeX.Core
     /// </summary>
     internal static class MoveList
     {
-        internal static IEnumerable<int> GetValidRelearn(PKM pkm, int species, int form, bool inheritlvlmoves, GameVersion version = GameVersion.Any)
+        internal static IEnumerable<int> GetValidRelearn(PKM pkm, int species, int form, bool inheritlvlmoves, GameVersion version = Any)
         {
             int generation = pkm.Generation;
             if (generation < 6)
@@ -52,70 +53,70 @@ namespace PKHeX.Core
 
         internal static int[] GetBaseEggMoves(PKM pkm, int species, int form, GameVersion gameSource, int lvl)
         {
-            if (gameSource == GameVersion.Any)
+            if (gameSource == Any)
                 gameSource = (GameVersion)pkm.Version;
 
             switch (gameSource)
             {
-                case GameVersion.GSC or GameVersion.GS:
+                case GSC or GS:
                     // If checking back-transfer specimen (GSC->RBY), remove moves that must be deleted prior to transfer
-                    static int[] getRBYCompatibleMoves(int format, int[] moves) => format == 1 ? moves.Where(m => m <= MaxMoveID_1).ToArray() : moves;
+                    static int[] getRBYCompatibleMoves(int format, int[] moves) => format == 1 ? Array.FindAll(moves, m => m <= MaxMoveID_1) : moves;
                     if (pkm.InhabitedGeneration(2))
                         return getRBYCompatibleMoves(pkm.Format, LevelUpGS[species].GetMoves(lvl));
                     break;
-                case GameVersion.C:
+                case C:
                     if (pkm.InhabitedGeneration(2))
                         return getRBYCompatibleMoves(pkm.Format, LevelUpC[species].GetMoves(lvl));
                     break;
 
-                case GameVersion.R or GameVersion.S or GameVersion.RS:
+                case R or S or RS:
                     if (pkm.InhabitedGeneration(3))
                         return LevelUpRS[species].GetMoves(lvl);
                     break;
-                case GameVersion.E:
+                case E:
                     if (pkm.InhabitedGeneration(3))
                         return LevelUpE[species].GetMoves(lvl);
                     break;
-                case GameVersion.FR or GameVersion.LG or GameVersion.FRLG:
+                case FR or LG or FRLG:
                     // The only difference in FR/LG is Deoxys, which doesn't breed.
                     if (pkm.InhabitedGeneration(3))
                         return LevelUpFR[species].GetMoves(lvl);
                     break;
 
-                case GameVersion.D or GameVersion.P or GameVersion.DP:
+                case D or P or DP:
                     if (pkm.InhabitedGeneration(4))
                         return LevelUpDP[species].GetMoves(lvl);
                     break;
-                case GameVersion.Pt:
+                case Pt:
                     if (pkm.InhabitedGeneration(4))
                         return LevelUpPt[species].GetMoves(lvl);
                     break;
-                case GameVersion.HG or GameVersion.SS or GameVersion.HGSS:
+                case HG or SS or HGSS:
                     if (pkm.InhabitedGeneration(4))
                         return LevelUpHGSS[species].GetMoves(lvl);
                     break;
 
-                case GameVersion.B or GameVersion.W or GameVersion.BW:
+                case B or W or BW:
                     if (pkm.InhabitedGeneration(5))
                         return LevelUpBW[species].GetMoves(lvl);
                     break;
 
-                case GameVersion.B2 or GameVersion.W2 or GameVersion.B2W2:
+                case B2 or W2 or B2W2:
                     if (pkm.InhabitedGeneration(5))
                         return LevelUpB2W2[species].GetMoves(lvl);
                     break;
 
-                case GameVersion.X or GameVersion.Y or GameVersion.XY:
+                case X or Y or XY:
                     if (pkm.InhabitedGeneration(6))
                         return LevelUpXY[species].GetMoves(lvl);
                     break;
 
-                case GameVersion.AS or GameVersion.OR or GameVersion.ORAS:
+                case AS or OR or ORAS:
                     if (pkm.InhabitedGeneration(6))
                         return LevelUpAO[species].GetMoves(lvl);
                     break;
 
-                case GameVersion.SN or GameVersion.MN or GameVersion.SM:
+                case SN or MN or SM:
                     if (species > MaxSpeciesID_7)
                         break;
                     if (pkm.InhabitedGeneration(7))
@@ -125,7 +126,7 @@ namespace PKHeX.Core
                     }
                     break;
 
-                case GameVersion.US or GameVersion.UM or GameVersion.USUM:
+                case US or UM or USUM:
                     if (pkm.InhabitedGeneration(7))
                     {
                         int index = PersonalTable.USUM.GetFormIndex(species, form);
@@ -133,7 +134,7 @@ namespace PKHeX.Core
                     }
                     break;
 
-                case GameVersion.SW or GameVersion.SH or GameVersion.SWSH:
+                case SW or SH or SWSH:
                     if (pkm.InhabitedGeneration(8))
                     {
                         int index = PersonalTable.SWSH.GetFormIndex(species, form);
@@ -144,7 +145,7 @@ namespace PKHeX.Core
             return Array.Empty<int>();
         }
 
-        internal static IReadOnlyList<int>[] GetValidMovesAllGens(PKM pkm, IReadOnlyList<EvoCriteria>[] evoChains, int minLvLG1 = 1, int minLvLG2 = 1, MoveSourceType types = MoveSourceType.ExternalSources, bool RemoveTransferHM = true)
+        internal static IReadOnlyList<int>[] GetValidMovesAllGens(PKM pkm, IReadOnlyList<EvoCriteria>[] evoChains, MoveSourceType types = MoveSourceType.ExternalSources, bool RemoveTransferHM = true)
         {
             var result = new IReadOnlyList<int>[evoChains.Length];
             for (int i = 0; i < result.Length; i++)
@@ -156,53 +157,27 @@ namespace PKHeX.Core
                 if (evoChains[i].Count == 0)
                     continue;
 
-                result[i] = GetValidMoves(pkm, evoChains[i], i, minLvLG1, minLvLG2, types, RemoveTransferHM).ToList();
+                result[i] = GetValidMoves(pkm, evoChains[i], i, types, RemoveTransferHM).ToList();
             }
             return result;
         }
 
-        internal static IEnumerable<int> GetValidMoves(PKM pkm, IReadOnlyList<EvoCriteria> evoChain, int generation, int minLvLG1 = 1, int minLvLG2 = 1, MoveSourceType types = MoveSourceType.ExternalSources, bool RemoveTransferHM = true)
+        internal static IEnumerable<int> GetValidMoves(PKM pkm, IReadOnlyList<EvoCriteria> evoChain, int generation, MoveSourceType types = MoveSourceType.ExternalSources, bool RemoveTransferHM = true)
         {
             GameVersion version = (GameVersion)pkm.Version;
             if (!pkm.IsUntraded)
-                version = GameVersion.Any;
-            return GetValidMoves(pkm, version, evoChain, generation, minLvLG1: minLvLG1, minLvLG2: minLvLG2, types: types, RemoveTransferHM: RemoveTransferHM);
+                version = Any;
+            return GetValidMoves(pkm, version, evoChain, generation, types: types, RemoveTransferHM: RemoveTransferHM);
         }
 
-        internal static IEnumerable<int> GetValidRelearn(PKM pkm, int species, int form, GameVersion version = GameVersion.Any)
+        internal static IEnumerable<int> GetValidRelearn(PKM pkm, int species, int form, GameVersion version = Any)
         {
             return GetValidRelearn(pkm, species, form, Breeding.GetCanInheritMoves(species), version);
         }
 
-        internal static List<int> GetValidPostEvolutionMoves(PKM pkm, int species, IReadOnlyList<EvoCriteria>[] evoChains, GameVersion Version)
-        {
-            // Return moves that the pokemon could learn after evolving
-            var moves = new List<int>();
-            for (int i = 1; i < evoChains.Length; i++)
-            {
-                if (evoChains[i].Count != 0)
-                    moves.AddRange(GetValidPostEvolutionMoves(pkm, species, evoChains[i], i, Version));
-            }
-
-            if (pkm.Generation >= 6)
-                moves.AddRange(pkm.RelearnMoves.Where(m => m != 0));
-            return moves.Distinct().ToList();
-        }
-
-        private static List<int> GetValidPostEvolutionMoves(PKM pkm, int species, IReadOnlyList<EvoCriteria> evoChain, int generation, GameVersion Version)
-        {
-            var evomoves = new List<int>();
-            var index = EvolutionChain.GetEvoChainSpeciesIndex(evoChain, species);
-            for (int i = 0; i <= index; i++)
-            {
-                var evo = evoChain[i];
-                var moves = GetMoves(pkm, evo.Species, 1, 1, evo.Level, evo.Form, Version: Version, types: MoveSourceType.ExternalSources, RemoveTransferHM: false, generation: generation);
-                // Moves from Species or any species after in the evolution phase
-                evomoves.AddRange(moves);
-            }
-            return evomoves;
-        }
-
+        /// <summary>
+        /// ONLY CALL FOR GEN2 EGGS
+        /// </summary>
         internal static IEnumerable<int> GetExclusivePreEvolutionMoves(PKM pkm, int Species, IReadOnlyList<EvoCriteria> evoChain, int generation, GameVersion Version)
         {
             var preevomoves = new List<int>();
@@ -210,15 +185,25 @@ namespace PKHeX.Core
             var index = EvolutionChain.GetEvoChainSpeciesIndex(evoChain, Species);
             for (int i = 0; i < evoChain.Count; i++)
             {
+                int minLvLG2;
                 var evo = evoChain[i];
-                var moves = GetMoves(pkm, evo.Species, 1, 1, evo.Level, evo.Form, Version: Version, types: MoveSourceType.ExternalSources, RemoveTransferHM: false, generation: generation);
+                if (ParseSettings.AllowGen2MoveReminder(pkm))
+                    minLvLG2 = 0;
+                else if (i == evoChain.Count - 1) // minimum level, otherwise next learnable level
+                    minLvLG2 = 5;
+                else if (evo.RequiresLvlUp)
+                    minLvLG2 = evo.Level + 1;
+                else
+                    minLvLG2 = evo.Level;
+
+                var moves = GetMoves(pkm, evo.Species, evo.Form, evo.Level, 0, minLvLG2, Version: Version, types: MoveSourceType.ExternalSources, RemoveTransferHM: false, generation: generation);
                 var list = i >= index ? preevomoves : evomoves;
                 list.AddRange(moves);
             }
             return preevomoves.Except(evomoves).Distinct();
         }
 
-        internal static IEnumerable<int> GetValidMoves(PKM pkm, GameVersion version, IReadOnlyList<EvoCriteria> chain, int generation, int minLvLG1 = 1, int minLvLG2 = 1, MoveSourceType types = MoveSourceType.Reminder, bool RemoveTransferHM = true)
+        internal static IEnumerable<int> GetValidMoves(PKM pkm, GameVersion version, IReadOnlyList<EvoCriteria> chain, int generation, MoveSourceType types = MoveSourceType.Reminder, bool RemoveTransferHM = true)
         {
             var r = new List<int> { 0 };
             int species = pkm.Species;
@@ -235,16 +220,36 @@ namespace PKHeX.Core
                     formCount = pkm.PersonalInfo.FormCount;
 
                 for (int form = 0; form < formCount; form++)
-                    r.AddRange(GetMoves(pkm, species, minLvLG1, minLvLG2, chain[0].Level, form, version, types, RemoveTransferHM, generation));
+                    r.AddRange(GetMoves(pkm, species, form, chain[0].Level, 0, 0, version, types, RemoveTransferHM, generation));
                 if (types.HasFlagFast(MoveSourceType.RelearnMoves))
                     r.AddRange(pkm.RelearnMoves);
                 return r.Distinct();
             }
 
+            // Generation 1 & 2 do not always have move relearning capability, so the bottom bound for learnable indexes needs to be determined.
+            var minLvLG1 = 0;
+            var minLvLG2 = 0;
             for (var i = 0; i < chain.Count; i++)
             {
                 var evo = chain[i];
-                var moves = GetEvoMoves(pkm, version, types, chain, generation, minLvLG1, minLvLG2, RemoveTransferHM, i, evo);
+                if (generation <= 2)
+                {
+                    bool encounteredEvo = i == chain.Count - 1;
+                    if (encounteredEvo) // minimum level, otherwise next learnable level
+                        minLvLG1 = (pkm.HasOriginalMetLocation ? pkm.Met_Level : evo.MinLevel) + 1;
+                    else if (evo.RequiresLvlUp) // learns level up moves immediately after evolving
+                        minLvLG1 = evo.MinLevel;
+                    else
+                        minLvLG1 = evo.MinLevel + 1;
+
+                    if (!ParseSettings.AllowGen2MoveReminder(pkm))
+                        minLvLG2 = minLvLG1;
+                }
+
+                var maxLevel = evo.Level;
+                if (i != 0 && chain[i - 1].RequiresLvlUp) // evolution
+                    ++maxLevel; // allow lvlmoves from the level it evolved to the next species
+                var moves = GetMoves(pkm, evo.Species, evo.Form, maxLevel, minLvLG1, minLvLG2, version, types, RemoveTransferHM, generation);
                 r.AddRange(moves);
             }
 
@@ -260,44 +265,11 @@ namespace PKHeX.Core
             return r.Distinct();
         }
 
-        private static IEnumerable<int> GetEvoMoves(PKM pkm, GameVersion Version, MoveSourceType types, IReadOnlyList<EvoCriteria> chain, int generation, int minLvLG1, int minLvLG2, bool RemoveTransferHM, int i, EvoCriteria evo)
-        {
-            int minlvlevo1 = GetEvoMoveMinLevel1(pkm, generation, minLvLG1, evo);
-            int minlvlevo2 = GetEvoMoveMinLevel2(pkm, generation, minLvLG2, evo);
-            var maxLevel = evo.Level;
-            if (i != 0 && chain[i - 1].RequiresLvlUp) // evolution
-                ++maxLevel; // allow lvlmoves from the level it evolved to the next species
-            return GetMoves(pkm, evo.Species, minlvlevo1, minlvlevo2, maxLevel, evo.Form, Version, types, RemoveTransferHM, generation);
-        }
-
-        /// <summary>
-        /// Returns the minimum level the move can be learned at based on the species encounter level.
-        /// </summary>
-        private static int GetEvoMoveMinLevel1(PKM pkm, int generation, int minLvLG1, EvoCriteria evo)
-        {
-            if (generation != 1)
-                return 1;
-            // For evolutions, return the lower of the two; current level should legally be >=
-            if (evo.MinLevel > 1)
-                return Math.Min(pkm.CurrentLevel, evo.MinLevel);
-            return minLvLG1;
-        }
-
-        private static int GetEvoMoveMinLevel2(PKM pkm, int generation, int minLvLG2, EvoCriteria evo)
-        {
-            if (generation != 2 || ParseSettings.AllowGen2MoveReminder(pkm))
-                return 1;
-            // For evolutions, return the lower of the two; current level should legally be >=
-            if (evo.MinLevel > 1)
-                return Math.Min(pkm.CurrentLevel, evo.MinLevel);
-            return minLvLG2;
-        }
-
-        private static IEnumerable<int> GetMoves(PKM pkm, int species, int minlvlG1, int minlvlG2, int lvl, int form, GameVersion Version, MoveSourceType types, bool RemoveTransferHM, int generation)
+        private static IEnumerable<int> GetMoves(PKM pkm, int species, int form, int maxLevel, int minlvlG1, int minlvlG2, GameVersion Version, MoveSourceType types, bool RemoveTransferHM, int generation)
         {
             var r = new List<int>();
             if (types.HasFlagFast(MoveSourceType.LevelUp))
-                r.AddRange(MoveLevelUp.GetMovesLevelUp(pkm, species, minlvlG1, minlvlG2, lvl, form, Version, types.HasFlagFast(MoveSourceType.Reminder), generation));
+                r.AddRange(MoveLevelUp.GetMovesLevelUp(pkm, species, form, maxLevel, minlvlG1, minlvlG2, Version, types.HasFlagFast(MoveSourceType.Reminder), generation));
             if (types.HasFlagFast(MoveSourceType.Machine))
                 r.AddRange(MoveTechnicalMachine.GetTMHM(pkm, species, form, generation, Version, RemoveTransferHM));
             if (types.HasFlagFast(MoveSourceType.TechnicalRecord))

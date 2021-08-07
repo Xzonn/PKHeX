@@ -8,6 +8,11 @@ namespace PKHeX.Core
     /// <inheritdoc cref="EncounterStatic8Nest{T}"/>
     public sealed record EncounterStatic8ND : EncounterStatic8Nest<EncounterStatic8ND>
     {
+        /// <summary>
+        /// Distribution raid index for <see cref="GameVersion.SWSH"/>
+        /// </summary>
+        public byte Index { get; init; }
+
         public EncounterStatic8ND(byte lvl, byte dyna, byte flawless, GameVersion game = GameVersion.SWSH) : base(game)
         {
             Level = lvl;
@@ -18,6 +23,13 @@ namespace PKHeX.Core
         protected override bool IsMatchLevel(PKM pkm, DexLevel evo)
         {
             var lvl = pkm.Met_Level;
+
+            if (lvl <= 25) // 1 or 2 stars
+            {
+                if (InaccessibleRank12DistributionLocations.Contains(pkm.Met_Location))
+                    return false;
+            }
+
             if (lvl == Level)
                 return true;
 
@@ -42,7 +54,12 @@ namespace PKHeX.Core
         protected override bool IsMatchLocation(PKM pkm)
         {
             var loc = pkm.Met_Location;
-            return loc == SharedNest || EncounterArea8.IsWildArea(loc);
+            return loc is SharedNest || Index switch
+            {
+                >= 40 => EncounterArea8.IsWildArea(loc),
+                >= 25 => EncounterArea8.IsWildArea8(loc) || EncounterArea8.IsWildArea8Armor(loc),
+                _ => EncounterArea8.IsWildArea8(loc),
+            };
         }
 
         public override bool IsMatchExact(PKM pkm, DexLevel evo)

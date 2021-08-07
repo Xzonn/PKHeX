@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace PKHeX.Core
 {
@@ -20,13 +19,13 @@ namespace PKHeX.Core
         public override PersonalTable Personal { get; }
         public override IReadOnlyList<ushort> HeldItems => Legal.HeldItems_GSC;
 
-        public override IReadOnlyList<string> PKMExtensions => PKM.Extensions.Where(f =>
+        public override IReadOnlyList<string> PKMExtensions => Array.FindAll(PKM.Extensions, f =>
         {
-            int gen = f.Last() - 0x30;
+            int gen = f[^1] - 0x30;
             if (Korean)
                 return gen == 2;
             return gen is 1 or 2;
-        }).ToArray();
+        });
 
         public SAV2(GameVersion version = GameVersion.C, LanguageID lang = LanguageID.English) : base(SaveUtil.SIZE_G2RAW_J)
         {
@@ -282,7 +281,7 @@ namespace PKHeX.Core
 
         public override bool HasParty => true;
         public override bool HasNamableBoxes => true;
-        private int StringLength => Japanese ? GBPKML.STRLEN_J : GBPKML.STRLEN_U;
+        private int StringLength => Japanese ? GBPKML.StringLengthJapanese : GBPKML.StringLengthNotJapan;
 
         // Checksums
         private ushort GetChecksum()
@@ -321,10 +320,10 @@ namespace PKHeX.Core
             set => SetString(value, (Korean ? 2 : 1) * OTLength).CopyTo(Data, Offsets.Trainer1 + 2);
         }
 
-        public byte[] OT_Trash
-        {
-            get => GetData(Offsets.Trainer1 + 2, StringLength);
-            set { if (value.Length == StringLength) SetData(value, Offsets.Trainer1 + 2); }
+        public Span<byte> OT_Trash
+        { 
+            get => Data.AsSpan(Offsets.Trainer1 + 2, StringLength); 
+            set { if (value.Length == StringLength) value.CopyTo(Data.AsSpan(Offsets.Trainer1 + 2)); }
         }
 
         public override int Gender
@@ -404,7 +403,7 @@ namespace PKHeX.Core
         public bool SaveFileExists
         {
             get => Data[Offsets.Options + 1] == 1;
-            set => Data[Offsets.Options + 1] = value ? 1 : 0;
+            set => Data[Offsets.Options + 1] = value ? (byte)1 : (byte)0;
         }
 
         public int TextBoxFrame // 3bits
@@ -432,7 +431,7 @@ namespace PKHeX.Core
         public bool MenuAccountOn
         {
             get => Data[Offsets.Options + 5] == 1;
-            set => Data[Offsets.Options + 5] = value ? 1 : 0;
+            set => Data[Offsets.Options + 5] = value ? (byte)1 : (byte)0;
         }
 
         public override uint Money
@@ -470,7 +469,7 @@ namespace PKHeX.Core
                     new InventoryPouchGB(InventoryType.Items, LegalItems, 99, Offsets.PouchItem, 20),
                     new InventoryPouchGB(InventoryType.KeyItems, LegalKeyItems, 99, Offsets.PouchKey, 26),
                     new InventoryPouchGB(InventoryType.Balls, LegalBalls, 99, Offsets.PouchBall, 12),
-                    new InventoryPouchGB(InventoryType.PCItems, LegalItems.Concat(LegalKeyItems).Concat(LegalBalls).Concat(LegalTMHMs).ToArray(), 99, Offsets.PouchPC, 50)
+                    new InventoryPouchGB(InventoryType.PCItems, ArrayUtil.ConcatAll(LegalItems, LegalKeyItems, LegalBalls, LegalTMHMs), 99, Offsets.PouchPC, 50)
                 };
                 return pouch.LoadAll(Data);
             }
@@ -534,22 +533,13 @@ namespace PKHeX.Core
         protected override void SetDex(PKM pkm)
         {
             int species = pkm.Species;
-            if (!CanSetDex(species))
+            if (species is 0 or > Legal.MaxSpeciesID_2)
+                return;
+            if (pkm.IsEgg)
                 return;
 
             SetCaught(pkm.Species, true);
             SetSeen(pkm.Species, true);
-        }
-
-        private bool CanSetDex(int species)
-        {
-            if (species <= 0)
-                return false;
-            if (species > MaxSpeciesID)
-                return false;
-            if (Version == GameVersion.Invalid)
-                return false;
-            return true;
         }
 
         private void SetUnownFormFlags()
@@ -588,7 +578,7 @@ namespace PKHeX.Core
         public bool UnownUnlocked0
         {
             get => (UnownUnlocked & 1 << 0) == 1 << 0;
-            set => UnownUnlocked |= 1 << 0;
+            set => UnownUnlocked = (UnownUnlocked & ~(1 << 0)) | ((value ? 1 : 0) << 0);
         }
 
         /// <summary>
@@ -597,7 +587,7 @@ namespace PKHeX.Core
         public bool UnownUnlocked1
         {
             get => (UnownUnlocked & 1 << 1) == 1 << 1;
-            set => UnownUnlocked |= 1 << 1;
+            set => UnownUnlocked = (UnownUnlocked & ~(1 << 1)) | ((value ? 1 : 0) << 1);
         }
 
         /// <summary>
@@ -606,7 +596,7 @@ namespace PKHeX.Core
         public bool UnownUnlocked2
         {
             get => (UnownUnlocked & 1 << 2) == 1 << 2;
-            set => UnownUnlocked |= 1 << 2;
+            set => UnownUnlocked = (UnownUnlocked & ~(1 << 2)) | ((value ? 1 : 0) << 2);
         }
 
         /// <summary>
@@ -615,7 +605,7 @@ namespace PKHeX.Core
         public bool UnownUnlocked3
         {
             get => (UnownUnlocked & 1 << 3) == 1 << 3;
-            set => UnownUnlocked |= 1 << 3;
+            set => UnownUnlocked = (UnownUnlocked & ~(1 << 3)) | ((value ? 1 : 0) << 3);
         }
 
         /// <summary>
@@ -679,9 +669,15 @@ namespace PKHeX.Core
         private ushort GetResetKey()
         {
             var val = (TID >> 8) + (TID & 0xFF) + ((Money >> 16) & 0xFF) + ((Money >> 8) & 0xFF) + (Money & 0xFF);
-            var ot = Data.Skip(Offsets.Trainer1 + 2).TakeWhile((z, i) => i < 5 && z != 0x50);
-            var tr = ot.Sum(z => z);
-            return (ushort)(val + tr);
+            var ot = Data.AsSpan(Offsets.Trainer1 + 2, 5);
+            var sum = 0;
+            foreach (var b in ot)
+            {
+                if (b == StringConverter12.G1TerminatorCode)
+                    break;
+                sum += b;
+            }
+            return (ushort)(val + sum);
         }
 
         /// <summary>
@@ -705,8 +701,8 @@ namespace PKHeX.Core
         public override byte[] SetString(string value, int maxLength, int PadToSize = 0, ushort PadWith = 0)
         {
             if (Korean)
-                return StringConverter2KOR.SetString2KOR(value, maxLength);
-            return StringConverter12.SetString1(value, maxLength, Japanese);
+                return StringConverter2KOR.SetString2KOR(value, maxLength, PadToSize, (byte)PadWith);
+            return StringConverter12.SetString1(value, maxLength, Japanese, PadToSize, (byte)PadWith);
         }
 
         public bool IsGBMobileAvailable => Japanese && Version == GameVersion.C;

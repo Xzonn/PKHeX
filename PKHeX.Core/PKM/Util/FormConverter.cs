@@ -10,14 +10,14 @@ namespace PKHeX.Core
     public static class FormConverter
     {
         /// <summary>
-        /// Gets a list of formes that the species can have.
+        /// Gets a list of forms that the species can have.
         /// </summary>
         /// <param name="species"><see cref="Species"/> of the Pokémon.</param>
         /// <param name="types">List of type names</param>
         /// <param name="forms">List of form names</param>
         /// <param name="genders">List of genders names</param>
-        /// <param name="generation">Generation number for exclusive formes</param>
-        /// <returns>A list of strings corresponding to the formes that a Pokémon can have.</returns>
+        /// <param name="generation">Generation number for exclusive forms</param>
+        /// <returns>A list of strings corresponding to the forms that a Pokémon can have.</returns>
         public static string[] GetFormList(int species, IReadOnlyList<string> types, IReadOnlyList<string> forms, IReadOnlyList<string> genders, int generation)
         {
             // Mega List
@@ -732,31 +732,12 @@ namespace PKHeX.Core
             return result;
         }
 
-        public static uint GetFormArgumentMax(int species, int form, int generation)
-        {
-            if (generation <= 5)
-                return 0;
-
-            return species switch
-            {
-                (int)Furfrou when form != 0 => 5,
-                (int)Hoopa when form == 1 => 3,
-                (int)Yamask when form == 1 => 9999,
-                (int)Runerigus when form == 0 => 9999,
-                (int)Alcremie => (uint)AlcremieDecoration.Ribbon,
-                _ => 0,
-            };
-        }
-
         public static bool GetFormArgumentIsNamedIndex(int species) => species == (int)Alcremie;
 
-        public static string[] GetFormArgumentStrings(int species)
+        public static string[] GetFormArgumentStrings(int species) => species switch
         {
-            return species switch
-            {
-                (int)Alcremie => Enum.GetNames(typeof(AlcremieDecoration)),
-                _ => EMPTY
-            };
-        }
+            (int)Alcremie => Enum.GetNames(typeof(AlcremieDecoration)),
+            _ => EMPTY
+        };
     }
 }

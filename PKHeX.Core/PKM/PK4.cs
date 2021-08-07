@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace PKHeX.Core
 {
@@ -29,10 +28,10 @@ namespace PKHeX.Core
             return data;
         }
 
-        public override PKM Clone() => new PK4((byte[])Data.Clone()){Identifier = Identifier};
+        public override PKM Clone() => new PK4((byte[])Data.Clone());
 
-        private string GetString(int Offset, int Count) => StringConverter4.GetString4(Data, Offset, Count);
-        private byte[] SetString(string value, int maxLength) => StringConverter4.SetString4(value, maxLength);
+        private string GetString(int offset, int count) => StringConverter4.GetString4(Data, offset, count);
+        private static byte[] SetString(string value, int maxLength) => StringConverter4.SetString4(value, maxLength);
 
         // Structure
         public override uint PID { get => BitConverter.ToUInt32(Data, 0x00); set => BitConverter.GetBytes(value).CopyTo(Data, 0x00); }
@@ -147,7 +146,7 @@ namespace PKHeX.Core
         public override bool RibbonG3ToughSuper      { get => (RIB6 & (1 << 1)) == 1 << 1; set => RIB6 = (byte)((RIB6 & ~(1 << 1)) | (value ? 1 << 1 : 0)); }
         public override bool RibbonG3ToughHyper      { get => (RIB6 & (1 << 2)) == 1 << 2; set => RIB6 = (byte)((RIB6 & ~(1 << 2)) | (value ? 1 << 2 : 0)); }
         public override bool RibbonG3ToughMaster     { get => (RIB6 & (1 << 3)) == 1 << 3; set => RIB6 = (byte)((RIB6 & ~(1 << 3)) | (value ? 1 << 3 : 0)); }
-        public override bool RibbonChampionG3Hoenn   { get => (RIB6 & (1 << 4)) == 1 << 4; set => RIB6 = (byte)((RIB6 & ~(1 << 4)) | (value ? 1 << 4 : 0)); }
+        public override bool RibbonChampionG3        { get => (RIB6 & (1 << 4)) == 1 << 4; set => RIB6 = (byte)((RIB6 & ~(1 << 4)) | (value ? 1 << 4 : 0)); }
         public override bool RibbonWinning           { get => (RIB6 & (1 << 5)) == 1 << 5; set => RIB6 = (byte)((RIB6 & ~(1 << 5)) | (value ? 1 << 5 : 0)); }
         public override bool RibbonVictory           { get => (RIB6 & (1 << 6)) == 1 << 6; set => RIB6 = (byte)((RIB6 & ~(1 << 6)) | (value ? 1 << 6 : 0)); }
         public override bool RibbonArtist            { get => (RIB6 & (1 << 7)) == 1 << 7; set => RIB6 = (byte)((RIB6 & ~(1 << 7)) | (value ? 1 << 7 : 0)); }
@@ -168,7 +167,7 @@ namespace PKHeX.Core
         #endregion
 
         #region Block C
-        public override string Nickname { get => GetString(0x48, 22); set => SetString(value, 11).CopyTo(Data, 0x48); }
+        public override string Nickname { get => GetString(0x48, 20); set => SetString(value, 10).CopyTo(Data, 0x48); }
         // 0x5E unused
         public override int Version { get => Data[0x5F]; set => Data[0x5F] = (byte)value; }
         private byte RIB8 { get => Data[0x60]; set => Data[0x60] = value; } // Sinnoh 3
@@ -211,7 +210,7 @@ namespace PKHeX.Core
         #endregion
 
         #region Block D
-        public override string OT_Name { get => GetString(0x68, 16); set => SetString(value, 7).CopyTo(Data, 0x68); }
+        public override string OT_Name { get => GetString(0x68, 14); set => SetString(value, 7).CopyTo(Data, 0x68); }
         public override int Egg_Year { get => Data[0x78]; set => Data[0x78] = (byte)value; }
         public override int Egg_Month { get => Data[0x79]; set => Data[0x79] = (byte)value; }
         public override int Egg_Day { get => Data[0x7A]; set => Data[0x7A] = (byte)value; }
@@ -235,7 +234,7 @@ namespace PKHeX.Core
                     BitConverter.GetBytes((ushort)0).CopyTo(Data, 0x44);
                     BitConverter.GetBytes((ushort)0).CopyTo(Data, 0x7E);
                 }
-                else if ((value < 2000 && value > 111) || Locations.IsPtHGSSLocationEgg(value))
+                else if (Locations.IsPtHGSSLocation(value) || Locations.IsPtHGSSLocationEgg(value))
                 {
                     // Met location not in DP, set to Faraway Place
                     BitConverter.GetBytes((ushort)value).CopyTo(Data, 0x44);
@@ -310,8 +309,8 @@ namespace PKHeX.Core
 
         public override int Met_Level { get => Data[0x84] & ~0x80; set => Data[0x84] = (byte)((Data[0x84] & 0x80) | value); }
         public override int OT_Gender { get => Data[0x84] >> 7; set => Data[0x84] = (byte)((Data[0x84] & ~0x80) | value << 7); }
-        public override int EncounterType { get => Data[0x85]; set => Data[0x85] = (byte)value; }
-        public int PokéathlonStat { get => Data[0x87]; set => Data[0x87] = (byte)value; }
+        public override GroundTileType GroundTile { get => (GroundTileType)Data[0x85]; set => Data[0x85] = (byte)value; }
+        public byte PokéathlonStat { get => Data[0x87]; set => Data[0x87] = value; }
         // Unused 0x87
         #endregion
 
@@ -371,7 +370,7 @@ namespace PKHeX.Core
 
             DateTime moment = DateTime.Now;
 
-            PK5 pk5 = new(Data) // Convert away!
+            PK5 pk5 = new((byte[])Data.Clone()) // Convert away!
             {
                 OT_Friendship = 70,
                 // Apply new met date
@@ -384,7 +383,7 @@ namespace PKHeX.Core
                 pk5.Form = 0;
                 pk5.HeldItem = 0;
             }
-            else if(!Legal.HeldItems_BW.Contains((ushort)HeldItem))
+            else if (Array.IndexOf(Legal.HeldItems_BW, (ushort)HeldItem) == -1)
             {
                 pk5.HeldItem = 0; // if valid, it's already copied
             }
@@ -416,7 +415,13 @@ namespace PKHeX.Core
             pk5.Met_Level = pk5.CurrentLevel;
 
             // Remove HM moves; Defog should be kept if both are learned.
-            pk5.Moves = Legal.RemoveMovesHM45(pk5.Moves);
+            // if has defog, remove whirlpool.
+            bool hasDefog = HasMove((int) Move.Defog);
+            var banned = hasDefog ? Legal.HM_HGSS : Legal.HM_DPPt;
+            if (Array.IndexOf(banned, Move1) != -1) Move1 = 0;
+            if (Array.IndexOf(banned, Move2) != -1) Move2 = 0;
+            if (Array.IndexOf(banned, Move3) != -1) Move3 = 0;
+            if (Array.IndexOf(banned, Move4) != -1) Move4 = 0;
             pk5.FixMoves();
 
             pk5.RefreshChecksum();

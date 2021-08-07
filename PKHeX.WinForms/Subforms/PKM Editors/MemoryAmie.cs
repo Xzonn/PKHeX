@@ -45,16 +45,16 @@ namespace PKHeX.WinForms
             // Load the region/country values.
             if (pkm is IGeoTrack g)
             {
-                CB_Country0.SelectedValue = g.Geo1_Country;
-                CB_Country1.SelectedValue = g.Geo2_Country;
-                CB_Country2.SelectedValue = g.Geo3_Country;
-                CB_Country3.SelectedValue = g.Geo4_Country;
-                CB_Country4.SelectedValue = g.Geo5_Country;
-                CB_Region0.SelectedValue  = g.Geo1_Region;
-                CB_Region1.SelectedValue  = g.Geo2_Region;
-                CB_Region2.SelectedValue  = g.Geo3_Region;
-                CB_Region3.SelectedValue  = g.Geo4_Region;
-                CB_Region4.SelectedValue  = g.Geo5_Region;
+                CB_Country0.SelectedValue = (int)g.Geo1_Country;
+                CB_Country1.SelectedValue = (int)g.Geo2_Country;
+                CB_Country2.SelectedValue = (int)g.Geo3_Country;
+                CB_Country3.SelectedValue = (int)g.Geo4_Country;
+                CB_Country4.SelectedValue = (int)g.Geo5_Country;
+                CB_Region0.SelectedValue  = (int)g.Geo1_Region;
+                CB_Region1.SelectedValue  = (int)g.Geo2_Region;
+                CB_Region2.SelectedValue  = (int)g.Geo3_Region;
+                CB_Region3.SelectedValue  = (int)g.Geo4_Region;
+                CB_Region4.SelectedValue  = (int)g.Geo5_Region;
             }
 
             // Load the Fullness, and Enjoyment
@@ -69,6 +69,9 @@ namespace PKHeX.WinForms
                 M_OT_Affection.Text = a.OT_Affection.ToString();
                 M_CT_Affection.Text = a.HT_Affection.ToString();
             }
+
+            if (pkm is PK8 pk8)
+                MT_Sociability.Text = Math.Min(byte.MaxValue, pk8.Sociability).ToString();
 
             if (pkm is ITrainerMemories m)
             {
@@ -97,6 +100,7 @@ namespace PKHeX.WinForms
 
             GB_M_OT.Enabled = GB_M_CT.Enabled = GB_Residence.Enabled =
             BTN_Save.Enabled = M_Fullness.Enabled = M_Enjoyment.Enabled =
+            L_Sociability.Enabled = MT_Sociability.Enabled =
             L_Fullness.Enabled = L_Enjoyment.Enabled = !pkm.IsEgg;
 
             if (!pkm.IsEgg)
@@ -145,6 +149,7 @@ namespace PKHeX.WinForms
 
             // Affection no longer stored in gen8+, so only show in gen6/7.
             L_OT_Affection.Visible = L_CT_Affection.Visible = M_OT_Affection.Visible = M_CT_Affection.Visible = pkm.Format <= 7;
+            L_Sociability.Visible = MT_Sociability.Visible = pkm.Format >= 8;
         }
 
         private void SaveFields()
@@ -152,16 +157,16 @@ namespace PKHeX.WinForms
             // Save Region & Country Data
             if (pkm is IGeoTrack g)
             {
-                g.Geo1_Region = WinFormsUtil.GetIndex(CB_Region0);
-                g.Geo2_Region = WinFormsUtil.GetIndex(CB_Region1);
-                g.Geo3_Region = WinFormsUtil.GetIndex(CB_Region2);
-                g.Geo4_Region = WinFormsUtil.GetIndex(CB_Region3);
-                g.Geo5_Region = WinFormsUtil.GetIndex(CB_Region4);
-                g.Geo1_Country = WinFormsUtil.GetIndex(CB_Country0);
-                g.Geo2_Country = WinFormsUtil.GetIndex(CB_Country1);
-                g.Geo3_Country = WinFormsUtil.GetIndex(CB_Country2);
-                g.Geo4_Country = WinFormsUtil.GetIndex(CB_Country3);
-                g.Geo5_Country = WinFormsUtil.GetIndex(CB_Country4);
+                g.Geo1_Region  = (byte)WinFormsUtil.GetIndex(CB_Region0);
+                g.Geo2_Region  = (byte)WinFormsUtil.GetIndex(CB_Region1);
+                g.Geo3_Region  = (byte)WinFormsUtil.GetIndex(CB_Region2);
+                g.Geo4_Region  = (byte)WinFormsUtil.GetIndex(CB_Region3);
+                g.Geo5_Region  = (byte)WinFormsUtil.GetIndex(CB_Region4);
+                g.Geo1_Country = (byte)WinFormsUtil.GetIndex(CB_Country0);
+                g.Geo2_Country = (byte)WinFormsUtil.GetIndex(CB_Country1);
+                g.Geo3_Country = (byte)WinFormsUtil.GetIndex(CB_Country2);
+                g.Geo4_Country = (byte)WinFormsUtil.GetIndex(CB_Country3);
+                g.Geo5_Country = (byte)WinFormsUtil.GetIndex(CB_Country4);
             }
 
             // Save 0-255 stats
@@ -189,6 +194,9 @@ namespace PKHeX.WinForms
                 m.HT_Intensity = CB_CTFeel.Enabled ? CB_CTQual.SelectedIndex + 1 : 0;
                 m.HT_Feeling = CB_CTFeel.Enabled ? CB_CTFeel.SelectedIndex : 0;
             }
+
+            if (pkm is PK8 pk8)
+                pk8.Sociability = (byte)Util.ToInt32(MT_Sociability.Text);
         }
 
         // Event Actions

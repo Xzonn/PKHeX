@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace PKHeX.Core
 {
@@ -33,9 +32,6 @@ namespace PKHeX.Core
 
         private void Initialize()
         {
-            GTS = 0x18200; // GtsData
-            Fused = 0x16A00; // UnionPokemon
-
             PCLayout = 0x04400;
             BattleBoxOffset = 0x04A00;
             PSS = 0x05000;
@@ -46,23 +42,21 @@ namespace PKHeX.Core
             DaycareOffset = 0x1BC00;
             BerryField = 0x1C400;
             WondercardFlags = 0x1CC00;
-            Contest = 0x23600;
-            SecretBase = 0x23A00;
-            EonTicket = 0x319B8;
             Box = 0x33000;
             JPEG = 0x67C00;
 
-            EventFlag = EventConst + 0x2FC;
+            EventFlag = EventConst + 0x2F0;
             WondercardData = WondercardFlags + 0x100;
-            Daycare2 = DaycareOffset + 0x1F0;
         }
 
-        public int EonTicket { get; private set; }
-        public int Contest { get; private set; }
-        private int Daycare2 { get; set; }
-        public int SecretBase { get; private set; }
-        public int GTS { get; private set; }
-        public int Fused { get; private set; }
+        /// <summary> Offset of the UnionPokemon block. </summary>
+        public const int Fused = 0x16A00;
+        /// <summary> Offset of the GtsData block. </summary>
+        public const int GTS = 0x18200;
+        /// <summary> Offset of the second daycare structure within the Daycare block. </summary>
+        private const int Daycare2 = 0x1BC00 + 0x1F0;
+        /// <summary> Offset of the Contest data block. </summary>
+        public const int Contest = 0x23600;
 
         #region Blocks
         public override IReadOnlyList<BlockInfo> AllBlocks => Blocks.BlockInfo;
@@ -87,6 +81,7 @@ namespace PKHeX.Core
 
         public Misc6AO Misc => Blocks.Misc;
         public Zukan6AO Zukan => Blocks.Zukan;
+        public SecretBase6Block SecretBase => Blocks.SecretBase;
         #endregion
 
         public override GameVersion Version => Game switch
@@ -138,7 +133,8 @@ namespace PKHeX.Core
         public override string GetDaycareRNGSeed(int loc)
         {
             int ofs = loc == 0 ? DaycareOffset : Daycare2;
-            var data = Data.Skip(ofs + 0x1E8).Take(DaycareSeedSize / 2).Reverse().ToArray();
+            var data = Data.AsSpan(ofs + 0x1E8, DaycareSeedSize / 2).ToArray();
+            Array.Reverse(data);
             return BitConverter.ToString(data).Replace("-", string.Empty);
         }
 
@@ -157,7 +153,7 @@ namespace PKHeX.Core
         public override void SetDaycareOccupied(int loc, int slot, bool occupied)
         {
             int ofs = loc == 0 ? DaycareOffset : Daycare2;
-            Data[ofs + ((SIZE_STORED + 8) * slot)] = occupied ? 1 : 0;
+            Data[ofs + ((SIZE_STORED + 8) * slot)] = occupied ? (byte)1 : (byte)0;
         }
 
         public override void SetDaycareRNGSeed(int loc, string seed)
@@ -175,11 +171,11 @@ namespace PKHeX.Core
         public override void SetDaycareHasEgg(int loc, bool hasEgg)
         {
             int ofs = loc == 0 ? DaycareOffset : Daycare2;
-            Data[ofs + 0x1E0] = hasEgg ? 1 : 0;
+            Data[ofs + 0x1E0] = hasEgg ? (byte)1 : (byte)0;
         }
 
-        public override string JPEGTitle => HasJPPEGData ? string.Empty : StringConverter.GetString6(Data, JPEG, 0x1A);
-        public override byte[] GetJPEGData() => HasJPPEGData ? Array.Empty<byte>() : GetData(JPEG + 0x54, 0xE004);
+        public override string JPEGTitle => !HasJPPEGData ? string.Empty : StringConverter.GetString6(Data, JPEG, 0x1A);
+        public override byte[] GetJPEGData() => !HasJPPEGData ? Array.Empty<byte>() : GetData(JPEG + 0x54, 0xE004);
         private bool HasJPPEGData => Data[JPEG + 0x54] == 0xFF;
 
         protected override bool[] MysteryGiftReceivedFlags { get => Blocks.MysteryGift.GetReceivedFlags(); set => Blocks.MysteryGift.SetReceivedFlags(value); }

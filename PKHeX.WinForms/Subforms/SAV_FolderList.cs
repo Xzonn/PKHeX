@@ -31,7 +31,12 @@ namespace PKHeX.WinForms
             dgDataRecent.ContextMenuStrip = GetContextMenu(dgDataRecent);
             dgDataBackup.ContextMenuStrip = GetContextMenu(dgDataBackup);
 
-            var recent = SaveFinder.GetSaveFiles(drives, false, Paths.Select(z => z.Path).Where(z => z != Main.BackupPath));
+            var extra = Paths.Select(z => z.Path).Where(z => z != Main.BackupPath).Distinct();
+            var recent = SaveFinder.GetSaveFiles(drives, false, extra).ToList();
+            var loaded = Main.Settings.Startup.RecentlyLoaded
+                .Where(z => recent.All(x => x.Metadata.FilePath != z))
+                .Where(File.Exists).Select(SaveUtil.GetVariantSAV).Where(z => z is not null);
+            recent.AddRange(loaded!);
             Recent = PopulateData(dgDataRecent, recent);
             var backup = SaveFinder.GetSaveFiles(drives, false, Main.BackupPath);
             Backup = PopulateData(dgDataBackup, backup);
@@ -65,7 +70,6 @@ namespace PKHeX.WinForms
             // Preprogrammed folders
             foreach (var loc in Paths)
                 AddButton(loc.DisplayText, loc.Path);
-            AddCustomizeButton();
 
             dgDataRecent.DoubleBuffered(true);
             dgDataBackup.DoubleBuffered(true);
@@ -86,14 +90,14 @@ namespace PKHeX.WinForms
                 .OrderByDescending(z => Directory.Exists(z.Path)).ToList();
         }
 
-        private const int ButtonHeight = 30;
+        private const int ButtonHeight = 40;
         private const int ButtonWidth = 130;
 
         private void AddButton(string name, string path)
         {
             Button button = GetCustomButton(name);
-            button.Enabled = new DirectoryInfo(path).Exists;
-            button.Click += (s, e) =>
+            button.Enabled = Directory.Exists(path);
+            button.Click += (_, _) =>
             {
                 if (!Directory.Exists(path))
                 {
@@ -104,27 +108,9 @@ namespace PKHeX.WinForms
                 Close();
             };
             FLP_Buttons.Controls.Add(button);
-        }
 
-        private void AddCustomizeButton()
-        {
-            const string name = "Customize";
-            Button button = GetCustomButton(name);
-            button.Click += (s, e) =>
-            {
-                var loc = Main.SAVPaths;
-                if (!File.Exists(loc))
-                {
-                    var custom = Paths.Where(z => z.Custom).ToList();
-                    if (custom.Count == 0)
-                        Paths.Add(new CustomFolderPath("DISPLAY_TEXT", "FOLDER_PATH", true));
-                    var lines = custom.Select(z => ((CustomFolderPath)z).ToString());
-                    File.WriteAllLines(loc, lines);
-                }
-                Process.Start(loc);
-                Close();
-            };
-            FLP_Buttons.Controls.Add(button);
+            var hover = new ToolTip {AutoPopDelay = 30_000};
+            button.MouseHover += (_, _) => hover.Show(path, button);
         }
 
         private static Button GetCustomButton(string name)
@@ -139,14 +125,8 @@ namespace PKHeX.WinForms
 
         private static IEnumerable<CustomFolderPath> GetUserPaths()
         {
-            string loc = Main.SAVPaths;
-            if (!File.Exists(loc))
-                return Enumerable.Empty<CustomFolderPath>();
-
-            var lines = File.ReadLines(loc);
-            return lines.Select(z => z.Split('\t'))
-                .Where(a => a.Length == 2)
-                .Select(x => new CustomFolderPath(x, true));
+            var paths = Main.Settings.Backup.OtherBackupPaths;
+            return paths.Select(x => new CustomFolderPath(x, true));
         }
 
         private static IEnumerable<CustomFolderPath> GetConsolePaths(IEnumerable<string> drives)
@@ -154,9 +134,13 @@ namespace PKHeX.WinForms
             var path3DS = SaveFinder.Get3DSLocation(drives);
             if (path3DS == null)
                 return Array.Empty<CustomFolderPath>();
+
             var root = Path.GetPathRoot(path3DS);
+            // ReSharper disable once ConditionIsAlwaysTrueOrFalse
+            // ReSharper disable once HeuristicUnreachableCode
             if (root == null)
                 return Array.Empty<CustomFolderPath>();
+
             var paths = SaveFinder.Get3DSBackupPaths(root);
             return paths.Select(z => new CustomFolderPath(z));
         }
@@ -166,9 +150,13 @@ namespace PKHeX.WinForms
             var pathNX = SaveFinder.GetSwitchLocation(drives);
             if (pathNX == null)
                 return Array.Empty<CustomFolderPath>();
+
             var root = Path.GetPathRoot(pathNX);
+            // ReSharper disable once ConditionIsAlwaysTrueOrFalse
+            // ReSharper disable once HeuristicUnreachableCode
             if (root == null)
                 return Array.Empty<CustomFolderPath>();
+
             var paths = SaveFinder.GetSwitchBackupPaths(root);
             return paths.Select(z => new CustomFolderPath(z));
         }
@@ -192,13 +180,6 @@ namespace PKHeX.WinForms
                 Custom = custom;
             }
 
-            public CustomFolderPath(IReadOnlyList<string> arr, bool custom = false)
-            {
-                Path = arr[1];
-                DisplayText = arr[0];
-                Custom = custom;
-            }
-
             public CustomFolderPath(string path, string display, bool custom = false)
             {
                 Path = path;
@@ -219,7 +200,7 @@ namespace PKHeX.WinForms
                 Text = "Open",
                 Image = Resources.open,
             };
-            mnuOpen.Click += (sender, e) => ClickOpenFile(dgv);
+            mnuOpen.Click += (_, _) => ClickOpenFile(dgv);
 
             var mnuBrowseAt = new ToolStripMenuItem
             {
@@ -227,7 +208,7 @@ namespace PKHeX.WinForms
                 Text = "Browse...",
                 Image = Resources.folder,
             };
-            mnuBrowseAt.Click += (sender, e) => ClickOpenFolder(dgv);
+            mnuBrowseAt.Click += (_, _) => ClickOpenFolder(dgv);
 
             ContextMenuStrip mnu = new();
             mnu.Items.Add(mnuOpen);
@@ -238,7 +219,7 @@ namespace PKHeX.WinForms
         private void ClickOpenFile(DataGridView dgv)
         {
             var sav = GetSaveFile(dgv);
-            if (sav == null)
+            if (sav == null || !File.Exists(sav.FilePath))
             {
                 WinFormsUtil.Alert(MsgFileLoadFail);
                 return;
@@ -250,7 +231,7 @@ namespace PKHeX.WinForms
         private void ClickOpenFolder(DataGridView dgv)
         {
             var sav = GetSaveFile(dgv);
-            if (sav == null)
+            if (sav == null || !File.Exists(sav.FilePath))
             {
                 WinFormsUtil.Alert(MsgFileLoadFail);
                 return;
@@ -375,9 +356,9 @@ namespace PKHeX.WinForms
             cm.ResumeBinding();
         }
 
-        private static void ToggleRowVisibility(DataGridView dg, int column, string text, int i)
+        private static void ToggleRowVisibility(DataGridView dg, int column, string text, int rowIndex)
         {
-            var row = dg.Rows[i];
+            var row = dg.Rows[rowIndex];
             if (text.Length == 0 || column < 0)
             {
                 row.Visible = true;

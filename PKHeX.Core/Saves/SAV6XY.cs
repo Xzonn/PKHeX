@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace PKHeX.Core
 {
@@ -47,7 +46,7 @@ namespace PKHeX.Core
             Box = 0x22600;
             JPEG = 0x57200;
 
-            EventFlag = EventConst + 0x2FC;
+            EventFlag = EventConst + 0x2F0;
             WondercardData = WondercardFlags + 0x100;
 
             // Extra Viewable Slots
@@ -93,14 +92,15 @@ namespace PKHeX.Core
 
         public override int GetDaycareSlotOffset(int loc, int slot) => DaycareOffset + 8 + (slot * (SIZE_STORED + 8));
         public override bool? IsDaycareHasEgg(int loc) => Data[DaycareOffset + 0x1E0] == 1;
-        public override void SetDaycareHasEgg(int loc, bool hasEgg) => Data[DaycareOffset + 0x1E0] = hasEgg ? 1 : 0;
-        public override void SetDaycareOccupied(int loc, int slot, bool occupied) => Data[DaycareOffset + ((SIZE_STORED + 8) * slot)] = occupied ? 1 : 0;
+        public override void SetDaycareHasEgg(int loc, bool hasEgg) => Data[DaycareOffset + 0x1E0] = hasEgg ? (byte)1 : (byte)0;
+        public override void SetDaycareOccupied(int loc, int slot, bool occupied) => Data[DaycareOffset + ((SIZE_STORED + 8) * slot)] = occupied ? (byte)1 : (byte)0;
         public override void SetDaycareEXP(int loc, int slot, uint EXP) => BitConverter.GetBytes(EXP).CopyTo(Data, DaycareOffset + 4 + ((SIZE_STORED + 8) * slot));
 
         public override string GetDaycareRNGSeed(int loc)
         {
             int ofs = DaycareOffset;
-            var data = Data.Skip(ofs + 0x1E8).Take(DaycareSeedSize / 2).Reverse().ToArray();
+            var data = Data.AsSpan(ofs + 0x1E8, DaycareSeedSize / 2).ToArray();
+            Array.Reverse(data);
             return BitConverter.ToString(data).Replace("-", string.Empty);
         }
 
@@ -116,8 +116,8 @@ namespace PKHeX.Core
             Util.GetBytesFromHexString(seed).CopyTo(Data, DaycareOffset + 0x1E8);
         }
 
-        public override string JPEGTitle => HasJPPEGData ? string.Empty : StringConverter.GetString6(Data, JPEG, 0x1A);
-        public override byte[] GetJPEGData() => HasJPPEGData ? Array.Empty<byte>() : GetData(JPEG + 0x54, 0xE004);
+        public override string JPEGTitle => !HasJPPEGData ? string.Empty : StringConverter.GetString6(Data, JPEG, 0x1A);
+        public override byte[] GetJPEGData() => !HasJPPEGData ? Array.Empty<byte>() : GetData(JPEG + 0x54, 0xE004);
         private bool HasJPPEGData => Data[JPEG + 0x54] == 0xFF;
 
         public void UnlockAllFriendSafariSlots()
@@ -165,5 +165,11 @@ namespace PKHeX.Core
         public override int Vivillon { get => Blocks.Misc.Vivillon; set => Blocks.Misc.Vivillon = value; }
         public override int Badges { get => Blocks.Misc.Badges; set => Blocks.Misc.Badges = value; }
         public override int BP { get => Blocks.Misc.BP; set => Blocks.Misc.BP = value; }
+
+        public override int MultiplayerSpriteID
+        {
+            get => Blocks.Status.MultiplayerSpriteID_1;
+            set => Blocks.Status.MultiplayerSpriteID_1 = Blocks.Status.MultiplayerSpriteID_2 = value;
+        }
     }
 }

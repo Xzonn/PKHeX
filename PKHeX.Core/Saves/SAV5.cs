@@ -66,8 +66,8 @@ namespace PKHeX.Core
         protected int CGearDataOffset;
         protected int EntreeForestOffset;
         private int AdventureInfo;
-        public int GTS { get; } = int.MinValue;
-        public int Fused { get; } = int.MinValue;
+        public abstract int GTS { get; }
+        public abstract int Fused { get; }
 
         // Daycare
         public override int DaycareSeedSize => Daycare5.DaycareSeedSize;
@@ -101,10 +101,10 @@ namespace PKHeX.Core
         public bool BattleBoxLocked
         {
             get => Data[BattleBoxOffset + 0x358] != 0; // wifi/live
-            set => Data[BattleBoxOffset + 0x358] = value ? 1 : 0;
+            set => Data[BattleBoxOffset + 0x358] = value ? (byte)1 : (byte)0;
         }
 
-        protected override void SetPKM(PKM pkm)
+        protected override void SetPKM(PKM pkm, bool isParty = false)
         {
             var pk5 = (PK5)pkm;
             // Apply to this Save File
@@ -148,7 +148,7 @@ namespace PKHeX.Core
         private bool CGearSkinPresent
         {
             get => Data[CGearSkinInfoOffset + 2] == 1;
-            set => Data[CGearSkinInfoOffset + 2] = Data[PlayerData.Offset + (this is SAV5B2W2 ? 0x6C : 0x54)] = value ? 1 : 0;
+            set => Data[CGearSkinInfoOffset + 2] = Data[PlayerData.Offset + (this is SAV5B2W2 ? 0x6C : 0x54)] = value ? (byte)1 : (byte)0;
         }
 
         public byte[] CGearSkinData
@@ -175,7 +175,7 @@ namespace PKHeX.Core
                 chkbytes.CopyTo(Data, footer + 2); // checksum
                 chkbytes.CopyTo(Data, footer + 0x100); // second checksum
                 dlcfooter.CopyTo(Data, footer + 0x102);
-                ushort skinchkval = Checksums.CRC16_CCITT(Data, footer + 0x100, 4);
+                ushort skinchkval = Checksums.CRC16_CCITT(new ReadOnlySpan<byte>(Data, footer + 0x100, 4));
                 BitConverter.GetBytes(skinchkval).CopyTo(Data, footer + 0x112);
 
                 // Indicate in the save file that data is present
@@ -203,9 +203,18 @@ namespace PKHeX.Core
         public abstract BoxLayout5 BoxLayout { get; }
         public abstract PlayerData5 PlayerData { get; }
         public abstract BattleSubway5 BattleSubway { get; }
+        public abstract Entralink5 Entralink { get; }
+        public abstract Musical5 Musical { get; }
 
         public static int GetMailOffset(int index) => (index * Mail5.SIZE) + 0x1DD00;
         public byte[] GetMailData(int offset) => GetData(offset, Mail5.SIZE);
         public int GetBattleBoxSlot(int slot) => BattleBoxOffset + (slot * SIZE_STORED);
+
+        public Mail GetMail(int mailIndex)
+        {
+            int ofs = GetMailOffset(mailIndex);
+            var data = GetMailData(ofs);
+            return new Mail5(data, ofs);
+        }
     }
 }

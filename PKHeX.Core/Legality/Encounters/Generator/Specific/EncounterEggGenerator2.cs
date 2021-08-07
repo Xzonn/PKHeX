@@ -28,18 +28,39 @@ namespace PKHeX.Core
             // Gen2 was before split-breed species existed; try to ensure that the egg we try and match to can actually originate in the game.
             // Species must be < 251
             // Form must be 0 (Unown cannot breed).
-            var baseID = chain[chain.Count - 1];
+            var baseID = chain[^1];
             if ((baseID.Species >= Legal.MaxSpeciesID_2 || baseID.Form != 0) && chain.Count != 1)
-                baseID = chain[chain.Count - 2];
+                baseID = chain[^2];
             if (baseID.Form != 0)
                 yield break; // Forms don't exist in Gen2, besides Unown (which can't breed). Nothing can form-change.
 
             species = baseID.Species;
             if (species > Legal.MaxSpeciesID_2)
                 yield break;
-            if (ParseSettings.AllowGen2Crystal(pkm))
+            if (GetCanBeCrystalEgg(pkm, species, all))
                 yield return new EncounterEgg(species, 0, 5, 2, GameVersion.C); // gen2 egg
             yield return new EncounterEgg(species, 0, 5, 2, GameVersion.GS); // gen2 egg
+        }
+
+        private static bool GetCanBeCrystalEgg(PKM pkm, int species, bool all)
+        {
+            if (!ParseSettings.AllowGen2Crystal(pkm))
+                return false;
+
+            if (all)
+                return true;
+
+            // Check if the met data is present or could have been erased.
+            if (pkm.Format > 2)
+                return true; // doesn't have original met location
+            if (pkm.Met_Location != 0)
+                return true; // has original met location
+            if (species < Legal.MaxSpeciesID_1)
+                return true; // can trade RBY to wipe location
+            if (pkm.Species < Legal.MaxSpeciesID_1)
+                return true; // can trade RBY to wipe location
+
+            return false;
         }
 
         private static bool GetCanBeEgg(PKM pkm)

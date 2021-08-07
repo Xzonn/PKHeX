@@ -22,14 +22,14 @@ namespace PKHeX.Core
         public override PersonalInfo PersonalInfo => PersonalTable.RS[Species];
         public XK3(byte[] data) : base(data) { }
         public XK3() : base(PokeCrypto.SIZE_3XSTORED) { }
-        public override PKM Clone() => new XK3((byte[])Data.Clone()){Identifier = Identifier, Purification = Purification};
+        public override PKM Clone() => new XK3((byte[])Data.Clone()){Purification = Purification};
 
-        private string GetString(int Offset, int Count) => StringConverter3.GetBEString3(Data, Offset, Count);
+        private string GetString(int offset, int count) => StringConverter3.GetBEString3(Data, offset, count);
         private static byte[] SetString(string value, int maxLength) => StringConverter3.SetBEString3(value, maxLength);
 
         // Trash Bytes
-        public override byte[] Nickname_Trash { get => GetData(0x4E, 20); set { if (value.Length == 20) value.CopyTo(Data, 0x4E); } }
-        public override byte[] OT_Trash { get => GetData(0x38, 20); set { if (value.Length == 20) value.CopyTo(Data, 0x38); } }
+        public override Span<byte> Nickname_Trash { get => Data.AsSpan(0x4E, 20); set { if (value.Length == 20) value.CopyTo(Data.AsSpan(0x4E)); } }
+        public override Span<byte> OT_Trash { get => Data.AsSpan(0x38, 20); set { if (value.Length == 20) value.CopyTo(Data.AsSpan(0x38)); } }
 
         // Silly Attributes
         public override ushort Sanity { get => 0; set { } } // valid flag set in pkm structure.
@@ -69,7 +69,7 @@ namespace PKHeX.Core
         public override uint PID { get => BigEndian.ToUInt32(Data, 0x28); set => BigEndian.GetBytes(value).CopyTo(Data, 0x28); }
         // 0x2A-0x2B Unknown
         // 0x2C-0x2F Battle Related
-        public bool Obedient { get => Data[0x30] == 1; set => Data[0x30] = value ? 1 : 0; }
+        public bool Obedient { get => Data[0x30] == 1; set => Data[0x30] = value ? (byte)1 : (byte)0; }
         // 0x31-0x32 Unknown
         public int EncounterInfo { get => Data[0x33]; set => Data[0x33] = (byte)value; }
 
@@ -97,7 +97,7 @@ namespace PKHeX.Core
         public string NicknameCopy { get => GetString(0x64, 20); set => SetString(value, 10).CopyTo(Data, 0x64); } // +2 terminator
         // 0x7A-0x7B Unknown
         private ushort RIB0 { get => BigEndian.ToUInt16(Data, 0x7C); set => BigEndian.GetBytes(value).CopyTo(Data, 0x7C); }
-        public override bool RibbonChampionG3Hoenn   { get => (RIB0 & (1 << 15)) == 1 << 15; set => RIB0 = (ushort)((RIB0 & ~(1 << 15)) | (value ? 1 << 15 : 0)); }
+        public override bool RibbonChampionG3        { get => (RIB0 & (1 << 15)) == 1 << 15; set => RIB0 = (ushort)((RIB0 & ~(1 << 15)) | (value ? 1 << 15 : 0)); }
         public override bool RibbonWinning           { get => (RIB0 & (1 << 14)) == 1 << 14; set => RIB0 = (ushort)((RIB0 & ~(1 << 14)) | (value ? 1 << 14 : 0)); }
         public override bool RibbonVictory           { get => (RIB0 & (1 << 13)) == 1 << 13; set => RIB0 = (ushort)((RIB0 & ~(1 << 13)) | (value ? 1 << 13 : 0)); }
         public override bool RibbonArtist            { get => (RIB0 & (1 << 12)) == 1 << 12; set => RIB0 = (ushort)((RIB0 & ~(1 << 12)) | (value ? 1 << 12 : 0)); }

@@ -8,6 +8,7 @@ namespace PKHeX.Core
     {
         public override int Generation => 6;
         public bool CanDexNav => Area.Type != SlotType.Rock_Smash;
+        public bool IsHorde => Area.Type == SlotType.Horde;
 
         public bool Pressure { get; init; }
         public bool DexNav { get; init; }
@@ -23,12 +24,12 @@ namespace PKHeX.Core
             var pk6 = (PK6)pk;
             if (CanDexNav)
             {
-                var baseSpec = EvoBase.GetBaseSpecies(pk);
-                var eggMoves = MoveEgg.GetEggMoves(pk.PersonalInfo, baseSpec.Species, baseSpec.Form, Version, 6);
+                var eggMoves = GetDexNavMoves();
                 if (eggMoves.Length > 0)
                     pk6.RelearnMove1 = eggMoves[Util.Rand.Next(eggMoves.Length)];
             }
             pk6.SetRandomMemory6();
+            pk6.SetRandomEC();
         }
 
         public override string GetConditionString(out bool valid)
@@ -45,5 +46,18 @@ namespace PKHeX.Core
         }
 
         protected override HiddenAbilityPermission IsHiddenAbilitySlot() => CanDexNav || Area.Type == SlotType.Horde ? HiddenAbilityPermission.Possible : HiddenAbilityPermission.Never;
+
+        private int[] GetDexNavMoves()
+        {
+            var et = EvolutionTree.GetEvolutionTree(6);
+            var sf = et.GetBaseSpeciesForm(Species, Form);
+            return MoveEgg.GetEggMoves(6, sf & 0x7FF, sf >> 11, Version);
+        }
+
+        public bool CanBeDexNavMove(int move)
+        {
+            var baseEgg = GetDexNavMoves();
+            return System.Array.IndexOf(baseEgg, move) >= 0;
+        }
     }
 }

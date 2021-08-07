@@ -9,6 +9,7 @@ namespace PKHeX.WinForms.Controls
         private bool IsRawMode;
         private int CurrentSpecies;
         private int CurrentForm;
+        private int CurrentGeneration;
         private bool FieldsLoaded;
 
         public FormArgument() => InitializeComponent();
@@ -16,11 +17,12 @@ namespace PKHeX.WinForms.Controls
         public void LoadArgument(IFormArgument f, int species, int form, int generation)
         {
             FieldsLoaded = false;
-            var max = FormConverter.GetFormArgumentMax(species, form, generation);
+            var max = FormArgumentUtil.GetFormArgumentMax(species, form, generation);
             if (max == 0)
             {
                 CurrentSpecies = species;
                 CurrentForm = form;
+                CurrentGeneration = generation;
                 NUD_FormArg.Value = CB_FormArg.SelectedIndex = 0;
                 CB_FormArg.Visible = false;
                 NUD_FormArg.Visible = false;
@@ -31,7 +33,7 @@ namespace PKHeX.WinForms.Controls
             bool named = FormConverter.GetFormArgumentIsNamedIndex(species);
             if (named)
             {
-                if (CurrentSpecies == species && CurrentForm == form)
+                if (CurrentSpecies == species && CurrentForm == form && CurrentGeneration == generation)
                 {
                     CurrentValue = f.FormArgument;
                     FieldsLoaded = true;
@@ -56,13 +58,22 @@ namespace PKHeX.WinForms.Controls
             }
             CurrentSpecies = species;
             CurrentForm = form;
-            CurrentValue = f.FormArgument;
+            CurrentGeneration = generation;
+
+            bool isPair = FormArgumentUtil.IsFormArgumentTypeDatePair(species, form);
+            CurrentValue = isPair ? f.FormArgumentRemain : f.FormArgument;
+
             FieldsLoaded = true;
         }
 
-        public uint CurrentValue
+        public void SaveArgument(IFormArgument f)
         {
-            get => IsRawMode ? (uint) NUD_FormArg.Value : (uint) CB_FormArg.SelectedIndex;
+            f.ChangeFormArgument(CurrentSpecies, CurrentForm, CurrentGeneration, CurrentValue);
+        }
+
+        private uint CurrentValue
+        {
+            get => IsRawMode ?  (uint) NUD_FormArg.Value : (uint) CB_FormArg.SelectedIndex;
             set
             {
                 if (IsRawMode)
@@ -72,7 +83,6 @@ namespace PKHeX.WinForms.Controls
             }
         }
 
-        public void SaveArgument(IFormArgument f) => f.FormArgument = CurrentValue;
         public event EventHandler? ValueChanged;
 
         private void CB_FormArg_SelectedIndexChanged(object sender, EventArgs e)

@@ -36,6 +36,7 @@
             this.Menu_Tools = new System.Windows.Forms.ToolStripMenuItem();
             this.Menu_SearchSettings = new System.Windows.Forms.ToolStripMenuItem();
             this.Menu_SearchBoxes = new System.Windows.Forms.ToolStripMenuItem();
+            this.Menu_SearchBackups = new System.Windows.Forms.ToolStripMenuItem();
             this.Menu_SearchDatabase = new System.Windows.Forms.ToolStripMenuItem();
             this.Menu_SearchLegal = new System.Windows.Forms.ToolStripMenuItem();
             this.Menu_SearchIllegal = new System.Windows.Forms.ToolStripMenuItem();
@@ -162,7 +163,7 @@
             this.Menu_Import,
             this.Menu_DeleteClones});
             this.Menu_Tools.Name = "Menu_Tools";
-            this.Menu_Tools.Size = new System.Drawing.Size(47, 20);
+            this.Menu_Tools.Size = new System.Drawing.Size(46, 20);
             this.Menu_Tools.Text = "Tools";
             // 
             // Menu_SearchSettings
@@ -170,6 +171,7 @@
             this.Menu_SearchSettings.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.Menu_SearchBoxes,
             this.Menu_SearchDatabase,
+            this.Menu_SearchBackups,
             this.Menu_SearchLegal,
             this.Menu_SearchIllegal,
             this.Menu_SearchClones});
@@ -186,6 +188,15 @@
             this.Menu_SearchBoxes.Name = "Menu_SearchBoxes";
             this.Menu_SearchBoxes.Size = new System.Drawing.Size(198, 22);
             this.Menu_SearchBoxes.Text = "Search Within Boxes";
+            // 
+            // Menu_SearchBackups
+            // 
+            this.Menu_SearchBackups.Checked = true;
+            this.Menu_SearchBackups.CheckOnClick = true;
+            this.Menu_SearchBackups.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.Menu_SearchBackups.Name = "Menu_SearchBackups";
+            this.Menu_SearchBackups.Size = new System.Drawing.Size(198, 22);
+            this.Menu_SearchBackups.Text = "Search Within Backups";
             // 
             // Menu_SearchDatabase
             // 
@@ -463,7 +474,7 @@
             this.CB_EVTrain.Items.AddRange(new object[] {
             "Any",
             "None (0)",
-            "Some (127-0)",
+            "Some (127-1)",
             "Half (128-507)",
             "Full (508+)"});
             this.CB_EVTrain.Location = new System.Drawing.Point(83, 146);
@@ -687,7 +698,8 @@
             "Gen 4 (DPPt/HGSS)",
             "Gen 5 (BW/B2W2)",
             "Gen 6 (XY/ORAS)",
-            "Gen 7 (SM/USUM)"});
+            "Gen 7 (SM/USUM/LGPE)",
+            "Gen 8 (SWSH)"});
             this.CB_Generation.Location = new System.Drawing.Point(83, 293);
             this.CB_Generation.Margin = new System.Windows.Forms.Padding(0);
             this.CB_Generation.Name = "CB_Generation";
@@ -735,7 +747,7 @@
             this.CHK_IsEgg.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
             this.CHK_IsEgg.ThreeState = true;
             this.CHK_IsEgg.UseVisualStyleBackColor = true;
-            this.CHK_IsEgg.CheckedChanged += new System.EventHandler(this.ToggleESV);
+            this.CHK_IsEgg.CheckStateChanged += new System.EventHandler(this.ToggleESV);
             // 
             // L_ESV
             // 
@@ -923,7 +935,6 @@
             this.mnuDelete});
             this.mnu.Name = "mnu";
             this.mnu.Size = new System.Drawing.Size(108, 48);
-            this.mnu.Click += new System.EventHandler(this.ClickView);
             // 
             // mnuView
             // 
@@ -931,6 +942,7 @@
             this.mnuView.Name = "mnuView";
             this.mnuView.Size = new System.Drawing.Size(107, 22);
             this.mnuView.Text = "View";
+            this.mnuView.Click += new System.EventHandler(this.ClickView);
             // 
             // mnuDelete
             // 
@@ -1093,5 +1105,6 @@
         private System.Windows.Forms.TabPage Tab_General;
         private System.Windows.Forms.TabPage Tab_Advanced;
         private System.Windows.Forms.RichTextBox RTB_Instructions;
+        private System.Windows.Forms.ToolStripMenuItem Menu_SearchBackups;
     }
 }

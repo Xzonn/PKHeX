@@ -26,7 +26,7 @@ namespace PKHeX.Core
         public override int Generation => 6;
         protected override int GiftCountMax => 24;
         protected override int GiftFlagMax => 0x100 * 8;
-        protected override int EventFlagMax => 8 * 0x180;
+        protected override int EventFlagMax => 8 * 0x1A0;
         protected override int EventConstMax => (EventFlag - EventConst) / sizeof(ushort);
         public override int OTLength => 12;
         public override int NickLength => 12;
@@ -60,9 +60,9 @@ namespace PKHeX.Core
         public override int Gender { get => Status.Gender; set => Status.Gender = value; }
         public override int Language { get => Status.Language; set => Status.Language = value; }
         public override string OT { get => Status.OT; set => Status.OT = value; }
-        public int Region { get => Status.SubRegion; set => Status.SubRegion = value; }
-        public int Country { get => Status.Country; set => Status.Country = value; }
-        public int ConsoleRegion { get => Status.ConsoleRegion; set => Status.ConsoleRegion = value; }
+        public byte Region { get => Status.Region; set => Status.Region = value; }
+        public byte Country { get => Status.Country; set => Status.Country = value; }
+        public byte ConsoleRegion { get => Status.ConsoleRegion; set => Status.ConsoleRegion = value; }
         public int GameSyncIDSize => MyStatus6.GameSyncIDSize; // 64 bits
         public string GameSyncID { get => Status.GameSyncID; set => Status.GameSyncID = value; }
         public override int PlayedHours { get => Played.PlayedHours; set => Played.PlayedHours = value; }
@@ -101,7 +101,7 @@ namespace PKHeX.Core
             SetData(data, PCLayout + (LongStringLength * box));
         }
 
-        protected override void SetPKM(PKM pkm)
+        protected override void SetPKM(PKM pkm, bool isParty = false)
         {
             PK6 pk6 = (PK6)pkm;
             // Apply to this Save File
@@ -116,6 +116,27 @@ namespace PKHeX.Core
                 else if (pk6.HasMove(218)) // Frustration
                     pkm.CurrentFriendship = pk6.OppositeFriendship;
             }
+
+            pk6.FormArgumentElapsed = pk6.FormArgumentMaximum = 0;
+            pk6.FormArgumentRemain = (byte)GetFormArgument(pkm, isParty);
+            if (!isParty && pkm.Form != 0)
+            {
+                switch (pkm.Species)
+                {
+                    case (int) Species.Furfrou:
+                        pkm.Form = 0;
+                        break;
+                    case (int) Species.Hoopa:
+                    {
+                        pkm.Form = 0;
+                        var hsf = Array.IndexOf(pkm.Moves, (int) Move.HyperspaceFury);
+                        if (hsf != -1)
+                            pkm.SetMove(hsf, (int) Move.HyperspaceHole);
+                        break;
+                    }
+                }
+            }
+
             pkm.RefreshChecksum();
             AddCountAcquired(pkm);
         }
@@ -126,13 +147,10 @@ namespace PKHeX.Core
             if (pkm.CurrentHandler == 1)
                 Records.AddRecord(012); // trade
             if (!pkm.WasEgg)
+            {
+                Records.AddRecord(004); // total battles
                 Records.AddRecord(005); // wild encounters
-        }
-
-        protected override void SetPartyValues(PKM pkm, bool isParty)
-        {
-            base.SetPartyValues(pkm, isParty);
-            ((PK6)pkm).FormArgument = GetFormArgument(pkm, isParty);
+            }
         }
 
         private static uint GetFormArgument(PKM pkm, bool isParty)

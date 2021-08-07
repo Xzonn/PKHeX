@@ -106,9 +106,9 @@ namespace PKHeX.WinForms
             trainerID1.LoadIDValues(SAV);
             MT_Money.Text = SAV.Money.ToString();
 
-            CB_Country.SelectedValue = SAV.Country;
-            CB_Region.SelectedValue = SAV.Region;
-            CB_3DSReg.SelectedValue = SAV.ConsoleRegion;
+            CB_Country.SelectedValue = (int)SAV.Country;
+            CB_Region.SelectedValue = (int)SAV.Region;
+            CB_3DSReg.SelectedValue = (int)SAV.ConsoleRegion;
             CB_Language.SelectedValue = SAV.Language;
             var timeA = SAV.GameTime.AlolaTime;
             if (timeA == 0)
@@ -151,11 +151,11 @@ namespace PKHeX.WinForms
                 L_LastSaved.Visible = CAL_LastSavedDate.Visible = CAL_LastSavedTime.Visible = false;
             }
 
-            Util.GetDateTime2000(SAV.SecondsToStart, out var date, out var time);
+            DateUtil.GetDateTime2000(SAV.SecondsToStart, out var date, out var time);
             CAL_AdventureStartDate.Value = date;
             CAL_AdventureStartTime.Value = time;
 
-            Util.GetDateTime2000(SAV.SecondsToFame, out date, out time);
+            DateUtil.GetDateTime2000(SAV.SecondsToFame, out date, out time);
             CAL_HoFDate.Value = date;
             CAL_HoFTime.Value = time;
 
@@ -329,9 +329,9 @@ namespace PKHeX.WinForms
             SAV.Gender = (byte)CB_Gender.SelectedIndex;
 
             SAV.Money = Util.ToUInt32(MT_Money.Text);
-            SAV.Region = WinFormsUtil.GetIndex(CB_Region);
-            SAV.Country = WinFormsUtil.GetIndex(CB_Country);
-            SAV.ConsoleRegion = WinFormsUtil.GetIndex(CB_3DSReg);
+            SAV.Region = (byte)WinFormsUtil.GetIndex(CB_Region);
+            SAV.Country = (byte)WinFormsUtil.GetIndex(CB_Country);
+            SAV.ConsoleRegion = (byte)WinFormsUtil.GetIndex(CB_3DSReg);
             SAV.Language = WinFormsUtil.GetIndex(CB_Language);
             if (CB_AlolaTime.Enabled)
                 SAV.GameTime.AlolaTime = (ulong)WinFormsUtil.GetIndex(CB_AlolaTime);
@@ -354,8 +354,8 @@ namespace PKHeX.WinForms
             SAV.PlayedMinutes = ushort.Parse(MT_Minutes.Text)%60;
             SAV.PlayedSeconds = ushort.Parse(MT_Seconds.Text)%60;
 
-            SAV.SecondsToStart = (uint)Util.GetSecondsFrom2000(CAL_AdventureStartDate.Value, CAL_AdventureStartTime.Value);
-            SAV.SecondsToFame = (uint)Util.GetSecondsFrom2000(CAL_HoFDate.Value, CAL_HoFTime.Value);
+            SAV.SecondsToStart = (uint)DateUtil.GetSecondsFrom2000(CAL_AdventureStartDate.Value, CAL_AdventureStartTime.Value);
+            SAV.SecondsToFame = (uint)DateUtil.GetSecondsFrom2000(CAL_HoFDate.Value, CAL_HoFTime.Value);
 
             if (SAV.Played.LastSavedDate.HasValue)
                 SAV.Played.LastSavedDate = new DateTime(CAL_LastSavedDate.Value.Year, CAL_LastSavedDate.Value.Month, CAL_LastSavedDate.Value.Day, CAL_LastSavedTime.Value.Hour, CAL_LastSavedTime.Value.Minute, 0);
@@ -560,8 +560,8 @@ namespace PKHeX.WinForms
             switch (index)
             {
                 case 2: // Storyline Completed Time
-                    var seconds = Util.GetSecondsFrom2000(CAL_AdventureStartDate.Value, CAL_AdventureStartTime.Value);
-                    return Util.ConvertDateValueToString(SAV.GetRecord(index), seconds);
+                    var seconds = DateUtil.GetSecondsFrom2000(CAL_AdventureStartDate.Value, CAL_AdventureStartTime.Value);
+                    return DateUtil.ConvertDateValueToString(SAV.GetRecord(index), seconds);
                 default:
                     return null;
             }

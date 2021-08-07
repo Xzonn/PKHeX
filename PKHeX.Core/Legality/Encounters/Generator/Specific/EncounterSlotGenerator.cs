@@ -21,11 +21,25 @@ namespace PKHeX.Core
 {
     public static class EncounterSlotGenerator
     {
-        public static IEnumerable<EncounterSlot> GetPossible(PKM pkm, IReadOnlyList<DexLevel> chain, GameVersion gameSource = GameVersion.Any)
+        public static IEnumerable<EncounterSlot> GetPossible(PKM pkm, IReadOnlyList<DexLevel> chain, GameVersion gameSource = Any)
         {
-            var possibleAreas = GetEncounterSlots(pkm, gameSource);
-            return possibleAreas.SelectMany(area => area.Slots).Where(z => chain.Any(v => v.Species == z.Species));
+            var possibleAreas = GetAreasByGame(pkm, gameSource);
+            return possibleAreas.SelectMany(z => z.GetSpecies(chain));
         }
+
+        private static IEnumerable<EncounterArea> GetAreasByGame(PKM pkm, GameVersion gameSource) => gameSource switch
+        {
+            RD => SlotsRD,
+            GN => SlotsGN,
+            BU => SlotsBU,
+            YW => SlotsYW,
+
+            GD => SlotsGD,
+            SV => SlotsSV,
+            C => SlotsC,
+
+            _ => GetEncounterSlots(pkm, gameSource),
+        };
 
         private static IEnumerable<EncounterSlot> GetRawEncounterSlots(PKM pkm, IReadOnlyList<EvoCriteria> chain, GameVersion gameSource)
         {
@@ -41,9 +55,9 @@ namespace PKHeX.Core
             }
         }
 
-        public static IEnumerable<EncounterSlot> GetValidWildEncounters34(PKM pkm, IReadOnlyList<EvoCriteria> chain, GameVersion gameSource = GameVersion.Any)
+        public static IEnumerable<EncounterSlot> GetValidWildEncounters34(PKM pkm, IReadOnlyList<EvoCriteria> chain, GameVersion gameSource = Any)
         {
-            if (gameSource == GameVersion.Any)
+            if (gameSource == Any)
                 gameSource = (GameVersion)pkm.Version;
 
             var slots = GetRawEncounterSlots(pkm, chain, gameSource);
@@ -51,37 +65,37 @@ namespace PKHeX.Core
             return slots; // defer deferrals to the method consuming this collection
         }
 
-        public static IEnumerable<EncounterSlot> GetValidWildEncounters12(PKM pkm, IReadOnlyList<EvoCriteria> chain, GameVersion gameSource = GameVersion.Any)
+        public static IEnumerable<EncounterSlot> GetValidWildEncounters12(PKM pkm, IReadOnlyList<EvoCriteria> chain, GameVersion gameSource = Any)
         {
-            if (gameSource == GameVersion.Any)
+            if (gameSource == Any)
                 gameSource = (GameVersion)pkm.Version;
 
             return GetRawEncounterSlots(pkm, chain, gameSource);
         }
 
-        public static IEnumerable<EncounterSlot> GetValidWildEncounters(PKM pkm, IReadOnlyList<EvoCriteria> chain, GameVersion gameSource = GameVersion.Any)
+        public static IEnumerable<EncounterSlot> GetValidWildEncounters(PKM pkm, IReadOnlyList<EvoCriteria> chain, GameVersion gameSource = Any)
         {
-            if (gameSource == GameVersion.Any)
+            if (gameSource == Any)
                 gameSource = (GameVersion)pkm.Version;
 
             return GetRawEncounterSlots(pkm, chain, gameSource);
         }
 
-        public static IEnumerable<EncounterArea> GetEncounterSlots(PKM pkm, GameVersion gameSource = GameVersion.Any)
+        public static IEnumerable<EncounterArea> GetEncounterSlots(PKM pkm, GameVersion gameSource = Any)
         {
-            if (gameSource == GameVersion.Any)
+            if (gameSource == Any)
                 gameSource = (GameVersion)pkm.Version;
 
             return GetEncounterTable(pkm, gameSource);
         }
 
-        private static IEnumerable<EncounterArea> GetEncounterAreas(PKM pkm, GameVersion gameSource = GameVersion.Any)
+        private static IEnumerable<EncounterArea> GetEncounterAreas(PKM pkm, GameVersion gameSource = Any)
         {
-            if (gameSource == GameVersion.Any)
+            if (gameSource == Any)
                 gameSource = (GameVersion)pkm.Version;
 
             var slots = GetEncounterSlots(pkm, gameSource: gameSource);
-            bool noMet = !pkm.HasOriginalMetLocation || (pkm.Format == 2 && gameSource != GameVersion.C);
+            bool noMet = !pkm.HasOriginalMetLocation || (pkm.Format == 2 && gameSource != C);
             if (noMet)
                 return slots;
             var metLocation = pkm.Met_Location;

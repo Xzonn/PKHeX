@@ -28,9 +28,8 @@ namespace PKHeX.Core
 
         public override PKM Clone() => new PK1((byte[])Data.Clone(), Japanese)
         {
-            Identifier = Identifier,
-            OT_Trash = otname,
-            Nickname_Trash = nick,
+            OT_Trash = RawOT,
+            Nickname_Trash = RawNickname,
         };
 
         protected override byte[] Encrypt() => new PokeList1(this).Write();
@@ -78,6 +77,8 @@ namespace PKHeX.Core
         public override int Stat_SPD { get => Stat_SPC; set { } }
         #endregion
 
+        private static bool IsCatchRateHeldItem(int rate) => ParseSettings.AllowGen1Tradeback && Array.IndexOf(Legal.HeldItems_GSC, (ushort)rate) >= 0;
+
         private void SetSpeciesValues(int value)
         {
             var updated = SpeciesConverter.SetG1Species(value);
@@ -90,17 +91,21 @@ namespace PKHeX.Core
             Type_B = PersonalInfo.Type2;
 
             // Before updating catch rate, check if non-standard
-            if (TradebackStatus != TradebackType.WasTradeback && !Legal.IsCatchRateHeldItem(Catch_Rate) && !(value == 25 && Catch_Rate == 0xA3)) // Light Ball Pikachu
+            if (TradebackStatus == TradebackType.WasTradeback)
+                return;
+            if (IsCatchRateHeldItem(Catch_Rate))
+                return;
+            if (value == (int)Core.Species.Pikachu && Catch_Rate == 0xA3) // Light Ball (starter)
+                return;
+
+            int Rate = Catch_Rate;
+            int baseSpecies = EvoBase.GetBaseSpecies(this).Species;
+            for (int z = baseSpecies; z <= value; z++)
             {
-                int Rate = Catch_Rate;
-                int baseSpecies = EvoBase.GetBaseSpecies(this).Species;
-                for (int z = baseSpecies; z <= value; z++)
-                {
-                    if (Rate == PersonalTable.RB[z].CatchRate && Rate == PersonalTable.Y[z].CatchRate)
-                        return;
-                }
-                Catch_Rate = PersonalTable.RB[value].CatchRate;
+                if (Rate == PersonalTable.RB[z].CatchRate || Rate == PersonalTable.Y[z].CatchRate)
+                    return;
             }
+            Catch_Rate = PersonalTable.RB[value].CatchRate;
         }
 
         public override int Version { get => (int)GameVersion.RBY; set { } }
@@ -128,10 +133,10 @@ namespace PKHeX.Core
         {
             PK2 pk2 = new(Japanese) {Species = Species};
             Array.Copy(Data, 0x7, pk2.Data, 0x1, 0x1A);
-            otname.CopyTo(pk2.otname, 0);
-            nick.CopyTo(pk2.nick, 0);
+            RawOT.CopyTo(pk2.RawOT, 0);
+            RawNickname.CopyTo(pk2.RawNickname, 0);
 
-            pk2.HeldItem = ItemConverter.GetItemFuture1(pk2.HeldItem);
+            pk2.HeldItem = Gen2Item;
             pk2.CurrentFriendship = pk2.PersonalInfo.BaseFriendship;
             pk2.Stat_Level = CurrentLevel;
 
@@ -163,7 +168,7 @@ namespace PKHeX.Core
                 Move4_PPUps = Move4_PPUps,
                 Met_Location = Locations.Transfer1, // "Kanto region", hardcoded.
                 Gender = Gender,
-                OT_Name = StringConverter12Transporter.GetString(otname, Japanese),
+                OT_Name = StringConverter12Transporter.GetString(RawOT, Japanese),
                 IsNicknamed = false,
 
                 CurrentHandler = 1,
@@ -176,7 +181,7 @@ namespace PKHeX.Core
             var lang = TransferLanguage(PKMConverter.Language);
             pk7.Language = lang;
             pk7.Nickname = SpeciesName.GetSpeciesNameGeneration(pk7.Species, lang, pk7.Format);
-            if (otname[0] == StringConverter12.G1TradeOTCode) // In-game Trade
+            if (RawOT[0] == StringConverter12.G1TradeOTCode) // In-game Trade
                 pk7.OT_Name = StringConverter12.G1TradeOTName[lang];
             pk7.OT_Friendship = pk7.HT_Friendship = PersonalTable.SM[Species].BaseFriendship;
 
@@ -211,7 +216,7 @@ namespace PKHeX.Core
             else if (IsNicknamedBank)
             {
                 pk7.IsNicknamed = true;
-                pk7.Nickname = StringConverter12Transporter.GetString(nick, Japanese);
+                pk7.Nickname = StringConverter12Transporter.GetString(RawNickname, Japanese);
             }
 
             pk7.SetTradeMemoryHT(bank:true); // oh no, memories on gen7 pkm

@@ -2,7 +2,11 @@
 
 namespace PKHeX.Core
 {
-    public abstract class PokeListGB<T> where T : PKM
+    /// <summary>
+    /// List of <see cref="T"/> prefixed by a count.
+    /// </summary>
+    /// <typeparam name="T"><see cref="PKM"/> type that inherits from <see cref="GBPKML"/>.</typeparam>
+    public abstract class PokeListGB<T> where T : GBPKML
     {
         // Structure:
         // u8               Count of slots filled
@@ -74,11 +78,11 @@ namespace PKHeX.Core
             return result;
         }
 
-        private int GetOffsetPKMData(int base_ofs, int i) => base_ofs + (Entry_Size * i);
-        private int GetOffsetPKMOT(int base_ofs, int i) => GetOffsetPKMData(base_ofs, Capacity) + (StringLength * i);
-        private int GetOffsetPKMNickname(int base_ofs, int i) => GetOffsetPKMOT(base_ofs, Capacity) + (StringLength * i);
+        private int GetOffsetPKMData(int base_ofs, int index) => base_ofs + (Entry_Size * index);
+        private int GetOffsetPKMOT(int base_ofs, int index) => GetOffsetPKMData(base_ofs, Capacity) + (StringLength * index);
+        private int GetOffsetPKMNickname(int base_ofs, int index) => GetOffsetPKMOT(base_ofs, Capacity) + (StringLength * index);
 
-        private static int GetStringLength(bool jp) => jp ? GBPKML.STRLEN_J : GBPKML.STRLEN_U;
+        private static int GetStringLength(bool jp) => jp ? GBPKML.StringLengthJapanese : GBPKML.StringLengthNotJapan;
         protected bool IsFormatParty => IsCapacityPartyFormat((PokeListType)Capacity);
         protected static bool IsCapacityPartyFormat(PokeListType Capacity) => Capacity is PokeListType.Single or PokeListType.Party;
 
@@ -127,27 +131,29 @@ namespace PKHeX.Core
             return Data;
         }
 
-        private T GetEntry(int base_ofs, int i)
+        private T GetEntry(int base_ofs, int index)
         {
-            int pkOfs = GetOffsetPKMData(base_ofs, i);
-            int otOfs = GetOffsetPKMOT(base_ofs, i);
-            int nkOfs = GetOffsetPKMNickname(base_ofs, i);
+            int pkOfs = GetOffsetPKMData(base_ofs, index);
+            int otOfs = GetOffsetPKMOT(base_ofs, index);
+            int nkOfs = GetOffsetPKMNickname(base_ofs, index);
 
             var dat = Data.Slice(pkOfs, Entry_Size);
             var otname = Data.Slice(otOfs, StringLength);
             var nick = Data.Slice(nkOfs, StringLength);
 
-            return GetEntry(dat, otname, nick, Data[1 + i] == 0xFD);
+            return GetEntry(dat, otname, nick, Data[1 + index] == 0xFD);
         }
 
-        private void SetEntry(int base_ofs, int i)
+        private void SetEntry(int base_ofs, int index)
         {
-            int pkOfs = GetOffsetPKMData(base_ofs, i);
-            int otOfs = GetOffsetPKMOT(base_ofs, i);
-            int nkOfs = GetOffsetPKMNickname(base_ofs, i);
-            Array.Copy(Pokemon[i].Data, 0, Data, pkOfs, Entry_Size);
-            Array.Copy(Pokemon[i].OT_Trash, 0, Data, otOfs, StringLength);
-            Array.Copy(Pokemon[i].Nickname_Trash, 0, Data, nkOfs, StringLength);
+            int pkOfs = GetOffsetPKMData(base_ofs, index);
+            int otOfs = GetOffsetPKMOT(base_ofs, index);
+            int nkOfs = GetOffsetPKMNickname(base_ofs, index);
+
+            var pk = Pokemon[index];
+            Array.Copy(pk.Data, 0, Data, pkOfs, Entry_Size);
+            pk.RawOT.CopyTo(Data, otOfs);
+            pk.RawNickname.CopyTo(Data, nkOfs);
         }
     }
 }

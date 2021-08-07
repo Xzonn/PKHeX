@@ -18,6 +18,7 @@
         public sealed override int MaxMoney => 999999;
         public sealed override int MaxCoins => 9999;
 
+        /// <summary> If the original input data was swapped endianness. </summary>
         private readonly bool IsPairSwapped;
 
         protected abstract int TeamCount { get; }
@@ -47,10 +48,10 @@
         public sealed override void SetBoxName(int box, string value) { }
         public sealed override bool ChecksumsValid => GetBoxChecksumsValid();
         public sealed override string ChecksumInfo => ChecksumsValid ? "Checksum valid." : "Checksum invalid";
-        protected abstract void SetBoxChecksum(int i);
-        protected abstract bool GetIsBoxChecksumValid(int i);
+        protected abstract void SetBoxChecksum(int box);
+        protected abstract bool GetIsBoxChecksumValid(int box);
         protected sealed override void SetChecksums() => SetBoxChecksums();
-        protected abstract void SetBoxMetadata(int i);
+        protected abstract void SetBoxMetadata(int box);
 
         protected void SetBoxChecksums()
         {
@@ -95,7 +96,7 @@
         {
             if (PadToSize == 0)
                 PadToSize = maxLength + 1;
-            return StringConverter12.SetString1(value, maxLength, Japanese, PadToSize, PadWith);
+            return StringConverter12.SetString1(value, maxLength, Japanese, PadToSize, (byte)PadWith);
         }
     }
 }

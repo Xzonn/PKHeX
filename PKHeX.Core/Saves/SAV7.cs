@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 
 namespace PKHeX.Core
 {
@@ -14,11 +13,11 @@ namespace PKHeX.Core
         protected internal override string ShortSummary => $"{OT} ({Version}) - {Played.LastSavedTime}";
         public override string Extension => string.Empty;
 
-        public override IReadOnlyList<string> PKMExtensions => PKM.Extensions.Where(f =>
+        public override IReadOnlyList<string> PKMExtensions => Array.FindAll(PKM.Extensions, f =>
         {
-            int gen = f.Last() - 0x30;
+            int gen = f[^1] - 0x30;
             return gen <= 7 && f[1] != 'b'; // ignore PB7
-        }).ToArray();
+        });
 
         protected SAV7(byte[] data, int biOffset) : base(data, biOffset)
         {
@@ -30,7 +29,7 @@ namespace PKHeX.Core
 
         protected void ReloadBattleTeams()
         {
-            var demo = this is SAV7SM && Data.IsRangeAll((byte)0, BoxLayout.Offset, 0x4C4); // up to Battle Box values
+            var demo = this is SAV7SM && new ReadOnlySpan<byte>(Data, BoxLayout.Offset, 0x4C4).IsRangeEmpty(); // up to Battle Box values
             if (demo || !State.Exportable)
             {
                 BoxLayout.ClearBattleTeams();
@@ -61,6 +60,7 @@ namespace PKHeX.Core
         public abstract ResortSave7 ResortSave { get; }
         public abstract FieldMenu7 FieldMenu { get; }
         public abstract FashionBlock7 Fashion { get; }
+        public abstract HallOfFame7 Fame { get; }
         #endregion
 
         // Configuration
@@ -93,21 +93,14 @@ namespace PKHeX.Core
             new byte[0x80].CopyTo(Data, AllBlocks[MemeCryptoBlock].Offset + 0x100);
         }
 
-        protected override void SetChecksums()
-        {
-            BoxLayout.SaveBattleTeams();
-            AllBlocks.SetChecksums(Data);
-        }
-
         protected override byte[] GetFinalData()
         {
+            BoxLayout.SaveBattleTeams();
             SetChecksums();
             var result = MemeCrypto.Resign7(Data);
             Debug.Assert(result != Data);
             return result;
         }
-
-        public int HoF { get; protected set; }
 
         public override GameVersion Version => Game switch
         {
@@ -134,9 +127,9 @@ namespace PKHeX.Core
         public override int Gender { get => MyStatus.Gender; set => MyStatus.Gender = value; }
         public int GameSyncIDSize => MyStatus7.GameSyncIDSize; // 64 bits
         public string GameSyncID { get => MyStatus.GameSyncID; set => MyStatus.GameSyncID = value; }
-        public int Region { get => MyStatus.SubRegion; set => MyStatus.SubRegion = value; }
-        public int Country { get => MyStatus.Country; set => MyStatus.Country = value; }
-        public int ConsoleRegion { get => MyStatus.ConsoleRegion; set => MyStatus.ConsoleRegion = value; }
+        public byte Region { get => MyStatus.Region; set => MyStatus.Region = value; }
+        public byte Country { get => MyStatus.Country; set => MyStatus.Country = value; }
+        public byte ConsoleRegion { get => MyStatus.ConsoleRegion; set => MyStatus.ConsoleRegion = value; }
         public override int Language { get => MyStatus.Language; set => MyStatus.Language = value; }
         public override string OT { get => MyStatus.OT; set => MyStatus.OT = value; }
         public override int MultiplayerSpriteID { get => MyStatus.MultiplayerSpriteID; set => MyStatus.MultiplayerSpriteID = value; }
@@ -170,7 +163,7 @@ namespace PKHeX.Core
         public override int BoxesUnlocked { get => BoxLayout.BoxesUnlocked; set => BoxLayout.BoxesUnlocked = value; }
         public override byte[] BoxFlags { get => BoxLayout.BoxFlags; set => BoxLayout.BoxFlags = value; }
 
-        protected override void SetPKM(PKM pkm)
+        protected override void SetPKM(PKM pkm, bool isParty = false)
         {
             PK7 pk7 = (PK7)pkm;
             // Apply to this Save File
@@ -185,6 +178,10 @@ namespace PKHeX.Core
                 else if (pk7.HasMove(218)) // Frustration
                     pkm.CurrentFriendship = pk7.OppositeFriendship;
             }
+
+            pk7.FormArgumentElapsed = pk7.FormArgumentMaximum = 0;
+            pk7.FormArgumentRemain = (byte)GetFormArgument(pkm);
+
             pkm.RefreshChecksum();
             AddCountAcquired(pkm);
         }
@@ -195,13 +192,10 @@ namespace PKHeX.Core
             if (pkm.CurrentHandler == 1)
                 Records.AddRecord(011); // trade
             if (!pkm.WasEgg)
+            {
                 Records.AddRecord(004); // wild encounters
-        }
-
-        protected override void SetPartyValues(PKM pkm, bool isParty)
-        {
-            base.SetPartyValues(pkm, isParty);
-            ((PK7)pkm).FormArgument = GetFormArgument(pkm);
+                Records.AddRecord(042); // balls used
+            }
         }
 
         private static uint GetFormArgument(PKM pkm)

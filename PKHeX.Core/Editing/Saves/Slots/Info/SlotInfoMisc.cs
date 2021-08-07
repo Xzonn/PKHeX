@@ -8,6 +8,7 @@ namespace PKHeX.Core
         public int Slot { get; }
         public bool PartyFormat { get; }
         public int Offset { get; }
+        public SlotOrigin Origin => PartyFormat ? SlotOrigin.Party : SlotOrigin.Box;
         public bool CanWriteTo(SaveFile sav) => false;
         public WriteBlockedMessage CanWriteTo(SaveFile sav, PKM pkm) => WriteBlockedMessage.InvalidDestination;
         public StorageSlotType Type { get; init; }
@@ -19,7 +20,12 @@ namespace PKHeX.Core
             Slot = slot;
             Offset = offset;
             PartyFormat = party;
-            Data = sav is SAV4 s ? s.General : sav.Data;
+            Data = sav switch
+            {
+                SAV4 s => s.General,
+                SAV3 s3 => s3.Large,
+                _ => sav.Data
+            };
         }
 
         public SlotInfoMisc(byte[] data, int slot, int offset, bool party = false)

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace PKHeX.Core
 {
@@ -11,7 +10,7 @@ namespace PKHeX.Core
     {
         protected internal override string ShortSummary => $"{OT} ({Version}) - {Blocks.Played.LastSavedTime}";
         public override string Extension => ".bin";
-        public override IReadOnlyList<string> PKMExtensions => PKM.Extensions.Where(f => f[1] == 'b' && f[f.Length - 1] == '7').ToArray();
+        public override IReadOnlyList<string> PKMExtensions => new[] {PKX.ExtensionPB7};
 
         public override Type PKMType => typeof(PB7);
         public override PKM BlankPKM => new PB7();
@@ -82,7 +81,7 @@ namespace PKHeX.Core
 
         public bool FixPreWrite() => Blocks.Storage.CompressStorage();
 
-        protected override void SetPKM(PKM pkm)
+        protected override void SetPKM(PKM pkm, bool isParty = false)
         {
             var pk = (PB7)pkm;
             // Apply to this Save File
@@ -107,24 +106,25 @@ namespace PKHeX.Core
         public override StorageSlotFlag GetSlotFlags(int index)
         {
             var val = StorageSlotFlag.None;
-            if (Blocks.Storage.PokeListInfo[6] == index)
+            var header = Blocks.Storage.PokeListInfo;
+            int position = Array.IndexOf(header, index, 0, 6);
+            if (position >= 0)
+                val = (StorageSlotFlag)((int)StorageSlotFlag.Party1 << position);
+            if (header[PokeListHeader.STARTER] == index)
                 val |= StorageSlotFlag.Starter;
-            int position = Array.IndexOf(Blocks.Storage.PokeListInfo, index);
-            if ((uint) position < 6)
-                val |= (StorageSlotFlag)((int)StorageSlotFlag.Party1 << position);
             return val;
         }
 
         public override string GetBoxName(int box) => $"Box {box + 1}";
         public override void SetBoxName(int box, string value) { }
 
-        public override string GetString(byte[] data, int offset, int length) => StringConverter.GetString7(data, offset, length);
+        public override string GetString(byte[] data, int offset, int length) => StringConverter.GetString7b(data, offset, length);
 
         public override byte[] SetString(string value, int maxLength, int PadToSize = 0, ushort PadWith = 0)
         {
             if (PadToSize == 0)
                 PadToSize = maxLength + 1;
-            return StringConverter.SetString7b(value, maxLength, Language, PadToSize, PadWith);
+            return StringConverter.SetString7b(value, maxLength, PadToSize, PadWith);
         }
 
         public override GameVersion Version => Game switch

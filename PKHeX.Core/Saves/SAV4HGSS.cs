@@ -8,14 +8,27 @@ namespace PKHeX.Core
     /// </summary>
     public sealed class SAV4HGSS : SAV4
     {
-        public SAV4HGSS() => Initialize();
-        public SAV4HGSS(byte[] data) : base(data) => Initialize();
+        public SAV4HGSS() : base(GeneralSize, StorageSize)
+        {
+            Initialize();
+            Dex = new Zukan4(this, PokeDex);
+        }
+
+        public SAV4HGSS(byte[] data) : base(data, GeneralSize, StorageSize, GeneralSize + GeneralGap)
+        {
+            Initialize();
+            Dex = new Zukan4(this, PokeDex);
+        }
+
+        public override Zukan4 Dex { get; }
         protected override SAV4 CloneInternal4() => State.Exportable ? new SAV4HGSS(Data) : new SAV4HGSS();
 
         public override PersonalTable Personal => PersonalTable.HGSS;
         public override IReadOnlyList<ushort> HeldItems => Legal.HeldItems_HGSS;
-        protected override int GeneralSize => 0xF628;
-        protected override int StorageSize => 0x12310; // Start 0xF700, +0 starts box data
+        public override int MaxItemID => Legal.MaxItemID_4_HGSS;
+        private const int GeneralSize = 0xF628;
+        private const int StorageSize = 0x12310; // Start 0xF700, +0 starts box data
+        private const int GeneralGap = 0xD8;
         protected override int StorageStart => 0xF700; // unused section right after GeneralSize, alignment?
         protected override int FooterSize => 0x10;
 
@@ -89,7 +102,7 @@ namespace PKHeX.Core
         {
             const int maxlen = 8;
             if (value.Length > maxlen)
-                value = value.Substring(0, maxlen); // Hard cap
+                value = value[..maxlen]; // Hard cap
             int offset = GetBoxNameOffset(box);
             var str = SetString(value, maxlen);
             SetData(Storage, str, offset);
@@ -137,6 +150,13 @@ namespace PKHeX.Core
             }
             set => value.SaveAll(General);
         }
+
+        public override int M { get => BitConverter.ToUInt16(General, 0x1234); set => BitConverter.GetBytes((ushort)value).CopyTo(General, 0x1234); }
+        public override int X { get => BitConverter.ToUInt16(General, 0x123C); set => BitConverter.GetBytes((ushort)(X2 = value)).CopyTo(General, 0x123C); }
+        public override int Y { get => BitConverter.ToUInt16(General, 0x1240); set => BitConverter.GetBytes((ushort)(Y2 = value)).CopyTo(General, 0x1240); }
+        public override int X2 { get => BitConverter.ToUInt16(General, 0x236E); set => BitConverter.GetBytes((ushort)value).CopyTo(General, 0x236E); }
+        public override int Y2 { get => BitConverter.ToUInt16(General, 0x2372); set => BitConverter.GetBytes((ushort)value).CopyTo(General, 0x2372); }
+        public override int Z { get => BitConverter.ToUInt16(General, 0x2376); set => BitConverter.GetBytes((ushort)value).CopyTo(General, 0x2376); }
 
         public int Badges16
         {
@@ -200,10 +220,11 @@ namespace PKHeX.Core
         }
 
         // Apricorn Pouch
-        public int GetApricornCount(int i) => General[0xE558 + i];
-        public void SetApricornCount(int i, int count) => General[0xE558 + i] = (byte)count;
+        public int GetApricornCount(int index) => General[0xE558 + index];
+        public void SetApricornCount(int index, int count) => General[0xE558 + index] = (byte)count;
 
         // Pokewalker
+        public const int WalkerPair = 0xE5E0;
         private const int OFS_WALKER = 0xE704;
 
         public uint PokewalkerSteps { get => BitConverter.ToUInt32(General, OFS_WALKER); set => SetData(General, BitConverter.GetBytes(value), OFS_WALKER); }

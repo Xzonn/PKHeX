@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 
 namespace PKHeX.Core
 {
@@ -28,6 +27,7 @@ namespace PKHeX.Core
 
         public override ushort GetMessage(int index1, int index2) => BitConverter.ToUInt16(Data, ((index1 * 3) + index2) * 2);
         public override void SetMessage(int index1, int index2, ushort value) => BitConverter.GetBytes(value).CopyTo(Data, ((index1 * 3) + index2) * 2);
+        public override void CopyTo(SaveFile sav) => sav.SetData(((SAV3)sav).Large, DataOffset);
 
         public override string AuthorName
         {
@@ -36,7 +36,8 @@ namespace PKHeX.Core
             {
                 if (value.Length == 0)
                 {
-                    Enumerable.Repeat<byte>(0xFF, 8).ToArray().CopyTo(Data, 0x12);
+                    for (int i = 0; i < 8; i++)
+                        Data[0x12 + i] = 0xFF;
                 }
                 else
                 {

@@ -77,7 +77,7 @@ namespace PKHeX.Core
             get
             {
                 // Check to see if date is valid
-                if (!Util.IsDateValid(Year, Month, Day))
+                if (!DateUtil.IsDateValid(Year, Month, Day))
                     return null;
 
                 return new DateTime((int)Year, (int)Month, (int)Day);
@@ -111,15 +111,15 @@ namespace PKHeX.Core
         public override bool GiftUsed { get => (CardFlags & 2) == 2; set => CardFlags = (byte)((CardFlags & ~2) | (value ? 2 : 0)); }
         public bool GiftOncePerDay { get => (CardFlags & 4) == 4; set => CardFlags = (byte)((CardFlags & ~4) | (value ? 4 : 0)); }
 
-        public bool MultiObtain { get => Data[0x53] == 1; set => Data[0x53] = value ? 1 : 0; }
+        public bool MultiObtain { get => Data[0x53] == 1; set => Data[0x53] = value ? (byte)1 : (byte)0; }
 
         // BP Properties
-        public override bool IsBP { get => CardType == 3; set { if (value) CardType = 3; } }
-        public override int BP { get => ItemID; set => ItemID = value; }
+        public bool IsBP { get => CardType == 3; set { if (value) CardType = 3; } }
+        public int BP { get => ItemID; set => ItemID = value; }
 
         // Bean (Mame) Properties
-        public override bool IsBean { get => CardType == 2; set { if (value) CardType = 2; } }
-        public override int Bean { get => ItemID; set => ItemID = value; }
+        public bool IsBean { get => CardType == 2; set { if (value) CardType = 2; } }
+        public int Bean { get => ItemID; set => ItemID = value; }
 
         // Item Properties
         public override bool IsItem { get => CardType == 1; set { if (value) CardType = 1; } }
@@ -217,7 +217,7 @@ namespace PKHeX.Core
         }
 
         public override int Level { get => Data[0xD0]; set => Data[0xD0] = (byte)value; }
-        public override bool IsEgg { get => Data[0xD1] == 1; set => Data[0xD1] = value ? 1 : 0; }
+        public override bool IsEgg { get => Data[0xD1] == 1; set => Data[0xD1] = value ? (byte)1 : (byte)0; }
         public ushort AdditionalItem { get => BitConverter.ToUInt16(Data, 0xD2); set => BitConverter.GetBytes(value).CopyTo(Data, 0xD2); }
 
         public uint PID { get => BitConverter.ToUInt32(Data, 0xD4); set => BitConverter.GetBytes(value).CopyTo(Data, 0xD4); }
@@ -316,6 +316,9 @@ namespace PKHeX.Core
 
             int currentLevel = Level > 0 ? Level : rnd.Next(1, 101);
             int metLevel = MetLevel > 0 ? MetLevel : currentLevel;
+            var version = OriginGame != 0 ? OriginGame : (int)this.GetCompatibleVersion((GameVersion)sav.Game);
+            var language = Language != 0 ? Language : (int)Core.Language.GetSafeLanguage(Generation, (LanguageID)sav.Language, (GameVersion)version);
+
             var pi = PersonalTable.USUM.GetFormEntry(Species, Form);
             PK7 pk = new()
             {
@@ -326,8 +329,8 @@ namespace PKHeX.Core
                 Met_Level = metLevel,
                 Form = Form,
                 EncryptionConstant = EncryptionConstant != 0 ? EncryptionConstant : Util.Rand32(),
-                Version = OriginGame != 0 ? OriginGame : sav.Game,
-                Language = Language != 0 ? Language : sav.Language,
+                Version = version,
+                Language = language,
                 Ball = Ball,
                 Move1 = Move1, Move2 = Move2, Move3 = Move3, Move4 = Move4,
                 RelearnMove1 = RelearnMove1, RelearnMove2 = RelearnMove2,
@@ -432,16 +435,16 @@ namespace PKHeX.Core
             var pi = PersonalTable.USUM.GetFormEntry(Species, Form);
             pk.Nature = (int)criteria.GetNature((Nature)Nature);
             pk.Gender = criteria.GetGender(Gender, pi);
-            var av = GetAbilityIndex(criteria, pi);
+            var av = GetAbilityIndex(criteria);
             pk.RefreshAbility(av);
             SetPID(pk);
             SetIVs(pk);
         }
 
-        private int GetAbilityIndex(EncounterCriteria criteria, PersonalInfo pi) => AbilityType switch
+        private int GetAbilityIndex(EncounterCriteria criteria) => AbilityType switch
         {
             00 or 01 or 02 => AbilityType, // Fixed 0/1/2
-            03 or 04 => criteria.GetAbilityFromType(AbilityType, pi), // 0/1 or 0/1/H
+            03 or 04 => criteria.GetAbilityFromType(AbilityType), // 0/1 or 0/1/H
             _ => throw new ArgumentException(nameof(AbilityType)),
         };
 
@@ -546,6 +549,12 @@ namespace PKHeX.Core
                 return pkm.SM; // not USUM
 
             return PIDType != 0 || pkm.PID == PID;
+        }
+
+        public override GameVersion Version
+        {
+            get => CardID == 2046 ? GameVersion.SM : GameVersion.Gen7;
+            set { }
         }
 
         protected override bool IsMatchDeferred(PKM pkm) => Species != pkm.Species;

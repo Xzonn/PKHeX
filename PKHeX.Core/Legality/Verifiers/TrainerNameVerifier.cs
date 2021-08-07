@@ -1,4 +1,4 @@
-﻿using System.Linq;
+﻿using System;
 using static PKHeX.Core.LegalityCheckStrings;
 
 namespace PKHeX.Core
@@ -82,7 +82,7 @@ namespace PKHeX.Core
             }
         }
 
-        public static bool IsEdgeCaseLength(PKM pkm, IEncounterable e, string ot)
+        public static bool IsEdgeCaseLength(PKM pkm, IEncounterTemplate e, string ot)
         {
             if (e.EggEncounter)
             {
@@ -118,13 +118,16 @@ namespace PKHeX.Core
                 }
             }
 
-            VerifyG1OTWithinBounds(data, tr);
+            VerifyG1OTWithinBounds(data, tr.AsSpan());
 
-            if (pkm.OT_Gender == 1 && ((pkm.Format == 2 && pkm.Met_Location == 0) || (pkm.Format > 2 && pkm.VC1)))
-                data.AddLine(GetInvalid(LG1OTGender));
+            if (pkm.OT_Gender == 1)
+            {
+                if ((pkm.Format == 2 && pkm.Met_Location == 0) || (pkm.Format > 2 && pkm.VC1) || data is {EncounterOriginal: {Generation:1} or EncounterStatic2E {IsGift:true}})
+                    data.AddLine(GetInvalid(LG1OTGender));
+            }
         }
 
-        private void VerifyG1OTWithinBounds(LegalityAnalysis data, string str)
+        private void VerifyG1OTWithinBounds(LegalityAnalysis data, ReadOnlySpan<char> str)
         {
             if (StringConverter12.GetIsG1English(str))
             {
@@ -149,7 +152,12 @@ namespace PKHeX.Core
 
         private static bool IsOTNameSuspicious(string name)
         {
-            return SuspiciousOTNames.Any(name.StartsWith);
+            foreach (var s in SuspiciousOTNames)
+            {
+                if (s.StartsWith(name, StringComparison.InvariantCultureIgnoreCase))
+                    return true;
+            }
+            return false;
         }
 
         public static bool IsOTIDSuspicious(int tid16, int sid16)
@@ -181,10 +189,16 @@ namespace PKHeX.Core
             {
                 if ('０' <= c)
                     return c <= '９';
-                return c is >= '0' and <= '9';
+                return (uint)(c - '0') <= 9;
             }
 
-            return str.Count(IsNumber);
+            int ctr = 0;
+            foreach (var c in str)
+            {
+                if (IsNumber(c))
+                    ++ctr;
+            }
+            return ctr;
         }
     }
 }

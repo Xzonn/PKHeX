@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 using static PKHeX.Core.Legal;
 
@@ -7,23 +6,20 @@ namespace PKHeX.Core
 {
     public static class EncounterEggGenerator
     {
-        public static IEnumerable<EncounterEgg> GenerateEggs(PKM pkm, bool all = false)
+        public static IEnumerable<EncounterEgg> GenerateEggs(PKM pkm, int generation, bool all = false)
         {
-            var table = EvolutionTree.GetEvolutionTree(pkm, Math.Max(2, pkm.Format));
-            int maxSpeciesOrigin = GetMaxSpeciesOrigin(pkm.Generation);
+            var table = EvolutionTree.GetEvolutionTree(pkm, pkm.Format);
+            int maxSpeciesOrigin = GetMaxSpeciesOrigin(generation);
             var evos = table.GetValidPreEvolutions(pkm, maxLevel: 100, maxSpeciesOrigin: maxSpeciesOrigin, skipChecks: true);
-            return GenerateEggs(pkm, evos, all);
+            return GenerateEggs(pkm, evos, generation, all);
         }
 
-        public static IEnumerable<EncounterEgg> GenerateEggs(PKM pkm, IReadOnlyList<EvoCriteria> chain, bool all = false)
+        public static IEnumerable<EncounterEgg> GenerateEggs(PKM pkm, IReadOnlyList<EvoCriteria> chain, int generation, bool all = false)
         {
+            System.Diagnostics.Debug.Assert(generation >= 3); // if generating Gen2 eggs, use the other generator.
             int species = pkm.Species;
             if (!Breeding.CanHatchAsEgg(species))
                 yield break;
-
-            int generation = pkm.Generation;
-            if (generation <= 2)
-                yield break; // can't get eggs; if generating Gen2 eggs, use the other generator.
             if (!Breeding.CanHatchAsEgg(species, pkm.Form, generation))
                 yield break; // can't originate from eggs
 
@@ -52,21 +48,19 @@ namespace PKHeX.Core
 
             if (o.Species <= max && Breeding.CanHatchAsEgg(o.Species, o.Form, ver))
             {
-                yield return new EncounterEggSplit(o.Species, o.Form, lvl, generation, ver, e.Species);
+                yield return new EncounterEgg(o.Species, o.Form, lvl, generation, ver);
                 if (generation > 5 && (pkm.WasTradedEgg || all) && HasOtherGamePair(ver))
-                    yield return new EncounterEggSplit(o.Species, o.Form, lvl, generation, GetOtherTradePair(ver), e.Species);
+                    yield return new EncounterEgg(o.Species, o.Form, lvl, generation, GetOtherTradePair(ver));
             }
         }
 
         // Gen6+ update the origin game when hatched. Quick manip for X.Y<->A.O | S.M<->US.UM, ie X->A
-        private static GameVersion GetOtherTradePair(GameVersion ver)
+        private static GameVersion GetOtherTradePair(GameVersion ver) => ver switch
         {
-            if (ver <= GameVersion.OR) // gen6
-                return (GameVersion)((int)ver ^ 2);
-            if (ver <= GameVersion.MN) // gen7
-                return ver + 2;
-            return ver - 2;
-        }
+            <= GameVersion.OR => (GameVersion) ((int) ver ^ 2), // gen6
+            <= GameVersion.MN => ver + 2, // gen7
+            _ => ver - 2
+        };
 
         private static bool HasOtherGamePair(GameVersion ver)
         {

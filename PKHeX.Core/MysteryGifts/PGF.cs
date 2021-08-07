@@ -83,7 +83,7 @@ namespace PKHeX.Core
 
         public int OTGender { get => Data[0x5A]; set => Data[0x5A] = (byte)value; }
         public override int Level { get => Data[0x5B]; set => Data[0x5C] = (byte)value; }
-        public override bool IsEgg { get => Data[0x5C] == 1; set => Data[0x5C] = value ? 1 : 0; }
+        public override bool IsEgg { get => Data[0x5C] == 1; set => Data[0x5C] = value ? (byte)1 : (byte)0; }
         // Unused 0x5D 0x5E 0x5F
         public override string CardTitle
         {
@@ -106,7 +106,7 @@ namespace PKHeX.Core
             get
             {
                 // Check to see if date is valid
-                if (!Util.IsDateValid(Year, Month, Day))
+                if (!DateUtil.IsDateValid(Year, Month, Day))
                     return null;
 
                 return new DateTime(Year, Month, Day);
@@ -140,7 +140,7 @@ namespace PKHeX.Core
         public int CardLocation { get => Data[0xB2]; set => Data[0xB2] = (byte)value; }
         public int CardType { get => Data[0xB3]; set => Data[0xB3] = (byte)value; }
         public override bool GiftUsed { get => Data[0xB4] >> 1 > 0; set => Data[0xB4] = (byte)((Data[0xB4] & ~2) | (value ? 2 : 0)); }
-        public bool MultiObtain { get => Data[0xB4] == 1; set => Data[0xB4] = value ? 1 : 0; }
+        public bool MultiObtain { get => Data[0xB4] == 1; set => Data[0xB4] = value ? (byte)1 : (byte)0; }
 
         // Meta Accessible Properties
         public override int[] IVs
@@ -275,16 +275,16 @@ namespace PKHeX.Core
             var pi = PersonalTable.B2W2.GetFormEntry(Species, Form);
             pk.Nature = (int)criteria.GetNature((Nature)Nature);
             pk.Gender = pi.Genderless ? 2 : Gender != 2 ? Gender : criteria.GetGender(-1, pi);
-            var av = GetAbilityIndex(criteria, pi);
+            var av = GetAbilityIndex(criteria);
             SetPID(pk, av);
             pk.RefreshAbility(av);
             SetIVs(pk);
         }
 
-        private int GetAbilityIndex(EncounterCriteria criteria, PersonalInfo pi) => AbilityType switch
+        private int GetAbilityIndex(EncounterCriteria criteria) => AbilityType switch
         {
             00 or 01 or 02 => AbilityType, // Fixed 0/1/2
-            03 or 04 => criteria.GetAbilityFromType(AbilityType, pi), // 0/1 or 0/1/H
+            03 or 04 => criteria.GetAbilityFromType(AbilityType), // 0/1 or 0/1/H
             _ => throw new ArgumentException(nameof(AbilityType)),
         };
 

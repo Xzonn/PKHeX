@@ -62,8 +62,8 @@ namespace PKHeX.Core
 
             basedata[0x2A] = (byte)form;
             basedata[0x2B] = (byte)gender;
-            basedata[0x2C] = shiny ? 1 : 0;
-            basedata[0x2D] = biGender ? 1 : 0;
+            basedata[0x2C] = shiny ? (byte)1 : (byte)0;
+            basedata[0x2D] = biGender ? (byte)1 : (byte)0;
             return basedata;
         }
 
@@ -89,7 +89,10 @@ namespace PKHeX.Core
 
             pk7.EncryptedPartyData.CopyTo(data, 0x30); // Copy in pokemon data
             GetRawQR(pk7.Species, pk7.Form, pk7.IsShiny, pk7.Gender).CopyTo(data, 0x140);
-            BitConverter.GetBytes(Checksums.CRC16(data, 0, 0x1A0)).CopyTo(data, 0x1A0);
+
+            var span = new ReadOnlySpan<byte>(data, 0, 0x1A0);
+            var chk = Checksums.CRC16Invert(span);
+            BitConverter.GetBytes(chk).CopyTo(data, 0x1A0);
             return data;
         }
     }

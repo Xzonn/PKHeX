@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace PKHeX.Core
 {
@@ -10,43 +9,28 @@ namespace PKHeX.Core
         {
             string[] inputCSV = GetStringList(textFile);
             int index = GeoLocation.GetLanguageIndex(lang);
-            return GetCBListCSVSorted(inputCSV, index);
-        }
-
-        private static List<ComboItem> GetCBListCSVSorted(string[] inputCSV, int index = 0)
-        {
-            var list = GetCBListFromCSV(inputCSV, index);
+            var list = GetCBListFromCSV(inputCSV, index + 1);
             list.Sort(Comparer);
             return list;
         }
 
-        public static List<ComboItem> GetCSVUnsortedCBList(string textFile)
-        {
-            string[] inputCSV = GetStringList(textFile);
-            return GetCBListFromCSV(inputCSV, 0);
-        }
-
         private static List<ComboItem> GetCBListFromCSV(IReadOnlyList<string> inputCSV, int index)
         {
-            var arr = new List<ComboItem>(inputCSV.Count - 1); // skip header
-            index++;
-            for (int i = 1; i < inputCSV.Count; i++)
+            var arr = new List<ComboItem>(inputCSV.Count);
+            foreach (var line in inputCSV)
             {
-                var line = inputCSV[i];
-                var zeroth = line.IndexOf(',');
-
-                var val = line.Substring(0, zeroth);
-                var text = StringUtil.GetNthEntry(line, index, zeroth);
+                var val = line[..3];
+                var text = StringUtil.GetNthEntry(line, index, 4);
                 var item = new ComboItem(text, Convert.ToInt32(val));
                 arr.Add(item);
             }
             return arr;
         }
 
-        public static List<ComboItem> GetCBList(IReadOnlyList<string> inStrings)
+        public static List<ComboItem> GetCBList(ReadOnlySpan<string> inStrings)
         {
-            var list = new List<ComboItem>(inStrings.Count);
-            for (int i = 0; i < inStrings.Count; i++)
+            var list = new List<ComboItem>(inStrings.Length);
+            for (int i = 0; i < inStrings.Length; i++)
                 list.Add(new ComboItem(inStrings[i], i));
             list.Sort(Comparer);
             return list;
@@ -82,12 +66,10 @@ namespace PKHeX.Core
             return list;
         }
 
-        public static List<ComboItem> GetCBList(IReadOnlyList<string> inStrings, params int[][] allowed)
+        public static List<ComboItem> GetCBList(IReadOnlyList<string> inStrings, int[] allowed)
         {
-            var count = allowed.Sum(z => z.Length);
-            var list = new List<ComboItem>(count);
-            foreach (var arr in allowed)
-                AddCB(list, inStrings, arr);
+            var list = new List<ComboItem>(allowed.Length);
+            AddCB(list, inStrings, allowed);
             return list;
         }
 
@@ -97,9 +79,10 @@ namespace PKHeX.Core
             list.Add(item);
         }
 
-        public static void AddCBWithOffset(List<ComboItem> cbList, IReadOnlyList<string> inStrings, int offset, params int[] allowed)
+        public static void AddCBWithOffset(List<ComboItem> cbList, IReadOnlyList<string> inStrings, int offset, int[] allowed)
         {
             int beginCount = cbList.Count;
+            cbList.Capacity += allowed.Length;
             foreach (var index in allowed)
             {
                 var item = new ComboItem(inStrings[index - offset], index);
@@ -108,9 +91,23 @@ namespace PKHeX.Core
             cbList.Sort(beginCount, allowed.Length, Comparer);
         }
 
+        public static void AddCBWithOffset(List<ComboItem> cbList, Span<string> inStrings, int offset)
+        {
+            int beginCount = cbList.Count;
+            cbList.Capacity += inStrings.Length;
+            for (int i = 0; i < inStrings.Length; i++)
+            {
+                var x = inStrings[i];
+                var item = new ComboItem(x, i + offset);
+                cbList.Add(item);
+            }
+            cbList.Sort(beginCount, inStrings.Length, Comparer);
+        }
+
         public static void AddCB(List<ComboItem> cbList, IReadOnlyList<string> inStrings, int[] allowed)
         {
             int beginCount = cbList.Count;
+            cbList.Capacity += allowed.Length;
             foreach (var index in allowed)
             {
                 var item = new ComboItem(inStrings[index], index);
@@ -119,25 +116,23 @@ namespace PKHeX.Core
             cbList.Sort(beginCount, allowed.Length, Comparer);
         }
 
-        public static List<ComboItem> GetVariedCBListBall(string[] inStrings, ushort[] stringNum, byte[] stringVal)
+        public static ComboItem[] GetVariedCBListBall(string[] inStrings, ushort[] stringNum, byte[] stringVal)
         {
             const int forcedTop = 3; // 3 Balls are preferentially first
-            var list = new List<ComboItem>(forcedTop + stringNum.Length)
-            {
-                new(inStrings[4], (int)Ball.Poke),
-                new(inStrings[3], (int)Ball.Great),
-                new(inStrings[2], (int)Ball.Ultra),
-            };
+            var list = new ComboItem[forcedTop + stringNum.Length];
+            list[0] = new ComboItem(inStrings[4], (int)Ball.Poke);
+            list[1] = new ComboItem(inStrings[3], (int)Ball.Great);
+            list[2] = new ComboItem(inStrings[2], (int)Ball.Ultra);
 
             for (int i = 0; i < stringNum.Length; i++)
             {
                 int index = stringNum[i];
                 var val = stringVal[i];
                 var txt = inStrings[index];
-                list.Add(new ComboItem(txt, val));
+                list[i + 3] = new ComboItem(txt, val);
             }
 
-            list.Sort(forcedTop, stringNum.Length, Comparer);
+            Array.Sort(list, 3, list.Length - 3, Comparer);
             return list;
         }
 

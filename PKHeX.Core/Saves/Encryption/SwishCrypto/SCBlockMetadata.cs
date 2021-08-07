@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
-using System.IO;
 using System.Linq;
 
 namespace PKHeX.Core
@@ -19,13 +18,13 @@ namespace PKHeX.Core
         /// <summary>
         /// Creates a new instance of <see cref="SCBlockMetadata"/> by loading properties and constants declared via reflection.
         /// </summary>
-        public SCBlockMetadata(SCBlockAccessor accessor)
+        public SCBlockMetadata(SCBlockAccessor accessor, IEnumerable<string> extraKeyNames)
         {
             var aType = accessor.GetType();
 
             BlockList = aType.GetAllPropertiesOfType<SaveBlock>(accessor);
             ValueList = aType.GetAllConstantsOfType<uint>();
-            AddExtraKeyNames(ValueList);
+            AddExtraKeyNames(ValueList, extraKeyNames);
             Accessor = accessor;
         }
 
@@ -46,21 +45,6 @@ namespace PKHeX.Core
         /// </summary>
         /// <remarks>Tab separated text file expected.</remarks>
         /// <param name="names">Currently loaded list of block names</param>
-        /// <param name="extra">Side-loaded list of block names to add to the <see cref="names"/> list.</param>
-        public static void AddExtraKeyNames(IDictionary<uint, string> names, string extra = "SCBlocks.txt")
-        {
-            if (!File.Exists(extra))
-                return;
-
-            var lines = File.ReadLines(extra);
-            AddExtraKeyNames(names, lines);
-        }
-
-        /// <summary>
-        /// Loads names from an external file to the requested <see cref="names"/> list.
-        /// </summary>
-        /// <remarks>Tab separated text file expected.</remarks>
-        /// <param name="names">Currently loaded list of block names</param>
         /// <param name="lines">Tab separated key-value pair list of block names.</param>
         public static void AddExtraKeyNames(IDictionary<uint, string> names, IEnumerable<string> lines)
         {
@@ -69,11 +53,11 @@ namespace PKHeX.Core
                 var split = line.IndexOf('\t');
                 if (split < 0)
                     continue;
-                var hex = line.Substring(0, split);
+                var hex = line[..split];
                 if (!ulong.TryParse(hex, NumberStyles.HexNumber, CultureInfo.CurrentCulture, out var value))
                     continue;
 
-                var name = line.Substring(split + 1);
+                var name = line[(split + 1)..];
                 if (!names.ContainsKey((uint) value))
                     names[(uint) value] = name;
             }
@@ -85,17 +69,17 @@ namespace PKHeX.Core
             if (text.StartsWith("*"))
                 return text;
             // key:X8, " - ", "####", " ", type
-            return text.Substring(8 + 3 + 4 + 1);
+            return text[(8 + 3 + 4 + 1)..];
         }
 
-        private string GetBlockHint(SCBlock z, int i)
+        private string GetBlockHint(SCBlock z, int index)
         {
             var blockName = GetBlockName(z, out _);
             var isBool = z.Type.IsBoolean();
             var type = (isBool ? "Bool" : z.Type.ToString());
             if (blockName != null)
                 return $"*{type} {blockName}";
-            var result = $"{z.Key:X8} - {i:0000} {type}";
+            var result = $"{z.Key:X8} - {index:0000} {type}";
             if (z.Type is SCTypeCode.Object or SCTypeCode.Array)
                 result += $" 0x{z.Data.Length:X3}";
             else if (!isBool)

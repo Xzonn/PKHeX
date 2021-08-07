@@ -12,6 +12,8 @@ namespace PKHeX.Core
         public override int Generation => 7;
         public IReadOnlyList<int> Relearn { get; init; } = Array.Empty<int>();
 
+        public bool IsTotem => FormInfo.IsTotemForm(Species, Form);
+
         public EncounterStatic7(GameVersion game) : base(game) { }
 
         protected override bool IsMatchLocation(PKM pkm)
@@ -21,18 +23,31 @@ namespace PKHeX.Core
             return base.IsMatchLocation(pkm);
         }
 
+        protected override bool IsMatchEggLocation(PKM pkm)
+        {
+            var eggloc = pkm.Egg_Location;
+            if (!EggEncounter)
+                return eggloc == EggLocation;
+
+            if (!pkm.IsEgg) // hatched
+                return eggloc == EggLocation || eggloc == Locations.LinkTrade6;
+
+            // Unhatched:
+            if (eggloc != EggLocation)
+                return false;
+            if (pkm.Met_Location is not 0 or Locations.LinkTrade6)
+                return false;
+            return true;
+        }
+
         protected override bool IsMatchForm(PKM pkm, DexLevel evo)
         {
-            if (SkipFormCheck)
-                return true;
-
-            if (FormInfo.IsTotemForm(Species, Form, Generation))
+            if (IsTotem)
             {
                 var expectForm = pkm.Format == 7 ? Form : FormInfo.GetTotemBaseForm(Species, Form);
                 return expectForm == evo.Form;
             }
-
-            return Form == evo.Form || FormInfo.IsFormChangeable(Species, Form, pkm.Form, pkm.Format);
+            return base.IsMatchForm(pkm, evo);
         }
 
         protected override void ApplyDetails(ITrainerInfo sav, EncounterCriteria criteria, PKM pk)
@@ -40,6 +55,9 @@ namespace PKHeX.Core
             base.ApplyDetails(sav, criteria, pk);
             if (Species == (int)Core.Species.Magearna && pk is IRibbonSetEvent4 e4)
                 e4.RibbonWishing = true;
+            if (Form == FormVivillon && pk is PK7 pk7)
+                pk.Form = Vivillon3DS.GetPattern(pk7.Country, pk7.Region);
+            pk.SetRandomEC();
         }
 
         internal static EncounterStatic7 GetVC1(int species, int metLevel)

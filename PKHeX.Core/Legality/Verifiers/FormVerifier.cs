@@ -20,7 +20,7 @@ namespace PKHeX.Core
             data.AddLine(result);
 
             if (pkm is IFormArgument f)
-                data.AddLine(VerifyFormArgument(data, f.FormArgument));
+                data.AddLine(VerifyFormArgument(data, f));
         }
 
         private CheckResult VALID => GetValid(LFormValid);
@@ -44,9 +44,6 @@ namespace PKHeX.Core
 
             switch (enc)
             {
-                case EncounterSlot w when w.Area.Type == SlotType.FriendSafari:
-                    VerifyFormFriendSafari(data);
-                    break;
                 case EncounterEgg e when FormInfo.IsTotemForm(species, form, e.Generation):
                     return GetInvalid(LFormInvalidGame);
             }
@@ -79,9 +76,10 @@ namespace PKHeX.Core
                         int arceus = GetArceusFormFromHeldItem(pkm.HeldItem, pkm.Format);
                         return arceus != form ? GetInvalid(LFormItemInvalid) : GetValid(LFormItem);
                     }
-                case Keldeo when pkm.Format < 8 && enc.Generation != 5:
+                case Keldeo when enc.Generation != 5 || pkm.Format >= 8:
                     // can mismatch in gen5 via BW tutor and transfer up
                     // can mismatch in gen8+ as the form activates in battle when knowing the move; outside of battle can be either state.
+                    // Generation 8 patched out the mismatch; always forced to match moves.
                     bool hasSword = pkm.HasMove((int) Move.SecretSword);
                     bool isSword = pkm.Form == 1;
                     if (isSword != hasSword)
@@ -104,8 +102,10 @@ namespace PKHeX.Core
                         return GetInvalid(LFormVivillonEventPre);
                     if (pkm is not IRegionOrigin tr)
                         break;
-                    if (!Vivillon3DS.IsPatternValid(form, (byte)tr.Country, (byte)tr.Region))
-                        data.AddLine(Get(LFormVivillonInvalid, Severity.Fishy));
+                    if (!Vivillon3DS.IsPatternValid(form, tr.ConsoleRegion))
+                        return GetInvalid(LFormVivillonInvalid);
+                    if (!Vivillon3DS.IsPatternNative(form, tr.Country, tr.Region))
+                        data.AddLine(Get(LFormVivillonNonNative, Severity.Fishy));
                     break;
                 case Vivillon:
                     if (form > 17) // Fancy & Pokéball
@@ -116,8 +116,10 @@ namespace PKHeX.Core
                     }
                     if (pkm is not IRegionOrigin trv)
                         break;
-                    if (!Vivillon3DS.IsPatternValid(form, (byte)trv.Country, (byte)trv.Region))
-                        data.AddLine(Get(LFormVivillonInvalid, Severity.Fishy));
+                    if (!Vivillon3DS.IsPatternValid(form, trv.ConsoleRegion))
+                        return GetInvalid(LFormVivillonInvalid);
+                    if (!Vivillon3DS.IsPatternNative(form, trv.Country, trv.Region))
+                        data.AddLine(Get(LFormVivillonNonNative, Severity.Fishy));
                     break;
 
                 case Floette when form == 5: // Floette Eternal Flower -- Never Released
@@ -156,7 +158,7 @@ namespace PKHeX.Core
                 case Shaymin:
                 case Furfrou:
                 case Hoopa:
-                    if (form != 0 && pkm.Box > -1 && pkm.Format <= 6) // has form but stored in box
+                    if (form != 0 && data.SlotOrigin is not SlotOrigin.Party && pkm.Format <= 6) // has form but stored in box
                         return GetInvalid(LFormParty);
                     break;
             }
@@ -215,59 +217,37 @@ namespace PKHeX.Core
 
         public static int GetSilvallyFormFromHeldItem(int item)
         {
-            if (904 <= item && item <= 920)
+            if (item is >= 904 and <= 920)
                 return item - 903;
             return 0;
         }
 
         public static int GetGenesectFormFromHeldItem(int item)
         {
-            if (116 <= item && item <= 119)
+            if (item is >= 116 and <= 119)
                 return item - 115;
             return 0;
         }
 
-        private void VerifyFormFriendSafari(LegalityAnalysis data)
-        {
-            var pkm = data.pkm;
-            switch ((Species)pkm.Species)
-            {
-                case Floette or Florges when pkm.Form is not (0 or 1 or 3): // Floette (RBY colors only)
-                    data.AddLine(GetInvalid(LFormSafariFlorgesColor));
-                    break;
-                case Pumpkaboo or Gourgeist when pkm.Form != 0: // Average
-                    data.AddLine(GetInvalid(LFormSafariPumpkabooAverage));
-                    break;
-                case Gastrodon when pkm.Form != 0: // West
-                    data.AddLine(GetInvalid(LFormSafariFlorgesColor));
-                    break;
-                case Sawsbuck when pkm.Form != 0: // Sawsbuck
-                    data.AddLine(GetInvalid(LFormSafariSawsbuckSpring));
-                    break;
-            }
-        }
-
-        private CheckResult VerifyFormArgument(LegalityAnalysis data, in uint arg)
+        private CheckResult VerifyFormArgument(LegalityAnalysis data, IFormArgument f)
         {
             var pkm = data.pkm;
             var enc = data.EncounterMatch;
+            var arg = f.FormArgument;
+
+            var unusedMask = pkm.Format == 6 ? 0xFFFF_FF00 : 0xFF00_0000;
+            if ((arg & unusedMask) != 0)
+                return GetInvalid(LFormArgumentHigh);
+
             return (Species)pkm.Species switch
             {
-                Furfrou => arg switch
-                {
-                    > 5 => GetInvalid(LFormArgumentHigh),
-                    0 when pkm.Form != 0 => GetInvalid(LFormArgumentNotAllowed),
-                    not 0 when pkm.Form == 0 => GetInvalid(LFormArgumentNotAllowed),
-                    not 0 when pkm.IsEgg => GetInvalid(LFormArgumentNotAllowed),
-                    _ => GetValid(LFormArgumentValid)
-                },
-                Hoopa => arg switch
-                {
-                    > 3 => GetInvalid(LFormArgumentHigh),
-                    0 when pkm.Form != 0 => GetInvalid(LFormArgumentNotAllowed),
-                    not 0 when pkm.Form == 0 => GetInvalid(LFormArgumentNotAllowed),
-                    _ => GetValid(LFormArgumentValid)
-                },
+                // Transfer Edge Cases -- Bank wipes the form but keeps old FormArgument value.
+                Furfrou when pkm.Format == 7 && pkm.Form == 0 &&
+                    ((enc.Generation == 6 && f.FormArgument <= byte.MaxValue) || IsFormArgumentDayCounterValid(f, 5, true))
+                    => GetValid(LFormArgumentValid),
+
+                Furfrou when pkm.Form != 0 => !IsFormArgumentDayCounterValid(f, 5, true) ? GetInvalid(LFormArgumentInvalid) :GetValid(LFormArgumentValid),
+                Hoopa when pkm.Form == 1 => !IsFormArgumentDayCounterValid(f, 3) ? GetInvalid(LFormArgumentInvalid) : GetValid(LFormArgumentValid),
                 Yamask when pkm.Form == 1 => arg switch
                 {
                     not 0 when pkm.IsEgg => GetInvalid(LFormArgumentNotAllowed),
@@ -295,12 +275,63 @@ namespace PKHeX.Core
                     > (uint) AlcremieDecoration.Ribbon => GetInvalid(LFormArgumentHigh),
                     _ => GetValid(LFormArgumentValid)
                 },
-                _ => arg switch
-                {
-                    not 0 => GetInvalid(LFormArgumentNotAllowed),
-                    _ => GetValid(LFormArgumentValid)
-                },
+                _ => VerifyFormArgumentNone(pkm, f),
             };
+        }
+
+        private CheckResult VerifyFormArgumentNone(PKM pkm, IFormArgument f)
+        {
+            if (pkm is not PK6 pk6)
+            {
+                if (f.FormArgument != 0)
+                {
+                    if (pkm.Species == (int)Furfrou && pkm.Form == 0 && (f.FormArgument & ~0xFF_00_00u) == 0)
+                        return GetValid(LFormArgumentValid);
+                    return GetInvalid(LFormArgumentNotAllowed);
+                }
+                return GetValid(LFormArgumentValid);
+            }
+
+            if (f.FormArgument != 0)
+            {
+                if (pkm.Species == (int)Furfrou && pkm.Form == 0 && (f.FormArgument & ~0xFFu) == 0)
+                    return GetValid(LFormArgumentValid);
+                return GetInvalid(LFormArgumentNotAllowed);
+            }
+
+            // Stored separately from main form argument value
+            if (pk6.FormArgumentRemain != 0)
+                return GetInvalid(LFormArgumentNotAllowed);
+            if (pk6.FormArgumentElapsed != 0)
+                return GetInvalid(LFormArgumentNotAllowed);
+
+            return GetValid(LFormArgumentValid);
+        }
+
+        private static bool IsFormArgumentDayCounterValid(IFormArgument f, uint maxSeed, bool canRefresh = false)
+        {
+            var remain = f.FormArgumentRemain;
+            var elapsed = f.FormArgumentElapsed;
+            var maxElapsed = f.FormArgumentMaximum;
+            if (canRefresh)
+            {
+                if (maxElapsed < elapsed)
+                    return false;
+
+                if (remain + elapsed < maxSeed)
+                    return false;
+            }
+            else
+            {
+                if (maxElapsed != 0)
+                    return false;
+
+                if (remain + elapsed != maxSeed)
+                    return false;
+            }
+            if (remain > maxSeed)
+                return false;
+            return remain != 0;
         }
     }
 }

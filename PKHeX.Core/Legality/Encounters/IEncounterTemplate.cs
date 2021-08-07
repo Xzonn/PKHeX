@@ -1,8 +1,15 @@
 ﻿namespace PKHeX.Core
 {
-    public interface IEncounterTemplate : ISpeciesForm, IVersion, IGeneration
+    public interface IEncounterTemplate : ISpeciesForm, IVersion, IGeneration, IShiny
     {
+        /// <summary>
+        /// Indicates if the encounter originated as an egg.
+        /// </summary>
         bool EggEncounter { get; }
+
+        /// <summary>
+        /// Minimum level for the encounter.
+        /// </summary>
         int LevelMin { get; }
         int LevelMax { get; }
     }

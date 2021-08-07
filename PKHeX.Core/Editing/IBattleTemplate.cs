@@ -1,5 +1,8 @@
 ﻿namespace PKHeX.Core
 {
+    /// <summary>
+    /// Interface containing details relevant for battling.
+    /// </summary>
     public interface IBattleTemplate : ISpeciesForm, IGigantamax, INature
     {
         /// <summary>
@@ -15,7 +18,7 @@
         /// <summary>
         /// <see cref="PKM.Gender"/> name of the Set entity.
         /// </summary>
-        string Gender { get; }
+        int Gender { get; }
 
         /// <summary>
         /// <see cref="PKM.HeldItem"/> of the Set entity.

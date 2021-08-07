@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace PKHeX.Core
 {
@@ -9,8 +8,13 @@ namespace PKHeX.Core
     /// </summary>
     public sealed class SAV8SWSH : SAV8, ISaveBlock8SWSH, ITrainerStatRecord, ISaveFileRevision
     {
-        public SAV8SWSH(byte[] data) : this(data, SwishCrypto.Decrypt(data))
+        public SAV8SWSH(byte[] data) : base(data)
         {
+            Data = Array.Empty<byte>();
+            AllBlocks = SwishCrypto.Decrypt(data);
+            Blocks = new SaveBlockAccessor8SWSH(this);
+            SaveRevision = Zukan.GetRevision();
+            Initialize();
         }
 
         private SAV8SWSH(byte[] data, IReadOnlyList<SCBlock> blocks) : base(data)
@@ -99,7 +103,13 @@ namespace PKHeX.Core
         }
 
         #endregion
-        protected override SaveFile CloneInternal() => new SAV8SWSH(State.BAK, AllBlocks.Select(z => z.Clone()).ToArray());
+        protected override SaveFile CloneInternal()
+        {
+            var blockCopy = new SCBlock[AllBlocks.Count];
+            for (int i = 0; i < AllBlocks.Count; i++)
+                blockCopy[i] = AllBlocks[i].Clone();
+            return new SAV8SWSH(State.BAK, blockCopy);
+        }
 
         private int m_spec, m_item, m_move, m_abil;
         public override int MaxMoveID => m_move;
@@ -160,6 +170,19 @@ namespace PKHeX.Core
         }
 
         public override int CurrentBox { get => BoxLayout.CurrentBox; set => BoxLayout.CurrentBox = value; }
+        public override int BoxesUnlocked { get => (byte)Blocks.GetBlockValue(SaveBlockAccessor8SWSH.KBoxesUnlocked); set => Blocks.SetBlockValue(SaveBlockAccessor8SWSH.KBoxesUnlocked, (byte)value); }
+
+        public override byte[] BoxFlags
+        {
+            get => new [] {Convert.ToByte(Blocks.GetBlock(SaveBlockAccessor8SWSH.KSecretBoxUnlocked).Type - 1)};
+            set
+            {
+                if (value.Length != 1)
+                    return;
+                var block = Blocks.GetBlock(SaveBlockAccessor8SWSH.KSecretBoxUnlocked);
+                block.ChangeBooleanType((SCTypeCode)(value[0] & 1) + 1);
+            }
+        }
 
         public override bool HasBoxWallpapers => true;
         public override bool HasNamableBoxes => true;

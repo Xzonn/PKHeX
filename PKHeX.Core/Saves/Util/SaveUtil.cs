@@ -61,6 +61,15 @@ namespace PKHeX.Core
 
         private static readonly SaveHandlerGCI DolphinHandler = new();
 
+#if !EXCLUDE_HACKS
+        /// <summary>
+        /// Specialized readers for loading save files from non-standard games (e.g. hacks).
+        /// </summary>
+        // ReSharper disable once CollectionNeverUpdated.Global
+        public static readonly List<ISaveReader> CustomSaveReaders = new();
+#endif
+
+#if !EXCLUDE_EMULATOR_FORMATS
         /// <summary>
         /// Pre-formatters for loading save files from non-standard formats (e.g. emulators).
         /// </summary>
@@ -70,6 +79,7 @@ namespace PKHeX.Core
             new SaveHandlerDeSmuME(),
             new SaveHandlerARDS(),
         };
+#endif
 
         internal static readonly HashSet<int> SizesSWSH = new()
         {
@@ -258,30 +268,44 @@ namespace PKHeX.Core
 
             // check the save file(s)
             int count = data.Length/SIZE_G3RAWHALF;
-            for (int s = 0; s < count; s++)
+            for (int slot = 0; slot < count; slot++)
             {
-                const int blockCount = 14;
-                const int blockSize = 0x1000;
-                int ofs = blockCount * blockSize * s;
-                int[] order = new int[blockCount];
-                for (int i = 0; i < order.Length; i++)
-                    order[i] = BitConverter.ToUInt16(data, (i * blockSize) + 0xFF4 + ofs);
-
-                if (Array.FindIndex(order, i => i > 0xD) >= 0) // invalid block ID
+                if (!SAV3.IsAllMainSectorsPresent(data, slot, out var smallOffset))
                     continue;
 
-                int block0 = Array.IndexOf(order, 0);
-
-                // Sometimes not all blocks are present (start of game), yielding multiple block0's.
-                // Real 0th block comes before block1.
-                if (order[0] == 1 && block0 != order.Length - 1)
-                    continue;
-                if (Array.FindIndex(order, v => v != 0) < 0) // all blocks are 0
-                    continue;
                 // Detect RS/E/FRLG
-                return SAV3.GetVersion(data, (blockSize  * block0) + ofs);
+                return GetVersionG3SAV(data, smallOffset);
             }
             return Invalid;
+        }
+
+        /// <summary>
+        /// Checks the input <see cref="data"/> to see which game is for this file.
+        /// </summary>
+        /// <param name="data">Data to check</param>
+        /// <param name="offset">Offset for the start of the first Small chunk.</param>
+        /// <returns>RS, E, or FR/LG.</returns>
+        private static GameVersion GetVersionG3SAV(byte[] data, int offset = 0)
+        {
+            // 0xAC
+            // RS: Battle Tower Data, which will never match the FR/LG fixed value.
+            // E: Encryption Key
+            // FR/LG @ 0xAC has a fixed value (01 00 00 00)
+            // RS has battle tower data (variable)
+            uint _0xAC = BitConverter.ToUInt32(data, offset + 0xAC);
+            switch (_0xAC)
+            {
+                case 1: return FRLG; // fixed value
+                case 0: return RS; // save has no battle tower record data
+                default:
+                    // RS data structure only extends 0x890 bytes; check if any data is present afterwards.
+                    for (int i = 0x890; i < 0xF2C; i += 4)
+                    {
+                        if (BitConverter.ToUInt64(data, offset + i) != 0)
+                            return E;
+                    }
+                    return RS;
+            }
         }
 
         /// <summary>Checks to see if the data belongs to a Gen3 Box RS save</summary>
@@ -292,21 +316,12 @@ namespace PKHeX.Core
             if (data.Length is not SIZE_G3BOX)
                 return Invalid;
 
-            byte[] sav = data;
-
             // Verify first checksum
-            ushort chk = 0; // initial value
-            var ofs = data.Length - SIZE_G3BOX + 0x2000;
-            for (int i = 0x4; i < 0x1FFC; i += 2)
-                chk += BigEndian.ToUInt16(sav, ofs + i);
-
-            ushort chkA = chk;
-            ushort chkB = (ushort)(0xF004 - chkA);
-
-            ushort CHK_A = BigEndian.ToUInt16(sav, ofs + 0);
-            ushort CHK_B = BigEndian.ToUInt16(sav, ofs + 2);
-
-            return CHK_A == chkA && CHK_B == chkB ? RSBOX : Invalid;
+            const int offset = 0x2000;
+            var span = new ReadOnlySpan<byte>(data, offset + 4, 0x1FF8);
+            var chk = Checksums.CheckSum16BigInvert(span);
+            var actual = BigEndian.ToUInt32(data, offset);
+            return chk == actual ? RSBOX : Invalid;
         }
 
         /// <summary>Checks to see if the data belongs to a Colosseum save</summary>
@@ -318,10 +333,10 @@ namespace PKHeX.Core
                 return Invalid;
 
             // Check the intro bytes for each save slot
-            int offset = data.Length - SIZE_G3COLO;
+            const int offset = 0x6000;
             for (int i = 0; i < 3; i++)
             {
-                var ofs = 0x6000 + offset + (0x1E000 * i);
+                var ofs = offset + (0x1E000 * i);
                 if (BitConverter.ToUInt32(data, ofs) != 0x00000101)
                     return Invalid;
             }
@@ -337,10 +352,10 @@ namespace PKHeX.Core
                 return Invalid;
 
             // Check the intro bytes for each save slot
-            int offset = data.Length - SIZE_G3XD;
+            const int offset = 0x6000;
             for (int i = 0; i < 2; i++)
             {
-                var ofs = 0x6000 + offset + (0x28000 * i);
+                var ofs = offset + (0x28000 * i);
                 if ((BitConverter.ToUInt32(data, ofs) & 0xFFFE_FFFF) != 0x00000101)
                     return Invalid;
             }
@@ -403,11 +418,11 @@ namespace PKHeX.Core
 
             // check the checksum block validity; nobody would normally modify this region
             ushort chk1 = BitConverter.ToUInt16(data, SIZE_G5BW - 0x100 + 0x8C + 0xE);
-            ushort actual1 = Checksums.CRC16_CCITT(data, SIZE_G5BW - 0x100, 0x8C);
+            ushort actual1 = Checksums.CRC16_CCITT(new ReadOnlySpan<byte>(data, SIZE_G5BW - 0x100, 0x8C));
             if (chk1 == actual1)
                 return BW;
             ushort chk2 = BitConverter.ToUInt16(data, SIZE_G5B2W2 - 0x100 + 0x94 + 0xE);
-            ushort actual2 = Checksums.CRC16_CCITT(data, SIZE_G5B2W2 - 0x100, 0x94);
+            ushort actual2 = Checksums.CRC16_CCITT(new ReadOnlySpan<byte>(data, SIZE_G5B2W2 - 0x100, 0x94));
             if (chk2 == actual2)
                 return B2W2;
             return Invalid;
@@ -487,7 +502,7 @@ namespace PKHeX.Core
         public static SaveFile? GetVariantSAV(string path)
         {
             var data = File.ReadAllBytes(path);
-            var sav = GetVariantSAV(data);
+            var sav = GetVariantSAV(data, path);
             if (sav == null)
                 return null;
             sav.Metadata.SetExtraInfo(path);
@@ -496,13 +511,27 @@ namespace PKHeX.Core
 
         /// <summary>Creates an instance of a SaveFile using the given save data.</summary>
         /// <param name="data">Save data from which to create a SaveFile.</param>
+        /// <param name="path">Optional save file path, may help initialize a non-standard save file format.</param>
         /// <returns>An appropriate type of save file for the given data, or null if the save data is invalid.</returns>
-        public static SaveFile? GetVariantSAV(byte[] data)
+        public static SaveFile? GetVariantSAV(byte[] data, string? path = null)
         {
+#if !EXCLUDE_HACKS
+            foreach (var h in CustomSaveReaders)
+            {
+                if (!h.IsRecognized(data.Length))
+                    continue;
+
+                var custom = h.ReadSaveFile(data, path);
+                if (custom != null)
+                    return custom;
+            }
+#endif
+
             var sav = GetVariantSAVInternal(data);
             if (sav != null)
                 return sav;
 
+#if !EXCLUDE_EMULATOR_FORMATS
             foreach (var h in Handlers)
             {
                 if (!h.IsRecognized(data.Length))
@@ -519,6 +548,7 @@ namespace PKHeX.Core
                 sav.Metadata.SetExtraInfo(split.Header, split.Footer);
                 return sav;
             }
+#endif
 
             // unrecognized.
             return null;
@@ -532,7 +562,10 @@ namespace PKHeX.Core
                 // Main Games
                 RBY => new SAV1(data, type),
                 GS or C => new SAV2(data, type),
-                RS or E or FRLG => new SAV3(data, type),
+
+                RS => new SAV3RS(data),
+                E => new SAV3E(data),
+                FRLG => new SAV3FRLG(data),
 
                 DP => new SAV4DP(data),
                 Pt => new SAV4Pt(data),
@@ -574,14 +607,15 @@ namespace PKHeX.Core
         public static SaveFile? GetVariantSAV(SAV3GCMemoryCard memCard)
         {
             // Pre-check for header/footer signatures
-            SaveFile sav;
-            byte[] data = memCard.SelectedSaveData;
-            var split = DolphinHandler.TrySplit(data);
-            if (split == null)
+            byte[] data = memCard.ReadSaveGameData();
+            if (data.Length == 0)
                 return null;
 
-            data = split.Data;
+            var split = DolphinHandler.TrySplit(data);
+            if (split != null)
+                data = split.Data;
 
+            SaveFile sav;
             switch (memCard.SelectedGameVersion)
             {
                 // Side Games
@@ -593,7 +627,8 @@ namespace PKHeX.Core
                 default: return null;
             }
 
-            sav.Metadata.SetExtraInfo(split.Header, split.Footer);
+            if (split != null)
+                sav.Metadata.SetExtraInfo(split.Header, split.Footer);
             return sav;
         }
 
@@ -667,10 +702,9 @@ namespace PKHeX.Core
             C or GSC => new SAV2(version: C, lang: language),
             Stadium2 => new SAV2Stadium(language == LanguageID.Japanese),
 
-            R or S or E or FR or LG => new SAV3(version: game, language == LanguageID.Japanese),
-            RS => new SAV3(version: R, language == LanguageID.Japanese),
-            RSE => new SAV3(version: E, language == LanguageID.Japanese),
-            FRLG => new SAV3(version: FR, language == LanguageID.Japanese),
+            R or S or RS => new SAV3RS(language == LanguageID.Japanese),
+            E or RSE => new SAV3E(language == LanguageID.Japanese),
+            FR or LG or FRLG => new SAV3FRLG(language == LanguageID.Japanese),
 
             CXD or COLO => new SAV3Colosseum(),
             XD => new SAV3XD(),
@@ -679,6 +713,7 @@ namespace PKHeX.Core
             D or P or DP => new SAV4DP(),
             Pt or DPPt => new SAV4Pt(),
             HG or SS or HGSS => new SAV4HGSS(),
+            BATREV => new SAV4BR(),
 
             B or W or BW => new SAV5BW(),
             B2 or W2 or B2W2 => new SAV5B2W2(),
@@ -761,30 +796,9 @@ namespace PKHeX.Core
         /// <returns>New <see cref="SaveFile"/> object.</returns>
         public static SAV3 GetG3SaveOverride(SaveFile sav, GameVersion ver) => ver switch // Reset save file info
         {
-            R => new SAV3(sav.State.BAK, RS),
-            S => new SAV3(sav.State.BAK, RS),
-            RS => new SAV3(sav.State.BAK, RS),
-            E => new SAV3(sav.State.BAK, E),
-            FRLG => new SAV3(sav.State.BAK, FRLG),
-            FR => new SAV3(sav.State.BAK, FRLG),
-            LG => new SAV3(sav.State.BAK, FRLG),
-            _ => throw new ArgumentException(nameof(ver))
-        };
-
-        /// <summary>
-        /// Gets the <see cref="PersonalTable"/> for a Gen3 save file.
-        /// </summary>
-        /// <param name="ver">Version to retrieve for</param>
-        /// <returns>Reference to the <see cref="PersonalTable"/>.</returns>
-        public static PersonalTable GetG3Personal(GameVersion ver) => ver switch
-        {
-            RS => PersonalTable.RS,
-            E => PersonalTable.E,
-            FRLG => PersonalTable.FR,
-            FR => PersonalTable.FR,
-            LG => PersonalTable.LG,
-            R => PersonalTable.RS,
-            S => PersonalTable.RS,
+            R or S or RS => new SAV3RS(sav.State.BAK),
+            E => new SAV3E(sav.State.BAK),
+            FR or LG or FRLG => new SAV3FRLG(sav.State.BAK),
             _ => throw new ArgumentException(nameof(ver))
         };
     }

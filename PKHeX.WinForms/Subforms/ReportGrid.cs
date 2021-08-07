@@ -51,29 +51,31 @@ namespace PKHeX.WinForms
 
         private sealed class PokemonList<T> : SortableBindingList<T> where T : class { }
 
-        public void PopulateData(IList<PKM> Data)
+        public void PopulateData(IList<SlotCache> Data)
         {
             SuspendLayout();
-            BoxBar.Step = 1;
-            var PL = new PokemonList<PKMSummaryImage>();
+            var PL = new PokemonList<EntitySummaryImage>();
             var strings = GameInfo.Strings;
-            foreach (PKM pkm in Data.Where(pkm => pkm.ChecksumValid && pkm.Species != 0))
+            foreach (var entry in Data)
             {
-                pkm.Stat_Level = Experience.GetLevel(pkm.EXP, pkm.PersonalInfo.EXPGrowth); // recalc Level
-                PL.Add(new PKMSummaryImage(pkm, strings));
-                BoxBar.PerformStep();
+                var pkm = entry.Entity;
+                if ((uint)(pkm.Species - 1) >= pkm.MaxSpeciesID)
+                {
+                    continue;
+                }
+                pkm.Stat_Level = pkm.CurrentLevel; // recalc Level
+                PL.Add(new EntitySummaryImage(pkm, strings, entry.Identify()));
             }
 
             dgData.DataSource = PL;
             dgData.AutoGenerateColumns = true;
-            BoxBar.Maximum = Data.Count + dgData.Columns.Count;
             for (int i = 0; i < dgData.Columns.Count; i++)
             {
-                BoxBar.PerformStep();
-                if (dgData.Columns[i] is DataGridViewImageColumn) continue; // Don't add sorting for Sprites
-                dgData.Columns[i].SortMode = DataGridViewColumnSortMode.Automatic;
+                var col = dgData.Columns[i];
+                if (col is DataGridViewImageColumn)
+                    continue; // Don't add sorting for Sprites
+                col.SortMode = DataGridViewColumnSortMode.Automatic;
             }
-            BoxBar.Visible = false;
 
             // Trigger Resizing
             dgData.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells;
@@ -91,7 +93,7 @@ namespace PKHeX.WinForms
 
         private void Data_Sorted(object sender, EventArgs e)
         {
-            int height = SpriteUtil.GetSprite(1, 0, 0, 0, 0, false, false).Height + 1; // dummy sprite, max height of a row
+            int height = SpriteUtil.Spriter.Height + 1; // max height of a row, +1px
             for (int i = 0; i < dgData.Rows.Count; i++)
                 dgData.Rows[i].Height = height;
         }
@@ -127,7 +129,11 @@ namespace PKHeX.WinForms
             if (!cp)
                 return base.ProcessCmdKey(ref msg, keyData);
 
-            string data = dgData.GetClipboardContent().GetText();
+            var content = dgData.GetClipboardContent();
+            if (content == null)
+                return base.ProcessCmdKey(ref msg, keyData);
+
+            string data = content.GetText();
             var dr = WinFormsUtil.Prompt(MessageBoxButtons.YesNo, MsgReportExportTable);
             if (dr != DialogResult.Yes)
             {

@@ -21,7 +21,6 @@ namespace PKHeX.Core
             0xC5,
             0xCE, 0xCF, 0xD0, 0xD1, 0xD2, 0xD3, 0xD4, 0xD5, 0xD6, 0xD7, 0xD8, 0xD9, 0xDA, 0xDB, 0xDC, 0xDD,
             0xE0, 0xE1, // Old Console Region / Region
-            0xE8, // Affixed Ribbon (no GUI)
             0xE9, 0xEA, 0xEB, 0xEC, 0xED, 0xEE, 0xEF, 0xF0, 0xF1, 0xF2, 0xF3, 0xF4, 0xF5, 0xF6, 0xF7,
             0x115, 0x11F, // Alignment
 
@@ -58,21 +57,18 @@ namespace PKHeX.Core
             set { if (CurrentHandler == 0) OT_Friendship = value; else HT_Friendship = value; }
         }
 
-        public override PKM Clone() => new PK8((byte[])Data.Clone()) { Identifier = Identifier };
+        public override PKM Clone() => new PK8((byte[])Data.Clone());
 
-        private string GetString(int Offset, int Count) => StringConverter.GetString7(Data, Offset, Count);
-        private byte[] SetString(string value, int maxLength, bool chinese = false) => StringConverter.SetString7b(value, maxLength, Language, chinese: chinese);
+        private string GetString(int offset, int count) => StringConverter.GetString7b(Data, offset, count);
+        private static byte[] SetString(string value, int maxLength) => StringConverter.SetString7b(value, maxLength);
 
         public override int SIZE_PARTY => PokeCrypto.SIZE_8PARTY;
         public override int SIZE_STORED => PokeCrypto.SIZE_8STORED;
 
         // Trash Bytes
-        public override byte[] Nickname_Trash { get => GetData(0x58, 24); set { if (value.Length == 24) value.CopyTo(Data, 0x58); } }
-        public override byte[] HT_Trash { get => GetData(0xA8, 24); set { if (value.Length == 24) value.CopyTo(Data, 0xA8); } }
-        public override byte[] OT_Trash { get => GetData(0xF8, 24); set { if (value.Length == 24) value.CopyTo(Data, 0xF8); } }
-        public override bool WasLink => Met_Location == Locations.LinkGift6 && Gen6;
-        public override bool WasEvent => Locations.IsEventLocation5(Met_Location) || FatefulEncounter;
-        public override bool WasEventEgg => Generation < 5 ? base.WasEventEgg : (Locations.IsEventLocation5(Egg_Location) || (FatefulEncounter && Egg_Location == Locations.LinkTrade6)) && Met_Level == 1;
+        public override Span<byte> Nickname_Trash { get => Data.AsSpan(0x58, 24); set { if (value.Length == 24) value.CopyTo(Data.AsSpan(0x58)); } }
+        public override Span<byte> HT_Trash { get => Data.AsSpan(0xA8, 24); set { if (value.Length == 24) value.CopyTo(Data.AsSpan(0xA8)); } }
+        public override Span<byte> OT_Trash { get => Data.AsSpan(0xF8, 24); set { if (value.Length == 24) value.CopyTo(Data.AsSpan(0xF8)); } }
 
         // Maximums
         public override int MaxIV => 31;
@@ -197,7 +193,7 @@ namespace PKHeX.Core
 
         // ribbon u32
         public bool RibbonChampionKalos    { get => FlagUtil.GetFlag(Data, 0x34, 0); set => FlagUtil.SetFlag(Data, 0x34, 0, value); }
-        public bool RibbonChampionG3Hoenn  { get => FlagUtil.GetFlag(Data, 0x34, 1); set => FlagUtil.SetFlag(Data, 0x34, 1, value); }
+        public bool RibbonChampionG3       { get => FlagUtil.GetFlag(Data, 0x34, 1); set => FlagUtil.SetFlag(Data, 0x34, 1, value); }
         public bool RibbonChampionSinnoh   { get => FlagUtil.GetFlag(Data, 0x34, 2); set => FlagUtil.SetFlag(Data, 0x34, 2, value); }
         public bool RibbonBestFriends      { get => FlagUtil.GetFlag(Data, 0x34, 3); set => FlagUtil.SetFlag(Data, 0x34, 3, value); }
         public bool RibbonTraining         { get => FlagUtil.GetFlag(Data, 0x34, 4); set => FlagUtil.SetFlag(Data, 0x34, 4, value); }
@@ -357,7 +353,7 @@ namespace PKHeX.Core
             return (d[0x44] & 3) != 0;
         }
 
-        public uint U48 { get => BitConverter.ToUInt32(Data, 0x48); set => BitConverter.GetBytes(value).CopyTo(Data, 0x48); }
+        public uint Sociability { get => BitConverter.ToUInt32(Data, 0x48); set => BitConverter.GetBytes(value).CopyTo(Data, 0x48); }
 
         // 0x4C-0x4F unused
 
@@ -441,6 +437,9 @@ namespace PKHeX.Core
         public override int Language { get => Data[0xE2]; set => Data[0xE2] = (byte)value; }
         public int UnkE3 { get => Data[0xE3]; set => Data[0xE3] = (byte)value; }
         public uint FormArgument { get => BitConverter.ToUInt32(Data, 0xE4); set => BitConverter.GetBytes(value).CopyTo(Data, 0xE4); }
+        public byte FormArgumentRemain { get => (byte)FormArgument; set => FormArgument = (FormArgument & ~0xFFu) | value; }
+        public byte FormArgumentElapsed { get => (byte)(FormArgument >> 8); set => FormArgument = (FormArgument & ~0xFF00u) | (uint)(value << 8); }
+        public byte FormArgumentMaximum { get => (byte)(FormArgument >> 16); set => FormArgument = (FormArgument & ~0xFF0000u) | (uint)(value << 16); }
         public sbyte AffixedRibbon { get => (sbyte)Data[0xE8]; set => Data[0xE8] = (byte)value; } // selected ribbon
         // remainder unused
 

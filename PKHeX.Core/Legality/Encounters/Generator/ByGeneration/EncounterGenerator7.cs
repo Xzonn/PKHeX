@@ -50,7 +50,7 @@ namespace PKHeX.Core
         private static IEnumerable<IEncounterable> GetEncountersGG(PKM pkm, IReadOnlyList<EvoCriteria> chain)
         {
             int ctr = 0;
-            if (pkm.WasEvent)
+            if (pkm.FatefulEncounter)
             {
                 foreach (var z in GetValidGifts(pkm, chain))
                 { yield return z; ++ctr; }
@@ -105,16 +105,16 @@ namespace PKHeX.Core
         private static IEnumerable<IEncounterable> GetEncountersMainline(PKM pkm, IReadOnlyList<EvoCriteria> chain)
         {
             int ctr = 0;
-            if (pkm.WasEvent || pkm.WasEventEgg)
+            if (pkm.FatefulEncounter)
             {
                 foreach (var z in GetValidGifts(pkm, chain))
                 { yield return z; ++ctr; }
                 if (ctr != 0) yield break;
             }
 
-            if (pkm.WasBredEgg)
+            if (Locations.IsEggLocationBred6(pkm.Egg_Location))
             {
-                foreach (var z in GenerateEggs(pkm))
+                foreach (var z in GenerateEggs(pkm, 7))
                 { yield return z; ++ctr; }
                 if (ctr == 0) yield break;
             }
@@ -127,11 +127,10 @@ namespace PKHeX.Core
                 var match = z.GetMatchRating(pkm);
                 switch (match)
                 {
-                    case Match: yield return z; break;
+                    case Match: yield return z; ++ctr; break;
                     case Deferred: deferred ??= z; break;
                     case PartialMatch: partial ??= z; break;
                 }
-                ++ctr;
             }
             if (ctr != 0) yield break;
 
@@ -140,11 +139,10 @@ namespace PKHeX.Core
                 var match = z.GetMatchRating(pkm);
                 switch (match)
                 {
-                    case Match: yield return z; break;
+                    case Match: yield return z; ++ctr; break;
                     case Deferred: deferred ??= z; break;
                     case PartialMatch: partial ??= z; break;
                 }
-                ++ctr;
             }
             if (ctr != 0) yield break;
 

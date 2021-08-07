@@ -4,7 +4,7 @@ namespace PKHeX.Core
     /// Encounter Slot found in <see cref="GameVersion.Gen3"/>.
     /// </summary>
     /// <inheritdoc cref="EncounterSlot"/>
-    public record EncounterSlot3 : EncounterSlot, IMagnetStatic, INumberedSlot
+    public record EncounterSlot3 : EncounterSlot, IMagnetStatic, INumberedSlot, ISlotRNGType
     {
         public sealed override int Generation => 3;
 
@@ -12,6 +12,7 @@ namespace PKHeX.Core
         public int MagnetPullIndex { get; }
         public int StaticCount { get; }
         public int MagnetPullCount { get; }
+        public SlotType Type => Area.Type;
 
         public int SlotNumber { get; }
 
@@ -28,13 +29,13 @@ namespace PKHeX.Core
 
         public override EncounterMatchRating GetMatchRating(PKM pkm)
         {
-            if (IsDeferredWurmple(pkm))
+            if (IsDeferredSafari3(pkm.Ball == (int)Ball.Safari))
                 return EncounterMatchRating.PartialMatch;
-            if (IsDeferredSafari3(pkm.Ball == (int) Ball.Safari))
-                return EncounterMatchRating.PartialMatch;
-            return EncounterMatchRating.Match;
+            return base.GetMatchRating(pkm);
         }
 
         private bool IsDeferredSafari3(bool IsSafariBall) => IsSafariBall != Locations.IsSafariZoneLocation3(Location);
+
+        public override Ball GetRequiredBallValue() => Locations.IsSafariZoneLocation3(Location) ? Ball.Safari : Ball.None;
     }
 }

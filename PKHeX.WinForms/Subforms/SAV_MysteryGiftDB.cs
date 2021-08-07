@@ -19,6 +19,7 @@ namespace PKHeX.WinForms
         private readonly PKMEditor PKME_Tabs;
         private readonly SaveFile SAV;
         private readonly SAVEditor BoxView;
+        private readonly SummaryPreviewer ShowSet = new();
 
         public SAV_MysteryGiftDB(PKMEditor tabs, SAVEditor sav)
         {
@@ -60,6 +61,7 @@ namespace PKHeX.WinForms
                 };
 
                 slot.ContextMenuStrip = mnu;
+                slot.MouseEnter += (o, args) => ShowHoverTextForSlot(slot, args);
             }
 
             Counter = L_Count.Text;
@@ -88,6 +90,14 @@ namespace PKHeX.WinForms
         private readonly string Viewed;
         private const int MAXFORMAT = PKX.Generation;
 
+        private bool GetShiftedIndex(ref int index)
+        {
+            if (index >= RES_MAX)
+                return false;
+            index += SCR_Box.Value * RES_MIN;
+            return index < Results.Count;
+        }
+
         // Important Events
         private void ClickView(object sender, EventArgs e)
         {
@@ -97,7 +107,10 @@ namespace PKHeX.WinForms
             var pk = Results[index].ConvertToPKM(SAV);
             pk = PKMConverter.ConvertToType(pk, SAV.PKMType, out var c);
             if (pk == null)
-                throw new FormatException(c); // shouldn't happen
+            {
+                WinFormsUtil.Error(c);
+                return;
+            }
             SAV.AdaptPKM(pk);
             PKME_Tabs.PopulateFields(pk, false);
             slotSelected = index;
@@ -199,8 +212,16 @@ namespace PKHeX.WinForms
         {
             var db = EncounterEvent.GetAllEvents();
 
-            // when all sprites in new size are available, remove this filter
-            db = SAV is SAV8SWSH ? db.Where(z => ((PersonalInfoSWSH)PersonalTable.SWSH.GetFormEntry(z.Species, z.Form)).IsPresentInGame) : db.Where(z => z is not WC8);
+            if (Main.Settings.MysteryDb.FilterUnavailableSpecies)
+            {
+                db = SAV switch
+                {
+                    SAV8SWSH => db.Where(z => ((PersonalInfoSWSH)PersonalTable.SWSH.GetFormEntry(z.Species, z.Form)).IsPresentInGame),
+                    SAV7b => db.Where(z => z is WB7),
+                    SAV7 => db.Where(z => z.Generation < 7 || z is WC7),
+                    _ => db.Where(z => z.Generation <= SAV.Generation)
+                };
+            }
 
             RawDB = new List<MysteryGift>(db);
             foreach (var mg in RawDB)
@@ -239,11 +260,16 @@ namespace PKHeX.WinForms
             if (DialogResult.OK != fbd.ShowDialog())
                 return;
 
-            string path = fbd.SelectedPath;
-            Directory.CreateDirectory(path);
+            string folder = fbd.SelectedPath;
+            Directory.CreateDirectory(folder);
 
             foreach (var gift in Results.OfType<DataMysteryGift>()) // WC3 have no data
-                File.WriteAllBytes(Path.Combine(path, Util.CleanFileName(gift.FileName)), gift.Write());
+            {
+                var fileName = Util.CleanFileName(gift.FileName);
+                var path = Path.Combine(folder, fileName);
+                var data = gift.Write();
+                File.WriteAllBytes(path, data);
+            }
         }
 
         // View Updates
@@ -277,10 +303,12 @@ namespace PKHeX.WinForms
             if (move2 != -1) res = res.Where(mg => mg.HasMove(move2));
             if (move3 != -1) res = res.Where(mg => mg.HasMove(move3));
             if (move4 != -1) res = res.Where(mg => mg.HasMove(move4));
+
             if (CHK_Shiny.CheckState == CheckState.Checked) res = res.Where(pk => pk.IsShiny);
-            if (CHK_Shiny.CheckState == CheckState.Unchecked) res = res.Where(pk => !pk.IsShiny);
+            else if (CHK_Shiny.CheckState == CheckState.Unchecked) res = res.Where(pk => !pk.IsShiny);
+
             if (CHK_IsEgg.CheckState == CheckState.Checked) res = res.Where(pk => pk.IsEgg);
-            if (CHK_IsEgg.CheckState == CheckState.Unchecked) res = res.Where(pk => !pk.IsEgg);
+            else if (CHK_IsEgg.CheckState == CheckState.Unchecked) res = res.Where(pk => !pk.IsEgg);
 
             slotSelected = -1; // reset the slot last viewed
 
@@ -308,6 +336,7 @@ namespace PKHeX.WinForms
         private void SetResults(List<MysteryGift> res)
         {
             Results = new List<MysteryGift>(res);
+            ShowSet.Clear();
 
             SCR_Box.Maximum = (int)Math.Ceiling((decimal)Results.Count / RES_MIN);
             if (SCR_Box.Maximum > 0) SCR_Box.Maximum--;
@@ -389,6 +418,16 @@ namespace PKHeX.WinForms
                 int index = MAXFORMAT - SAV.Generation + 1;
                 CB_Format.SelectedIndex = index < CB_Format.Items.Count ? index : 0; // SAV generation (offset by 1 for "Any")
             }
+        }
+
+        private void ShowHoverTextForSlot(object sender, EventArgs e)
+        {
+            var pb = (PictureBox)sender;
+            int index = Array.IndexOf(PKXBOXES, pb);
+            if (!GetShiftedIndex(ref index))
+                return;
+
+            ShowSet.Show(pb, Results[index]);
         }
     }
 }

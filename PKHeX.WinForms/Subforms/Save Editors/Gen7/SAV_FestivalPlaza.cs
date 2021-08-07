@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Drawing;
-using System.Linq;
+using System.Globalization;
 using System.Windows.Forms;
 using PKHeX.Core;
 using PKHeX.Drawing;
@@ -12,11 +12,14 @@ namespace PKHeX.WinForms
         private readonly SaveFile Origin;
         private readonly SAV7 SAV;
 
+        private int entry;
+
         public SAV_FestivalPlaza(SaveFile sav)
         {
             InitializeComponent();
             SAV = (SAV7)(Origin = sav).Clone();
             editing = true;
+            entry = -1;
             typeMAX = SAV is SAV7USUM ? 0x7F : 0x7C;
             TB_PlazaName.Text = SAV.Festa.FestivalPlazaName;
 
@@ -72,7 +75,7 @@ namespace PKHeX.WinForms
                     break;
             }
             CLB_Phrases.Items.Clear();
-            CLB_Phrases.Items.Add(res.Last(), SAV.Festa.GetFestaPhraseUnlocked(106)); //add Lv100 before TentPhrases
+            CLB_Phrases.Items.Add(res[^1], SAV.Festa.GetFestaPhraseUnlocked(106)); //add Lv100 before TentPhrases
             for (int i = 0; i < res.Length - 1; i++)
                 CLB_Phrases.Items.Add(res[i], SAV.Festa.GetFestaPhraseUnlocked(i));
 
@@ -81,7 +84,7 @@ namespace PKHeX.WinForms
 
             string[] res2 = { "Rank 4: missions","Rank 8: facility","Rank 10: fashion","Rank 20: rename","Rank 30: special menu","Rank 40: BGM","Rank 50: theme Glitz","Rank 60: theme Fairy","Rank 70: theme Tone","Rank 100: phrase","Current Rank", };
             CLB_Reward.Items.Clear();
-            CLB_Reward.Items.Add(res2.Last(), (CheckState)RewardState[SAV.Festa.GetFestPrizeReceived(10)]); //add CurrentRank before const-rewards
+            CLB_Reward.Items.Add(res2[^1], (CheckState)RewardState[SAV.Festa.GetFestPrizeReceived(10)]); //add CurrentRank before const-rewards
             for (int i = 0; i < res2.Length - 1; i++)
                 CLB_Reward.Items.Add(res2[i], (CheckState)RewardState[SAV.Festa.GetFestPrizeReceived(i)]);
 
@@ -123,18 +126,24 @@ namespace PKHeX.WinForms
             CB_FacilityType.Items.Clear();
             for (int k = 0; k < RES_FacilityLevelType.Length - (SAV is SAV7USUM ? 0 : 1); k++) //Exchange is USUM only
             {
-                for (int j = 0; j < RES_FacilityLevelType[k].Length; j++)
+                var arr = RES_FacilityLevelType[k];
+                for (int j = 0; j < arr.Length; j++)
                 {
-                    if (RES_FacilityLevelType[k][j] != 4)
+                    var x = res6[k];
+                    var y = res7[k];
+                    var name = $"{x} {y[j]}";
+
+                    var count = arr[j];
+                    if (count == 4)
                     {
-                        for (int i = 0; i < RES_FacilityLevelType[k][j]; i++)
-                            CB_FacilityType.Items.Add($"{res6[k]} {res7[k][j]} {i + 1}");
+                        CB_FacilityType.Items.Add($"{name} 1");
+                        CB_FacilityType.Items.Add($"{name} 3");
+                        CB_FacilityType.Items.Add($"{name} 5");
                     }
                     else
                     {
-                        CB_FacilityType.Items.Add($"{res6[k]} {res7[k][j]} 1");
-                        CB_FacilityType.Items.Add($"{res6[k]} {res7[k][j]} 3");
-                        CB_FacilityType.Items.Add($"{res6[k]} {res7[k][j]} 5");
+                        for (int i = 0; i < count; i++)
+                            CB_FacilityType.Items.Add($"{name} {i + 1}");
                     }
                 }
             }
@@ -167,7 +176,12 @@ namespace PKHeX.WinForms
         private readonly byte[] RewardState = { 0, 2, 1 }; // CheckState.Indeterminate <-> CheckState.Checked
         private readonly int typeMAX;
         private readonly FestaFacility[] f = new FestaFacility[7];
-        private readonly string[] RES_Color = { "Red", "Blue", "Gold", "Black", "Purple", "Yellow", "Brown", "Green", "Orange", "NavyBlue", "Pink", "White" };
+        private readonly string[] RES_Color = Enum.GetNames(typeof(FestivalPlazaFacilityColor));
+
+        public enum FestivalPlazaFacilityColor : byte
+        {
+            Red, Blue, Gold, Black, Purple, Yellow, Brown, Green, Orange, NavyBlue, Pink, White
+        }
 
         private readonly byte[][] RES_FacilityColor = //facility appearance
         {
@@ -210,12 +224,13 @@ namespace PKHeX.WinForms
             };
         }
 
-        private int GetColorCount(int i) =>
-                i >= 0 && i < RES_FacilityColor.Length - (SAV is SAV7USUM ? 0 : 1)
-                ? RES_FacilityColor[i].Length - 1
-                : 3;
-
-        private int entry = -1;
+        private int GetColorCount(int type)
+        {
+            var colors = RES_FacilityColor;
+            if (type >= 0 && type < colors.Length - (SAV is SAV7USUM ? 0 : 1))
+                return colors[type].Length - 1;
+            return 3;
+        }
 
         private void LoadFacility()
         {
@@ -290,21 +305,21 @@ namespace PKHeX.WinForms
             B_ImportParty.Visible = SAV.HasParty;
             CHK_Choosed.Checked = SAV.GetFlag(0x6C55E, 1);
             CHK_TrainerInvited.Checked = IsTrainerInvited();
-            ushort valus = BitConverter.ToUInt16(SAV.GetData(0x6C55C, 2), 0);
+            ushort valus = BitConverter.ToUInt16(SAV.Data, 0x6C55C);
             int grade = valus >> 6 & 0x3F;
             NUD_Grade.Value = grade;
             int max = (Math.Min(49, grade) / 10 * 3) + 2;
             int defeated = valus >> 12;
             NUD_Defeated.Value = defeated > max ? max : defeated;
             NUD_Defeated.Maximum = max;
-            NUD_DefeatMon.Value = BitConverter.ToUInt16(SAV.GetData(0x6C558, 2), 0);
+            NUD_DefeatMon.Value = BitConverter.ToUInt16(SAV.Data, 0x6C558);
             for (int i = 0; i < NUD_Trainers.Length; i++)
             {
                 int j = GetSavData16(0x6C56C + (0x14 * i));
                 var m = (int)NUD_Trainers[i].Maximum;
                 NUD_Trainers[i].Value = (uint)j > m ? m : j;
             }
-            B_AgentGlass.Enabled = (SAV.GetData(SAV.Fashion.Offset + 0xD0, 1)[0] & 1) == 0;
+            B_AgentGlass.Enabled = (SAV.Data[SAV.Fashion.Offset + 0xD0] & 1) == 0;
         }
 
         private void LoadPictureBox()
@@ -314,7 +329,7 @@ namespace PKHeX.WinForms
         }
 
         private readonly NumericUpDown[] NUD_Trainers = new NumericUpDown[3];
-        private ushort GetSavData16(int Offset) => BitConverter.ToUInt16(SAV.GetData(Offset, 2), 0);
+        private ushort GetSavData16(int Offset) => BitConverter.ToUInt16(SAV.Data, Offset);
         private const ushort InvitedValue = 0x7DFF;
         private readonly PKM[] p = new PKM[3];
         private readonly PictureBox[] PBs = new PictureBox[3];
@@ -341,7 +356,7 @@ namespace PKHeX.WinForms
         private void NUD_FC_ValueChanged(object sender, EventArgs e)
         {
             if (editing) return;
-            L_FC_CollectedV.Text = (NUD_FC_Current.Value + NUD_FC_Used.Value).ToString();
+            L_FC_CollectedV.Text = (NUD_FC_Current.Value + NUD_FC_Used.Value).ToString(CultureInfo.InvariantCulture);
         }
 
         private void B_Cancel_Click(object sender, EventArgs e)
@@ -449,7 +464,7 @@ namespace PKHeX.WinForms
             int maxlen = sender == TB_FacilityID ? 12 << 1 : 4 << 1;
             if (t.Length > maxlen)
             {
-                t = t.Substring(0, maxlen);
+                t = t[..maxlen];
                 editing = true;
                 ((TextBox)sender).Text = t;
                 editing = false;

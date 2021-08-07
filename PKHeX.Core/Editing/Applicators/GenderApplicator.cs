@@ -9,11 +9,10 @@ namespace PKHeX.Core
         /// </summary>
         /// <param name="pk">Pokémon to modify.</param>
         /// <param name="gender">Desired <see cref="PKM.Gender"/> value to set.</param>
-        public static void SetGender(this PKM pk, string gender)
+        /// <remarks>Has special logic for an unspecified gender.</remarks>
+        public static void SetSaneGender(this PKM pk, int gender)
         {
-            int g = string.IsNullOrEmpty(gender)
-                ? pk.GetSaneGender()
-                : PKX.GetGenderFromString(gender);
+            int g = gender == -1 ? pk.GetSaneGender() : gender;
             pk.SetGender(g);
         }
 
@@ -50,9 +49,9 @@ namespace PKHeX.Core
             int gt = pk.PersonalInfo.Gender;
             switch (gt)
             {
-                case 255: return 2; // Genderless
-                case 254: return 1; // Female-Only
-                case 0: return 0; // Male-Only
+                case PersonalInfo.RatioMagicGenderless: return 2;
+                case PersonalInfo.RatioMagicFemale: return 1;
+                case PersonalInfo.RatioMagicMale: return 0;
             }
             if (!pk.IsGenderValid())
                 return PKX.GetGenderFromPIDAndRatio(pk.PID, gt);

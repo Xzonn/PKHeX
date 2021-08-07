@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using PKHeX.Drawing;
+using PKHeX.WinForms.Controls;
 using static PKHeX.Core.MessageStrings;
 
 namespace PKHeX.WinForms
@@ -14,6 +15,7 @@ namespace PKHeX.WinForms
     {
         private readonly SaveFile Origin;
         private readonly SaveFile SAV;
+        private readonly SummaryPreviewer Summary = new();
 
         public SAV_Wondercard(SaveFile sav, DataMysteryGift? g = null)
         {
@@ -28,13 +30,14 @@ namespace PKHeX.WinForms
                 5 or 6 or 7 => PopulateViewGiftsG567().ToArray(),
                 _ => throw new ArgumentException("Game not supported."),
             };
-            foreach (PictureBox pb in pba)
+            foreach (var pb in pba)
             {
                 pb.AllowDrop = true;
                 pb.DragDrop += BoxSlot_DragDrop;
                 pb.DragEnter += BoxSlot_DragEnter;
                 pb.MouseDown += BoxSlot_MouseDown;
                 pb.ContextMenuStrip = mnuVSD;
+                pb.MouseHover += (_, _) => Summary.Show(pb, mga.Gifts[pba.IndexOf(pb)]);
             }
 
             SetGiftBoxes();
@@ -264,22 +267,20 @@ namespace PKHeX.WinForms
             if (LB_Received.SelectedIndex < 0)
                 return;
 
-            if (LB_Received.SelectedIndices.Count > 1) {
-                for (int i = LB_Received.SelectedIndices.Count - 1; i >= 0; i--) {
+            if (LB_Received.SelectedIndices.Count > 1)
+            {
+                for (int i = LB_Received.SelectedIndices.Count - 1; i >= 0; i--)
                     LB_Received.Items.RemoveAt(LB_Received.SelectedIndices[i]);
-                }
             }
-            else if (LB_Received.SelectedIndices.Count == 1) {
+            else if (LB_Received.SelectedIndices.Count == 1)
+            {
                 int lastIndex = LB_Received.SelectedIndex;
-                LB_Received.Items.RemoveAt(LB_Received.SelectedIndex);
-                if (LB_Received.Items.Count > 0) {
-                    if (lastIndex > LB_Received.Items.Count - 1) {
-                        LB_Received.SelectedIndex = lastIndex - 1;
-                    }
-                    else {
-                        LB_Received.SelectedIndex = lastIndex;
-                    }
-                }
+                LB_Received.Items.RemoveAt(lastIndex);
+                if (LB_Received.Items.Count == 0)
+                    return;
+                if (lastIndex == LB_Received.Items.Count)
+                    lastIndex--;
+                LB_Received.SelectedIndex = lastIndex;
             }
         }
 
@@ -586,8 +587,8 @@ namespace PKHeX.WinForms
         {
             return new()
             {
-                Width = 305,
-                Height = 34,
+                Width = 480,
+                Height = 60,
                 Padding = new Padding(0),
                 Margin = new Padding(0),
             };
@@ -597,7 +598,7 @@ namespace PKHeX.WinForms
         {
             return new()
             {
-                Size = new Size(40, 34),
+                Size = new Size(40, 60),
                 AutoSize = false,
                 TextAlign = ContentAlignment.MiddleRight,
                 Text = text,
@@ -610,7 +611,7 @@ namespace PKHeX.WinForms
         {
             return new()
             {
-                Size = new Size(42, 32),
+                Size = new Size(70, 58),
                 SizeMode = PictureBoxSizeMode.CenterImage,
                 BorderStyle = BorderStyle.FixedSingle,
                 BackColor = Color.Transparent,
@@ -629,23 +630,22 @@ namespace PKHeX.WinForms
 
         private void LB_Received_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.KeyCode == Keys.Delete) {
-                if (LB_Received.SelectedIndices.Count > 1) {
-                    for (int i = LB_Received.SelectedIndices.Count - 1; i >= 0; i--) {
+            if (e.KeyCode == Keys.Delete)
+            {
+                if (LB_Received.SelectedIndices.Count > 1)
+                {
+                    for (int i = LB_Received.SelectedIndices.Count - 1; i >= 0; i--)
                         LB_Received.Items.RemoveAt(LB_Received.SelectedIndices[i]);
-                    }
                 }
-                else if (LB_Received.SelectedIndices.Count == 1) {
+                else if (LB_Received.SelectedIndices.Count == 1)
+                {
                     int lastIndex = LB_Received.SelectedIndex;
-                    LB_Received.Items.RemoveAt(LB_Received.SelectedIndex);
-                    if (LB_Received.Items.Count > 0) {
-                        if (lastIndex > LB_Received.Items.Count - 1) {
-                            LB_Received.SelectedIndex = lastIndex - 1;
-                        }
-                        else {
-                            LB_Received.SelectedIndex = lastIndex;
-                        }
-                    }
+                    LB_Received.Items.RemoveAt(lastIndex);
+                    if (LB_Received.Items.Count == 0)
+                        return;
+                    if (lastIndex == LB_Received.Items.Count)
+                        lastIndex--;
+                    LB_Received.SelectedIndex = lastIndex;
                 }
             }
         }

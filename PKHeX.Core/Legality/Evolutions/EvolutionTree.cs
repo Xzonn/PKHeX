@@ -194,7 +194,7 @@ namespace PKHeX.Core
         public List<EvoCriteria> GetValidPreEvolutions(PKM pkm, int maxLevel, int maxSpeciesOrigin = -1, bool skipChecks = false, int minLevel = 1)
         {
             if (maxSpeciesOrigin <= 0)
-                maxSpeciesOrigin = Legal.GetMaxSpeciesOrigin(pkm);
+                maxSpeciesOrigin = GetMaxSpeciesOrigin(pkm);
             if (pkm.IsEgg && !skipChecks)
             {
                 return new List<EvoCriteria>(1)
@@ -216,6 +216,22 @@ namespace PKHeX.Core
             return GetExplicitLineage(pkm, maxLevel, skipChecks, maxSpeciesOrigin, minLevel);
         }
 
+        public bool IsSpeciesDerivedFrom(int species, int form, int otherSpecies, int otherForm, bool ignoreForm = true)
+        {
+            var evos = GetEvolutionsAndPreEvolutions(species, form);
+            foreach (var evo in evos)
+            {
+                var s = evo & 0x3FF;
+                if (s != otherSpecies)
+                    continue;
+                if (ignoreForm)
+                    return true;
+                var f = evo >> 11;
+                return f == otherForm;
+            }
+            return false;
+        }
+
         /// <summary>
         /// Gets all species the <see cref="species"/>-<see cref="form"/> can evolve to &amp; from, yielded in order of increasing evolution stage.
         /// </summary>
@@ -229,6 +245,18 @@ namespace PKHeX.Core
             yield return species;
             foreach (var s in GetEvolutions(species, form))
                 yield return s;
+        }
+
+        public int GetBaseSpeciesForm(int species, int form, int skip = 0)
+        {
+            var chain = GetEvolutionsAndPreEvolutions(species, form);
+            foreach (var c in chain)
+            {
+                if (skip == 0)
+                    return c;
+                skip--;
+            }
+            return species | (form << 11);
         }
 
         /// <summary>
@@ -339,12 +367,12 @@ namespace PKHeX.Core
             }
 
             // Remove future gen pre-evolutions; no Munchlax from a Gen3 Snorlax, no Pichu from a Gen1-only Raichu, etc
-            var last = dl[dl.Count - 1];
+            var last = dl[^1];
             if (last.Species > maxSpeciesOrigin && dl.Any(d => d.Species <= maxSpeciesOrigin))
                 dl.RemoveAt(dl.Count - 1);
 
             // Last species is the wild/hatched species, the minimum level is 1 because it has not evolved from previous species
-            last = dl[dl.Count - 1];
+            last = dl[^1];
             last.MinLevel = 1;
             last.RequiresLvlUp = false;
             return dl;
@@ -352,7 +380,7 @@ namespace PKHeX.Core
 
         private static void UpdateMinValues(IReadOnlyList<EvoCriteria> dl, EvolutionMethod evo)
         {
-            var last = dl[dl.Count - 1];
+            var last = dl[^1];
             if (!evo.RequiresLevelUp)
             {
                 // Evolutions like elemental stones, trade, etc

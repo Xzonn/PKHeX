@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Linq;
+using System.Globalization;
 using System.Windows.Forms;
 using PKHeX.Core;
 
@@ -42,17 +42,17 @@ namespace PKHeX.WinForms
             dataGridView1.Columns.Clear();
             {
                 CB_Species.InitializeBinding();
-                CB_Species.DataSource = new BindingSource(GameInfo.SpeciesDataSource.Where(s => s.Value <= SAV.MaxSpeciesID).ToList(), null);
+                CB_Species.DataSource = new BindingSource(GameInfo.FilteredSources.Species, null);
 
                 CB_S2.InitializeBinding();
-                CB_S2.DataSource = new BindingSource(GameInfo.SpeciesDataSource.Where(s => s.Value <= SAV.MaxSpeciesID).ToList(), null);
+                CB_S2.DataSource = new BindingSource(GameInfo.FilteredSources.Species, null);
             }
             listBox1.SelectedIndex = 0;
             FillTrainingBags();
 
             CB_S2.SelectedValue = (int)BitConverter.ToUInt16(SAV.Data, offsetSpec + (4 * 30));
-            TB_Time1.Text = BitConverter.ToSingle(SAV.Data, offsetTime + (4 * 30)).ToString();
-            TB_Time2.Text = BitConverter.ToSingle(SAV.Data, offsetTime + (4 * 31)).ToString();
+            TB_Time1.Text = BitConverter.ToSingle(SAV.Data, offsetTime + (4 * 30)).ToString(CultureInfo.InvariantCulture);
+            TB_Time2.Text = BitConverter.ToSingle(SAV.Data, offsetTime + (4 * 31)).ToString(CultureInfo.InvariantCulture);
         }
 
         private void FillTrainingBags()
@@ -101,7 +101,7 @@ namespace PKHeX.WinForms
                 comboBox.DroppedDown = true;
             }
 #pragma warning disable CA1031 // Do not catch general exception types
-            catch { Console.WriteLine("Failed to modify item."); }
+            catch { System.Diagnostics.Debug.WriteLine("Failed to modify item."); }
 #pragma warning restore CA1031 // Do not catch general exception types
         }
 
@@ -113,7 +113,7 @@ namespace PKHeX.WinForms
             if (index < 0)
                 return;
             loading = true;
-            TB_Time.Text = BitConverter.ToSingle(SAV.Data, offsetTime + (4 * index)).ToString();
+            TB_Time.Text = BitConverter.ToSingle(SAV.Data, offsetTime + (4 * index)).ToString(CultureInfo.InvariantCulture);
             TB_Unk.Text = BitConverter.ToUInt16(SAV.Data, offsetVal + (4 * index)).ToString();
             CB_Species.SelectedValue = (int)BitConverter.ToUInt16(SAV.Data, offsetSpec + (4 * index));
             loading = false;

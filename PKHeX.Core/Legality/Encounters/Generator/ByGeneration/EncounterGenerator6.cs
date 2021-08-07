@@ -16,22 +16,42 @@ namespace PKHeX.Core
             int ctr = 0;
 
             var chain = EncounterOrigin.GetOriginChain(pkm);
-            if (pkm.WasEvent || pkm.WasEventEgg || pkm.WasLink)
-            {
-                foreach (var z in GetValidGifts(pkm, chain))
-                { yield return z; ++ctr; }
-                if (ctr != 0) yield break;
-            }
-
-            if (pkm.WasBredEgg)
-            {
-                foreach (var z in GenerateEggs(pkm))
-                { yield return z; ++ctr; }
-                if (ctr == 0) yield break;
-            }
 
             IEncounterable? deferred = null;
             IEncounterable? partial = null;
+
+            if (pkm.FatefulEncounter || pkm.Met_Location == Locations.LinkGift6)
+            {
+                foreach (var z in GetValidGifts(pkm, chain))
+                {
+                    var match = z.GetMatchRating(pkm);
+                    switch (match)
+                    {
+                        case Match: yield return z; break;
+                        case Deferred: deferred ??= z; break;
+                        case PartialMatch: partial ??= z; break;
+                    }
+                    ++ctr;
+                }
+
+                if (ctr != 0)
+                {
+                    if (deferred != null)
+                        yield return deferred;
+
+                    if (partial != null)
+                        yield return partial;
+
+                    yield break;
+                }
+            }
+
+            if (Locations.IsEggLocationBred6(pkm.Egg_Location))
+            {
+                foreach (var z in GenerateEggs(pkm, 6))
+                { yield return z; ++ctr; }
+                if (ctr == 0) yield break;
+            }
 
             foreach (var z in GetValidStaticEncounter(pkm, chain))
             {

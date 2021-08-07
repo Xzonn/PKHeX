@@ -21,7 +21,7 @@ namespace PKHeX.Core
         /// </summary>
         internal readonly int[] PokeListInfo;
 
-        private const int STARTER = 6;
+        public const int STARTER = 6;
         private const int COUNT = 7;
         private const int MAX_SLOTS = 1000;
         private const int SLOT_EMPTY = 1001;
@@ -29,13 +29,20 @@ namespace PKHeX.Core
         public PokeListHeader(SAV7b sav, int offset) : base(sav)
         {
             Offset = offset;
-            PokeListInfo = LoadPointerData();
+            var info = PokeListInfo = LoadPointerData();
             if (!sav.State.Exportable)
             {
                 for (int i = 0; i < COUNT; i++)
-                    PokeListInfo[i] = SLOT_EMPTY;
+                    info[i] = SLOT_EMPTY;
             }
-            PartyCount = PokeListInfo.Take(6).Count(z => z < MAX_SLOTS);
+            else
+            {
+                for (int i = 0; i < 6; i++)
+                {
+                    if (info[i] < MAX_SLOTS)
+                        ++_partyCount;
+                }
+            }
         }
 
         private int _partyCount;
@@ -116,14 +123,15 @@ namespace PKHeX.Core
             return SAV.GetBoxSlotOffset(position);
         }
 
-        public int GetPartyIndex(int box, int slot)
+        private int GetPartyIndex(int slotIndex)
         {
-            int slotIndex = slot + (SAV.BoxSlotCount * box);
-            if ((uint)slotIndex >= MAX_SLOTS)
+            if ((uint) slotIndex >= MAX_SLOTS)
                 return MAX_SLOTS;
             var index = Array.IndexOf(PokeListInfo, slotIndex);
             return index >= 0 ? index : MAX_SLOTS;
         }
+
+        public bool IsParty(int slotIndex) => GetPartyIndex(slotIndex) != MAX_SLOTS;
 
         public bool CompressStorage()
         {

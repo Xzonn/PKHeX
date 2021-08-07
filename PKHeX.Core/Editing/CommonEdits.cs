@@ -174,9 +174,10 @@ namespace PKHeX.Core
         public static void SetNature(this PKM pk, int nature)
         {
             var value = Math.Min((int)Nature.Quirky, Math.Max((int)Nature.Hardy, nature));
-            if (pk.Format >= 8)
+            var format = pk.Format;
+            if (format >= 8)
                 pk.StatNature = value;
-            else if (pk.Format <= 4)
+            else if (format is 3 or 4)
                 pk.SetPIDNature(value);
             else
                 pk.Nature = value;
@@ -206,7 +207,7 @@ namespace PKHeX.Core
                 // In Generation 1/2 Format sets, when EVs are not specified at all, it implies maximum EVs instead!
                 // Under this scenario, just apply maximum EVs (65535).
                 if (Set.EVs.All(z => z == 0))
-                    gb.EV_HP = gb.EV_ATK = gb.EV_DEF = gb.EV_SPC = gb.EV_SPE = gb.MaxEV;
+                    gb.MaxEVs();
                 else
                     pk.EVs = Set.EVs;
             }
@@ -216,7 +217,7 @@ namespace PKHeX.Core
             }
 
             // IVs have no side effects such as hidden power type in gen 8
-            // therefore all specified IVs are deliberate and should not be HT'd over for pokemon met in gen 8
+            // therefore all specified IVs are deliberate and should not be Hyper Trained for pokemon met in gen 8
             if (!pk.Gen8)
                 pk.SetSuggestedHyperTrainingData(Set.IVs);
 
@@ -225,7 +226,7 @@ namespace PKHeX.Core
 
             pk.SetNickname(Set.Nickname);
             pk.SetForm(Set.Form);
-            pk.SetGender(Set.Gender);
+            pk.SetSaneGender(Set.Gender);
             pk.SetMaximumPPUps(Set.Moves);
 
             if (pk.Format >= 3)
@@ -243,7 +244,7 @@ namespace PKHeX.Core
                 if (pk is PB7 b)
                 {
                     for (int i = 0; i < 6; i++)
-                        pk.SetEV(i, 0);
+                        b.SetEV(i, 0);
                     b.ResetCalculatedValues();
                 }
             }
@@ -251,7 +252,7 @@ namespace PKHeX.Core
             if (pk is IGigantamax c)
                 c.CanGigantamax = Set.CanGigantamax;
             if (pk is IDynamaxLevel d)
-                d.DynamaxLevel = d.CanHaveDynamaxLevel(pk) ? 10 : 0;
+                d.DynamaxLevel = d.CanHaveDynamaxLevel(pk) ? (byte)10 : (byte)0;
 
             pk.ClearRecordFlags();
             pk.SetRecordFlags(Set.Moves);

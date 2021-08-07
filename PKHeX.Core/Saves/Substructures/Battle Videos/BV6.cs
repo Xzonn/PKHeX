@@ -96,7 +96,7 @@ namespace PKHeX.Core
             {
                 int offset = start + (PokeCrypto.SIZE_6PARTY * ((t * 6) + p));
                 offset += 8 * (((t * 6) + p) / 6); // 8 bytes padding between teams
-                team[p] = new PK6(Data.Slice(offset, PokeCrypto.SIZE_6PARTY)) { Identifier = $"Team {t}, Slot {p}" };
+                team[p] = new PK6(Data.Slice(offset, PokeCrypto.SIZE_6PARTY));
             }
 
             return team;
@@ -133,7 +133,7 @@ namespace PKHeX.Core
         {
             get
             {
-                if (!Util.IsDateValid(MatchYear, MatchMonth, MatchDay))
+                if (!DateUtil.IsDateValid(MatchYear, MatchMonth, MatchDay))
                     return null;
                 return new DateTime(MatchYear, MatchMonth, MatchDay, MatchHour, MatchMinute, MatchSecond);
             }
@@ -159,7 +159,7 @@ namespace PKHeX.Core
         {
             get
             {
-                if (!Util.IsDateValid(UploadYear, UploadMonth, UploadDay))
+                if (!DateUtil.IsDateValid(UploadYear, UploadMonth, UploadDay))
                     return null;
                 return new DateTime(UploadYear, UploadMonth, UploadDay, UploadHour, UploadMinute, UploadSecond);
             }

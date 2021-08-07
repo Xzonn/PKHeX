@@ -36,20 +36,27 @@ namespace PKHeX.Core
         public int EggCycles { get; init; }
 
         public bool Fateful { get; init; }
-        public bool SkipFormCheck { get; init; }
         public bool EggEncounter => EggLocation > 0;
 
         private const string _name = "Static Encounter";
         public string Name => _name;
         public string LongName => Version == GameVersion.Any ? _name : $"{_name} ({Version})";
+        public bool IsShiny => Shiny.IsShiny();
+
+        public bool IsRandomUnspecificForm => Form >= FormDynamic;
+        private const int FormDynamic = FormVivillon;
+        internal const int FormVivillon = 30;
+      //protected const int FormRandom = 31;
 
         protected EncounterStatic(GameVersion game) => Version = game;
+
+        protected virtual PKM GetBlank(ITrainerInfo tr) => PKMConverter.GetBlank(Generation, Version);
 
         public PKM ConvertToPKM(ITrainerInfo sav) => ConvertToPKM(sav, EncounterCriteria.Unrestricted);
 
         public PKM ConvertToPKM(ITrainerInfo sav, EncounterCriteria criteria)
         {
-            var pk = PKMConverter.GetBlank(Generation, Version);
+            var pk = GetBlank(sav);
             sav.ApplyTo(pk);
 
             ApplyDetails(sav, criteria, pk);
@@ -62,9 +69,9 @@ namespace PKHeX.Core
             pk.Species = Species;
             pk.Form = Form;
 
-            int lang = (int)Language.GetSafeLanguage(Generation, (LanguageID)sav.Language);
-            int level = GetMinimalLevel();
             var version = this.GetCompatibleVersion((GameVersion)sav.Game);
+            int lang = (int)Language.GetSafeLanguage(Generation, (LanguageID)sav.Language, version);
+            int level = GetMinimalLevel();
 
             pk.Version = (int)version;
             pk.Language = lang = GetEdgeCaseLanguage(pk, lang);
@@ -93,7 +100,6 @@ namespace PKHeX.Core
                 pk.SetRelearnMoves(relearn.Relearn);
 
             sav.ApplyHandlingTrainerInfo(pk);
-            pk.SetRandomEC();
 
             if (this is IGigantamax g && pk is IGigantamax pg)
                 pg.CanGigantamax = g.CanGigantamax;
@@ -108,7 +114,7 @@ namespace PKHeX.Core
             var pi = pk.PersonalInfo;
             int gender = criteria.GetGender(Gender, pi);
             int nature = (int)criteria.GetNature(Nature);
-            int ability = criteria.GetAbilityFromNumber(Ability, pi);
+            int ability = criteria.GetAbilityFromNumber(Ability);
 
             var pidtype = GetPIDType();
             PIDGenerator.SetRandomWildPID(pk, pk.Format, nature, ability, gender, pidtype);
@@ -244,26 +250,13 @@ namespace PKHeX.Core
 
         protected virtual bool IsMatchForm(PKM pkm, DexLevel evo)
         {
-            if (SkipFormCheck)
+            if (IsRandomUnspecificForm)
                 return true;
             return Form == evo.Form || FormInfo.IsFormChangeable(Species, Form, pkm.Form, pkm.Format);
         }
 
-        protected virtual bool IsMatchEggLocation(PKM pkm)
-        {
-            if (pkm.IsEgg) // unhatched
-            {
-                if (EggLocation != pkm.Met_Location)
-                    return false;
-                return pkm.Egg_Location == 0;
-            }
-
-            if (EggLocation == pkm.Egg_Location)
-                return true;
-
-            // Only way to mismatch is to be a Link Traded egg.
-            return EggEncounter && pkm.Egg_Location == Locations.LinkTrade6;
-        }
+        // override me if the encounter type has any eggs
+        protected virtual bool IsMatchEggLocation(PKM pkm) => pkm.Egg_Location == 0;
 
         private bool IsMatchGender(PKM pkm)
         {
@@ -292,7 +285,7 @@ namespace PKHeX.Core
             return pkm.Met_Level == Level;
         }
 
-        public EncounterMatchRating GetMatchRating(PKM pkm)
+        public virtual EncounterMatchRating GetMatchRating(PKM pkm)
         {
             if (IsMatchPartial(pkm))
                 return EncounterMatchRating.PartialMatch;
@@ -301,10 +294,18 @@ namespace PKHeX.Core
             return EncounterMatchRating.Match;
         }
 
+        /// <summary>
+        /// Checks if the provided <see cref="pkm"/> might not be the best match, or even a bad match due to minor reasons.
+        /// </summary>
         protected virtual bool IsMatchDeferred(PKM pkm) => false;
 
+        /// <summary>
+        /// Checks if the provided <see cref="pkm"/> is not an exact match due to minor reasons.
+        /// </summary>
         protected virtual bool IsMatchPartial(PKM pkm)
         {
+            if (pkm.Format >= 5 && pkm.AbilityNumber == 4 && this.IsPartialMatchHidden(pkm.Species, Species))
+                return true;
             return pkm.FatefulEncounter != Fateful;
         }
     }

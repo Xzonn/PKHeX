@@ -1,12 +1,11 @@
 ﻿using System;
-using System.Linq;
 
 namespace PKHeX.Core
 {
     /// <summary>
     /// Egg Encounter Data
     /// </summary>
-    public record EncounterEgg : IEncounterable
+    public sealed record EncounterEgg : IEncounterable
     {
         public int Species { get; }
         public int Form { get; }
@@ -19,6 +18,7 @@ namespace PKHeX.Core
         public readonly int Level;
         public int Generation { get; }
         public GameVersion Version { get; }
+        public bool IsShiny => false;
 
         public EncounterEgg(int species, int form, int level, int gen, GameVersion game)
         {
@@ -39,23 +39,35 @@ namespace PKHeX.Core
 
             sav.ApplyTo(pk);
 
+            int lang = (int)Language.GetSafeLanguage(Generation, (LanguageID)sav.Language, version);
             pk.Species = Species;
-            pk.Nickname = SpeciesName.GetSpeciesNameGeneration(Species, sav.Language, gen);
+            pk.Form = Form;
+            pk.Language = lang;
+            pk.Nickname = SpeciesName.GetSpeciesNameGeneration(Species, lang, gen);
             pk.CurrentLevel = Level;
             pk.Version = (int)version;
             pk.Ball = (int)Ball.Poke;
             pk.OT_Friendship = pk.PersonalInfo.BaseFriendship;
 
-            int[] moves = SetEncounterMoves(pk, version);
+            SetEncounterMoves(pk, version);
+            pk.HealPP();
             SetPINGA(pk, criteria);
 
-            if (gen <= 2 && version != GameVersion.C)
+            if (gen <= 2)
+            {
+                if (version != GameVersion.C)
+                {
+                    pk.OT_Gender = 0;
+                }
+                else
+                {
+                    pk.Met_Location = Locations.HatchLocationC;
+                    pk.Met_Level = 1;
+                }
                 return pk;
+            }
 
             SetMetData(pk);
-
-            if (gen < 3)
-                return pk;
 
             if (gen >= 4)
                 pk.SetEggMetData(version, (GameVersion)sav.Game);
@@ -68,7 +80,10 @@ namespace PKHeX.Core
             SetForm(pk, sav);
 
             pk.SetRandomEC();
-            pk.RelearnMoves = moves;
+            pk.RelearnMove1 = pk.Move1;
+            pk.RelearnMove2 = pk.Move2;
+            pk.RelearnMove3 = pk.Move3;
+            pk.RelearnMove4 = pk.Move4;
 
             return pk;
         }
@@ -82,7 +97,7 @@ namespace PKHeX.Core
                     break;
                 case (int)Core.Species.Scatterbug or (int)Core.Species.Spewpa or (int)Core.Species.Vivillon:
                     if (sav is IRegionOrigin o)
-                        pk.Form = Vivillon3DS.GetPattern((byte)o.Country, (byte)o.Region);
+                        pk.Form = Vivillon3DS.GetPattern(o.Country, o.Region);
                     // else 0
                     break;
             }
@@ -121,31 +136,14 @@ namespace PKHeX.Core
             pk.Met_Location = Math.Max(0, EncounterSuggestion.GetSuggestedEggMetLocation(pk));
         }
 
-        private int[] SetEncounterMoves(PKM pk, GameVersion version)
+        private void SetEncounterMoves(PKM pk, GameVersion version)
         {
-            int[] moves = GetCurrentEggMoves(pk, version);
-            pk.Moves = moves;
-            pk.SetMaximumPPCurrent(moves);
-            return moves;
+            var learnset = GameData.GetLearnset(version, Species, Form);
+            var baseMoves = learnset.GetBaseEggMoves(Level);
+            if (baseMoves.Length == 0) return; pk.Move1 = baseMoves[0];
+            if (baseMoves.Length == 1) return; pk.Move2 = baseMoves[1];
+            if (baseMoves.Length == 2) return; pk.Move3 = baseMoves[2];
+            if (baseMoves.Length == 3) return; pk.Move4 = baseMoves[3];
         }
-
-        private int[] GetCurrentEggMoves(PKM pk, GameVersion version)
-        {
-            var moves = MoveEgg.GetEggMoves(pk.PersonalInfo, Species, Form, version, Generation);
-            if (moves.Length == 0)
-                return MoveLevelUp.GetEncounterMoves(pk, Level, version);
-            if (moves.Length >= 4 || pk.Format < 6)
-                return moves;
-
-            // Sprinkle in some default level up moves
-            var lvl = MoveList.GetBaseEggMoves(pk, Species, Form, version, Level);
-            return lvl.Concat(moves).ToArray();
-        }
-    }
-
-    public sealed record EncounterEggSplit : EncounterEgg
-    {
-        public int OtherSpecies { get; }
-        public EncounterEggSplit(int species, int form, int level, int gen, GameVersion game, int otherSpecies) : base(species, form, level, gen, game) => OtherSpecies = otherSpecies;
     }
 }

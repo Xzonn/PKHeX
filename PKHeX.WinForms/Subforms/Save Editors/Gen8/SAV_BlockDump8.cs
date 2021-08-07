@@ -24,23 +24,28 @@ namespace PKHeX.WinForms
 
             PG_BlockView.Size = RTB_Hex.Size;
 
-            Metadata = new SCBlockMetadata(SAV.Blocks);
+            // Get an external source of names if available.
+            var extra = GetExtraKeyNames();
+            Metadata = new SCBlockMetadata(SAV.Blocks, extra);
 
             CB_Key.InitializeBinding();
             CB_Key.DataSource = Metadata.GetSortedBlockKeyList().ToArray();
 
-            ComboItem[] boolToggle =
-            {
-                new(nameof(SCTypeCode.Bool1), (int)SCTypeCode.Bool1),
-                new(nameof(SCTypeCode.Bool2), (int)SCTypeCode.Bool2),
-                new(nameof(SCTypeCode.Bool3), (int)SCTypeCode.Bool3),
-            };
             CB_TypeToggle.InitializeBinding();
-            CB_TypeToggle.DataSource = boolToggle;
-
-            CB_TypeToggle.SelectedIndexChanged += (o, args) => CB_TypeToggle_SelectedIndexChanged(CB_TypeToggle, args);
+            CB_TypeToggle.DataSource = new[]
+            {
+                new ComboItem(nameof(SCTypeCode.Bool1), (int)SCTypeCode.Bool1),
+                new ComboItem(nameof(SCTypeCode.Bool2), (int)SCTypeCode.Bool2),
+            };
+            CB_TypeToggle.SelectedIndexChanged += CB_TypeToggle_SelectedIndexChanged;
 
             CB_Key.SelectedIndex = 0;
+        }
+
+        private static IEnumerable<string> GetExtraKeyNames()
+        {
+            var extra = Main.Settings.Advanced.PathBlockKeyListSWSH;
+            return File.Exists(extra) ? File.ReadLines(extra) : Array.Empty<string>();
         }
 
         private void CB_Key_SelectedIndexChanged(object sender, EventArgs e)
@@ -101,14 +106,14 @@ namespace PKHeX.WinForms
             PG_BlockView.Visible = false;
         }
 
-        private void CB_TypeToggle_SelectedIndexChanged(object sender, EventArgs e)
+        private void CB_TypeToggle_SelectedIndexChanged(object? sender, EventArgs e)
         {
             var block = CurrentBlock;
             var cType = block.Type;
             var cValue = (SCTypeCode)WinFormsUtil.GetIndex(CB_TypeToggle);
             if (cType == cValue)
                 return;
-            block.Type = cValue;
+            block.ChangeBooleanType(cValue);
             UpdateBlockSummaryControls();
         }
 
@@ -206,7 +211,9 @@ namespace PKHeX.WinForms
             if (s2 is not SAV8SWSH w2)
                 return;
 
-            var compare = new SCBlockCompare(w1.Blocks, w2.Blocks);
+            // Get an external source of names if available.
+            var extra = GetExtraKeyNames();
+            var compare = new SCBlockCompare(w1.Blocks, w2.Blocks, extra);
             richTextBox1.Lines = compare.Summary().ToArray();
         }
 
@@ -244,6 +251,18 @@ namespace PKHeX.WinForms
             Debug.WriteLine($"ChangedItem = {e.ChangedItem.Label}, OldValue = {e.OldValue}, NewValue = {e.ChangedItem.Value}");
             if (CurrentBlock.Type != SCTypeCode.Object && CurrentBlock.Type != SCTypeCode.Array)
                 L_Detail_R.Text = GetBlockSummary(CurrentBlock);
+        }
+
+        private void CB_Key_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode != Keys.Enter)
+                return;
+
+            var text = CB_Key.Text;
+            if (text.Length != 8)
+                return;
+
+            CB_Key.SelectedValue = (int)Util.GetHexValue(text);
         }
     }
 }

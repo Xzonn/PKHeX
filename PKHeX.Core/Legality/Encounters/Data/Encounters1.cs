@@ -8,12 +8,12 @@ namespace PKHeX.Core
     /// </summary>
     internal static class Encounters1
     {
-        private static readonly EncounterArea1[] SlotsR = Get("red", "g1", RD);
-        private static readonly EncounterArea1[] SlotsG = Get("blue", "g1", GN);
-        private static readonly EncounterArea1[] SlotsY = Get("yellow", "g1", YW);
-        private static readonly EncounterArea1[] SlotsB = Get("blue_jp", "g1", BU);
-        internal static readonly EncounterArea1[] SlotsRBY = ArrayUtil.ConcatAll(SlotsR, SlotsG, SlotsY);
-        internal static readonly EncounterArea1[] SlotsRGBY = ArrayUtil.ConcatAll(SlotsRBY, SlotsB);
+        internal static readonly EncounterArea1[] SlotsRD = Get("red", "g1", RD);
+        internal static readonly EncounterArea1[] SlotsGN = Get("blue", "g1", GN);
+        internal static readonly EncounterArea1[] SlotsYW = Get("yellow", "g1", YW);
+        internal static readonly EncounterArea1[] SlotsBU = Get("blue_jp", "g1", BU);
+        internal static readonly EncounterArea1[] SlotsRBY = ArrayUtil.ConcatAll(SlotsRD, SlotsGN, SlotsYW);
+        internal static readonly EncounterArea1[] SlotsRGBY = ArrayUtil.ConcatAll(SlotsRBY, SlotsBU);
 
         private static EncounterArea1[] Get(string name, string ident, GameVersion game) =>
             EncounterArea1.GetAreas(BinLinker.Unpack(Util.GetBinaryResource($"encounter_{name}.pkl"), ident), game);
@@ -31,17 +31,17 @@ namespace PKHeX.Core
 
             // Game Corner
             new(030, 17, RB), // Nidorina (Red Game Corner)
-            new(033, 17, BU), // Nidorino (Blue[EN] / Green[JP] Game Corner)
+            new(033, 17, RB), // Nidorino (Blue[EN] / Green[JP] Game Corner)
             new(035, 08, RBY), // Clefairy (Red Game Corner)
             new(036, 24, BU), // Clefable (Blue[JP] Game Corner)
             new(037, 18, RBY), // Vulpix (Yellow Game Corner)
             new(040, 22, RBY), // Wigglytuff (Yellow Game Corner)
-            new(063, 06, BU), // Abra (Blue[EN] / Green[JP] Game Corner)
+            new(063, 06, RB), // Abra (Blue[EN] / Green[JP] Game Corner)
             new(116, 18, BU), // Horsea (Blue[JP] Game Corner)
             new(123, 25, RBY), // Scyther (Red Game Corner)
-            new(127, 20, BU), // Pinsir (Blue[EN] / Green[JP] Game Corner)
+            new(127, 20, RB), // Pinsir (Blue[EN] / Green[JP] Game Corner)
             new(127, 30, YW), // Pinsir (Yellow Game Corner) (Different initial moves)
-            new(137, 18, BU), // Porygon (Blue[EN] / Green[JP] Game Corner)
+            new(137, 18, RB), // Porygon (Blue[EN] / Green[JP] Game Corner)
             new(147, 18, RBY), // Dratini (Red Game Corner)
             new(148, 30, BU), // Dragonair (Blue[JP] Game Corner)
             new(025, 12, BU), // Pikachu (Blue[JP] Game Corner) (Different catch rate)

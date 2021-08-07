@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 
 namespace PKHeX.Core
 {
@@ -27,7 +26,6 @@ namespace PKHeX.Core
 
         public override PKM Clone() => new SK2((byte[])Data.Clone(), Japanese)
         {
-            Identifier = Identifier,
             IsEgg = IsEgg,
         };
 
@@ -108,8 +106,8 @@ namespace PKHeX.Core
             }
         }
 
-        public override byte[] Nickname_Trash { get => GetData(0x24, 12); set { if (value.Length == 12) value.CopyTo(Data, 0x24); } }
-        public override byte[] OT_Trash { get => GetData(0x30, 12); set { if (value.Length == 12) value.CopyTo(Data, 0x30); } }
+        public override Span<byte> Nickname_Trash { get => Data.AsSpan(0x24, 12); set { if (value.Length == 12) value.CopyTo(Data.AsSpan(0x24)); } }
+        public override Span<byte> OT_Trash { get => Data.AsSpan(0x30, 12); set { if (value.Length == 12) value.CopyTo(Data.AsSpan(0x30)); } }
         #endregion
 
         #region Party Attributes
@@ -130,7 +128,7 @@ namespace PKHeX.Core
         private string GetString(int offset, int length) => StringConverter12.GetString1(Data, offset, length - 1, Japanese);
         private byte[] SetString(string value, int length) => StringConverter12.SetString1(value, length - 1, Japanese);
 
-        protected override IEnumerable<byte> GetNonNickname(int language)
+        protected override byte[] GetNonNickname(int language)
         {
             var name = SpeciesName.GetSpeciesNameGeneration(Species, language, Format);
             return SetString(name, StringLength);
@@ -188,24 +186,32 @@ namespace PKHeX.Core
             };
         }
 
-        private static bool IsJapanese(byte[] data)
+        private static bool IsJapanese(ReadOnlySpan<byte> data)
         {
-            if (!StringConverter12.GetIsG1Japanese(data, 0x24, StringLength))
+            if (!StringConverter12.GetIsG1Japanese(data.Slice(0x30, StringLength)))
                 return false;
-            if (!StringConverter12.GetIsG1Japanese(data, 0x30, StringLength))
+            if (!StringConverter12.GetIsG1Japanese(data.Slice(0x24, StringLength)))
                 return false;
 
             for (int i = 6; i < 0xC; i++)
             {
-                if (data[0x24 + i] != 0 && data[0x24 + i] != StringConverter12.G1TerminatorCode)
+                if (data[0x30 + i] is not (0 or StringConverter12.G1TerminatorCode))
                     return false;
-                if (data[0x30 + i] != 0 && data[0x30 + i] != StringConverter12.G1TerminatorCode)
+                if (data[0x24 + i] is not (0 or StringConverter12.G1TerminatorCode))
                     return false;
             }
             return true;
         }
 
-        private static bool IsEnglish(byte[] data) => StringConverter12.GetIsG1English(data, 0x24, StringLength) && StringConverter12.GetIsG1English(data, 0x30, StringLength);
+        private static bool IsEnglish(ReadOnlySpan<byte> data)
+        {
+            if (!StringConverter12.GetIsG1English(data.Slice(0x30, StringLength)))
+                return false;
+            if (!StringConverter12.GetIsG1English(data.Slice(0x24, StringLength)))
+                return false;
+            return true;
+        }
+
         public bool IsPossible(bool japanese) => japanese ? IsJapanese(Data) : IsEnglish(Data);
         public void SwapLanguage() => IsEncodingJapanese ^= true;
     }

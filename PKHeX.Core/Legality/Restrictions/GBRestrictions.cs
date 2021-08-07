@@ -1,13 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using PKHeX.Core;
 
 using static PKHeX.Core.Legal;
 using static PKHeX.Core.GameVersion;
 using static PKHeX.Core.Species;
 
-namespace PKHeX
+namespace PKHeX.Core
 {
     /// <summary>
     /// Miscellaneous GB Era restriction logic for legality checking
@@ -39,6 +38,9 @@ namespace PKHeX
             (int)Kabuto,
         };
 
+        /// <summary>
+        /// Species that have a specific minimum amount of moves based on their evolution state.
+        /// </summary>
         private static readonly HashSet<int> SpecialMinMoveSlots = new()
         {
             (int)Pikachu,
@@ -61,6 +63,9 @@ namespace PKHeX
 
         internal static bool TypeIDExists(int type) => Types_Gen1.Contains(type);
 
+        /// <summary>
+        /// Valid type IDs extracted from the Personal Table used for R/G/B/Y games.
+        /// </summary>
         private static readonly HashSet<int> Types_Gen1 = new()
         {
             0, 1, 2, 3, 4, 5, 7, 8, 20, 21, 22, 23, 24, 25, 26
@@ -87,6 +92,7 @@ namespace PKHeX
             (int)Cloyster,
             (int)Exeggutor,
             (int)Starmie,
+            (int)Dragonite,
         };
 
         internal static readonly HashSet<int> Trade_Evolution1 = new()
@@ -97,11 +103,23 @@ namespace PKHeX
             (int)Haunter,
         };
 
+        public static bool RateMatchesEncounter(int species, GameVersion version, int rate)
+        {
+            if (version.Contains(YW))
+            {
+                if (rate == PersonalTable.Y[species].CatchRate)
+                    return true;
+                if (version == YW) // no RB
+                    return false;
+            }
+            return rate == PersonalTable.RB[species].CatchRate;
+        }
+
         private static int[] GetMinLevelLearnMoveG1(int species, List<int> moves)
         {
             var result = new int[moves.Count];
             for (int i = 0; i < result.Length; i++)
-                result[i] = MoveLevelUp.GetIsLevelUp1(species, moves[i], 100, 0, 0).Level;
+                result[i] = MoveLevelUp.GetIsLevelUp1(species, 0, moves[i], 100, 0).Level;
             return result;
         }
 
@@ -226,13 +244,13 @@ namespace PKHeX
             int catch_rate = ((PK1)pk).Catch_Rate;
             // Caterpie and Metapod evolution lines have different count of possible slots available if captured in different evolutionary phases
             // Example: a level 7 caterpie evolved into metapod will have 3 learned moves, a captured metapod will have only 1 move
-            if ((species == (int)Metapod || species == (int)Butterfree) && catch_rate == 120)
+            if ((species is (int)Metapod or (int)Butterfree) && catch_rate is 120)
             {
                 // Captured as Metapod without Caterpie moves
                 return initialmoves.Union(learn[1]).Distinct().Count(lm => lm != 0 && !G1CaterpieMoves.Contains(lm));
                 // There is no valid Butterfree encounter in generation 1 games
             }
-            if ((species == (int)Kakuna || species == (int)Beedrill) && (catch_rate == 45 || catch_rate == 120))
+            if ((species is (int)Kakuna or (int)Beedrill) && (catch_rate is 45 or 120))
             {
                 if (species == (int)Beedrill && catch_rate == 45) // Captured as Beedril without Weedle and Kakuna moves
                     return initialmoves.Union(learn[1]).Distinct().Count(lm => lm != 0 && !G1KakunaMoves.Contains(lm));
@@ -351,14 +369,14 @@ namespace PKHeX
             return MoveLevelUp.GetMovesLevelUp1(basespecies, 0, maxlevel, minlevel);
         }
 
-        internal static IEnumerable<GameVersion> GetGen2Versions(IEncounterable enc, bool korean)
+        internal static IEnumerable<GameVersion> GetGen2Versions(IEncounterTemplate enc, bool korean)
         {
             if (ParseSettings.AllowGen2Crystal(korean) && enc.Version is C or GSC)
                 yield return C;
             yield return GS;
         }
 
-        internal static IEnumerable<GameVersion> GetGen1Versions(IEncounterable enc)
+        internal static IEnumerable<GameVersion> GetGen1Versions(IEncounterTemplate enc)
         {
             if (enc.Species == (int)Eevee && enc.Version == Stadium)
             {
@@ -378,17 +396,29 @@ namespace PKHeX
             yield return RB;
         }
 
-        private static bool GetCatchRateMatchesPreEvolution(PKM pkm, int catch_rate, IEnumerable<int> gen1)
+        private static bool GetCatchRateMatchesPreEvolution(PK1 pkm, int catch_rate)
         {
             // For species catch rate, discard any species that has no valid encounters and a different catch rate than their pre-evolutions
-            var Lineage = gen1.Except(Species_NotAvailable_CatchRate);
-            return IsCatchRateRBY(Lineage) || IsCatchRateTrade() || IsCatchRateStadium();
+            var table = EvolutionTree.GetEvolutionTree(1);
+            var chain = table.GetValidPreEvolutions(pkm, maxLevel: pkm.CurrentLevel);
+            foreach (var entry in chain)
+            {
+                var s = entry.Species;
+                if (Species_NotAvailable_CatchRate.Contains(s))
+                    continue;
+                if (catch_rate == PersonalTable.RB[s].CatchRate || catch_rate == PersonalTable.Y[s].CatchRate)
+                    return true;
+            }
 
-            // Dragonite's Catch Rate is different than Dragonair's in Yellow, but there is no Dragonite encounter.
-            bool IsCatchRateRBY(IEnumerable<int> ds) => ds.Any(s => catch_rate == PersonalTable.RB[s].CatchRate || (s != 149 && catch_rate == PersonalTable.Y[s].CatchRate));
             // Krabby encounter trade special catch rate
-            bool IsCatchRateTrade() => catch_rate == 204 && (pkm.Species == (int)Krabby || pkm.Species == (int)Kingler);
-            bool IsCatchRateStadium() => Stadium_GiftSpecies.Contains(pkm.Species) && Stadium_CatchRate.Contains(catch_rate);
+            int species = pkm.Species;
+            if (catch_rate == 204 && (species is (int)Krabby or (int)Kingler))
+                return true;
+
+            if (Stadium_GiftSpecies.Contains(species) && Stadium_CatchRate.Contains(catch_rate))
+                return true;
+
+            return false;
         }
 
         /// <summary>
@@ -448,10 +478,7 @@ namespace PKHeX
             if (catch_rate == 0)
                 return TradebackType.WasTradeback;
 
-            var table = EvolutionTree.GetEvolutionTree(1);
-            var lineage = table.GetValidPreEvolutions(pkm, maxLevel: pkm.CurrentLevel);
-            var gen1 = lineage.Select(evolution => evolution.Species);
-            bool matchAny = GetCatchRateMatchesPreEvolution(pkm, catch_rate, gen1);
+            bool matchAny = GetCatchRateMatchesPreEvolution(pkm, catch_rate);
 
             if (!matchAny)
                 return TradebackType.WasTradeback;
@@ -464,7 +491,7 @@ namespace PKHeX
 
         internal static bool IsTradedKadabraG1(PKM pkm)
         {
-            if (pkm is not PK1 pk1 || pk1.Species != (int)Kadabra)
+            if (pkm is not PK1 {Species: (int)Kadabra} pk1)
                 return false;
             if (pk1.TradebackStatus == TradebackType.WasTradeback)
                 return true;

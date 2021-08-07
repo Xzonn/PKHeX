@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace PKHeX.Core
 {
@@ -32,9 +30,12 @@ namespace PKHeX.Core
             Data = DecryptPBRSaveData(data);
 
             // Detect active save
-            SaveCount = Math.Max(BigEndian.ToUInt32(Data, 0x1C004C), BigEndian.ToUInt32(Data, 0x4C));
-            if (BigEndian.ToUInt32(Data, 0x1C004C) > BigEndian.ToUInt32(Data, 0x4C))
+            var first  = BigEndian.ToUInt32(Data, 0x00004C);
+            var second = BigEndian.ToUInt32(Data, 0x1C004C);
+            SaveCount = Math.Max(second, first);
+            if (second > first)
             {
+                // swap halves
                 byte[] tempData = new byte[0x1C0000];
                 Array.Copy(Data, 0, tempData, 0, 0x1C0000);
                 Array.Copy(Data, 0x1C0000, Data, 0, 0x1C0000);
@@ -58,6 +59,7 @@ namespace PKHeX.Core
             CurrentSlot = _currentSlot;
         }
 
+        /// <summary> Amount of times the primary save has been saved </summary>
         private uint SaveCount;
 
         protected override byte[] GetFinalData()
@@ -230,7 +232,7 @@ namespace PKHeX.Core
 
         protected override void SetDex(PKM pkm) { /* There's no PokéDex */ }
 
-        protected override void SetPKM(PKM pkm)
+        protected override void SetPKM(PKM pkm, bool isParty = false)
         {
             var pk4 = (BK4)pkm;
             // Apply to this Save File
@@ -241,7 +243,7 @@ namespace PKHeX.Core
 
         protected override void SetPartyValues(PKM pkm, bool isParty)
         {
-            pkm.Sanity = isParty ? 0xC000 : 0x4000;
+            pkm.Sanity = isParty ? (ushort)0xC000 : (ushort)0x4000;
         }
 
         public static byte[] DecryptPBRSaveData(byte[] input)
@@ -296,12 +298,19 @@ namespace PKHeX.Core
                 }
             }
 
+            // Restore original checksums
             for (int i = 0; i < storedChecksums.Length; i++)
             {
                 BigEndian.GetBytes(storedChecksums[i]).CopyTo(input, checksum_offset + (i * 4));
             }
 
-            return checksums.SequenceEqual(storedChecksums);
+            // Check if they match
+            for (int i = 0; i < storedChecksums.Length; i++)
+            {
+                if (storedChecksums[i] != checksums[i])
+                    return false;
+            }
+            return true;
         }
 
         private static void SetChecksum(byte[] input, int offset, int len, int checksum_offset)
@@ -328,17 +337,8 @@ namespace PKHeX.Core
             }
         }
 
-        public override string GetString(byte[] data, int offset, int length) => Util.TrimFromZero(Encoding.BigEndianUnicode.GetString(data, offset, length));
+        public override string GetString(byte[] data, int offset, int length) => StringConverter4.GetBEString4Unicode(data, offset, length);
 
-        public override byte[] SetString(string value, int maxLength, int PadToSize = 0, ushort PadWith = 0)
-        {
-            if (PadToSize == 0)
-                PadToSize = maxLength + 1;
-            if (value.Length > maxLength)
-                value = value.Substring(0, maxLength);
-            if (value.Length != PadToSize)
-                value = value.PadRight(PadToSize, (char)PadWith);
-            return Encoding.BigEndianUnicode.GetBytes(value);
-        }
+        public override byte[] SetString(string value, int maxLength, int PadToSize = 0, ushort PadWith = 0) => StringConverter4.SetBEString4Unicode(value, maxLength, PadToSize, PadWith);
     }
 }

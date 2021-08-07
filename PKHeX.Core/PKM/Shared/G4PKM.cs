@@ -1,6 +1,10 @@
-﻿namespace PKHeX.Core
+﻿using System;
+
+namespace PKHeX.Core
 {
-    public abstract class G4PKM : PKM, IRibbonSetEvent3, IRibbonSetEvent4, IRibbonSetUnique3, IRibbonSetUnique4, IRibbonSetCommon3, IRibbonSetCommon4, IContestStats, IContestStatsMutable
+    public abstract class G4PKM : PKM,
+        IRibbonSetEvent3, IRibbonSetEvent4, IRibbonSetUnique3, IRibbonSetUnique4, IRibbonSetCommon3, IRibbonSetCommon4,
+        IContestStats, IContestStatsMutable, IGroundTile
     {
         protected G4PKM(byte[] data) : base(data) { }
         protected G4PKM(int size) : base(size) { }
@@ -20,6 +24,8 @@
         public sealed override int PSV => (int)((PID >> 16 ^ (PID & 0xFFFF)) >> 3);
         public sealed override int TSV => (TID ^ SID) >> 3;
 
+        protected bool PtHGSS => Pt || HGSS;
+
         public sealed override int Characteristic
         {
             get
@@ -38,8 +44,8 @@
         }
 
         // Trash Bytes
-        public sealed override byte[] Nickname_Trash { get => GetData(0x48, 22); set { if (value.Length == 22) value.CopyTo(Data, 0x48); } }
-        public sealed override byte[] OT_Trash { get => GetData(0x68, 16); set { if (value.Length == 16) value.CopyTo(Data, 0x68); } }
+        public sealed override Span<byte> Nickname_Trash { get => Data.AsSpan(0x48, 22); set { if (value.Length == 22) value.CopyTo(Data.AsSpan(0x48)); } }
+        public sealed override Span<byte> OT_Trash { get => Data.AsSpan(0x68, 16); set { if (value.Length == 16) value.CopyTo(Data.AsSpan(0x68)); } }
 
         // Future Attributes
         public sealed override uint EncryptionConstant { get => PID; set { } }
@@ -47,10 +53,6 @@
         public sealed override int CurrentFriendship { get => OT_Friendship; set => OT_Friendship = value; }
         public sealed override int CurrentHandler { get => 0; set { } }
         public sealed override int AbilityNumber { get => 1 << PIDAbility; set { } }
-
-        // Legality Extensions
-        public sealed override bool WasEvent => (Met_Location is >= 3000 and <= 3076) || FatefulEncounter;
-        public sealed override bool WasEventEgg => WasEgg && Species == (int)Core.Species.Manaphy; // Manaphy was the only generation 4 released event egg
 
         public abstract int ShinyLeaf { get; set; }
 
@@ -118,7 +120,7 @@
         public abstract bool RibbonG4ToughGreat { get; set; }
         public abstract bool RibbonG4ToughUltra { get; set; }
         public abstract bool RibbonG4ToughMaster { get; set; }
-        public abstract bool RibbonChampionG3Hoenn { get; set; }
+        public abstract bool RibbonChampionG3 { get; set; }
         public abstract bool RibbonArtist { get; set; }
         public abstract bool RibbonEffort { get; set; }
         public abstract bool RibbonChampionSinnoh { get; set; }
@@ -161,6 +163,8 @@
         public abstract byte CNT_Smart { get; set; }
         public abstract byte CNT_Tough { get; set; }
         public abstract byte CNT_Sheen { get; set; }
+
+        public abstract GroundTileType GroundTile { get; set; }
 
         protected T ConvertTo<T>() where T : G4PKM, new()
         {
@@ -219,7 +223,7 @@
                 PKRS_Days = PKRS_Days,
                 PKRS_Strain = PKRS_Strain,
                 Ball = Ball,
-                EncounterType = EncounterType,
+                GroundTile = GroundTile,
                 FatefulEncounter = FatefulEncounter,
 
                 Met_Level = Met_Level,
@@ -282,7 +286,7 @@
                 RibbonG3ToughSuper = RibbonG3ToughSuper,
                 RibbonG3ToughHyper = RibbonG3ToughHyper,
                 RibbonG3ToughMaster = RibbonG3ToughMaster,
-                RibbonChampionG3Hoenn = RibbonChampionG3Hoenn,
+                RibbonChampionG3 = RibbonChampionG3,
                 RibbonWinning = RibbonWinning,
                 RibbonVictory = RibbonVictory,
                 RibbonArtist = RibbonArtist,

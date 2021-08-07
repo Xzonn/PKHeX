@@ -10,7 +10,6 @@ namespace PKHeX.Core
     /// </summary>
     public sealed class ShowdownSet : IBattleTemplate
     {
-        private static readonly string[] genders = {"M", "F", ""};
         private static readonly string[] StatNames = { "HP", "Atk", "Def", "SpA", "SpD", "Spe" };
         private static readonly string[] Splitters = {"\r\n", "\n"};
         private static readonly string[] StatSplitters = { " / ", " " };
@@ -31,7 +30,7 @@ namespace PKHeX.Core
         public string Nickname { get; set; } = string.Empty;
 
         /// <inheritdoc/>
-        public string Gender { get; private set; } = string.Empty;
+        public int Gender { get; private set; } = -1;
 
         /// <inheritdoc/>
         public int HeldItem { get; private set; }
@@ -105,6 +104,21 @@ namespace PKHeX.Core
 
             FormName = ShowdownParsing.SetShowdownFormName(Species, FormName, Ability);
             Form = ShowdownParsing.GetFormFromString(FormName, Strings, Species, Format);
+
+            // Handle edge case with fixed-gender forms.
+            if (Species is (int) Meowstic or (int) Indeedee)
+            {
+                if (Gender == 1) // Recognized with (F)
+                {
+                    FormName = "F";
+                    Form = 1;
+                }
+                else
+                {
+                    FormName = Form == 1 ? "F" : "M";
+                    Gender = Form;
+                }
+            }
         }
 
         private const int MaxMoveCount = 4;
@@ -115,11 +129,11 @@ namespace PKHeX.Core
             if (!e.MoveNext())
                 return;
 
-            ParseFirstLine(e.Current);
+            ParseFirstLine(e.Current!);
             int movectr = 0;
             while (e.MoveNext())
             {
-                var line = e.Current;
+                var line = e.Current!;
                 if (string.IsNullOrWhiteSpace(line))
                     continue;
 
@@ -268,12 +282,17 @@ namespace PKHeX.Core
                 specForm = specForm.Replace("♀", "-F");
 
             string result = GetSpeciesNickname(specForm);
-            if (Gender.Length != 0)
-                result += $" ({Gender})";
+
+            // omit genderless or nonspecific
+            if (Gender is 1)
+                result += " (F)";
+            else if (Gender is 0)
+                result += " (M)";
+
             if (HeldItem > 0)
             {
                 var items = Strings.GetItemStrings(Format);
-                if ((uint)HeldItem < items.Count)
+                if ((uint)HeldItem < items.Length)
                     result += $" @ {items[HeldItem]}";
             }
             return result;
@@ -335,7 +354,7 @@ namespace PKHeX.Core
             IVs = pkm.IVs;
             Moves = pkm.Moves;
             Nature = pkm.StatNature;
-            Gender = genders[pkm.Gender < 2 ? pkm.Gender : 2];
+            Gender = pkm.Gender < 2 ? pkm.Gender : 2;
             Friendship = pkm.CurrentFriendship;
             Level = Experience.GetLevel(pkm.EXP, pkm.PersonalInfo.EXPGrowth);
             Shiny = pkm.IsShiny;
@@ -361,7 +380,7 @@ namespace PKHeX.Core
             if (first.Contains(" @ "))
             {
                 string[] pieces = first.Split(ItemSplit, StringSplitOptions.None);
-                string itemName = pieces[pieces.Length - 1].Trim();
+                string itemName = pieces[^1].Trim();
 
                 ParseItemName(itemName);
                 ParseFirstLineNoItem(pieces[0]);
@@ -384,7 +403,7 @@ namespace PKHeX.Core
 
             bool TrySetItem(int format)
             {
-                var items = (string[])Strings.GetItemStrings(format); // IReadOnlyList<string>->string[] must be possible for the provided strings
+                var items = Strings.GetItemStrings(format);
                 int item = StringUtil.FindIndexIgnoreCase(items, itemName);
                 if (item < 0)
                     return false;
@@ -397,16 +416,15 @@ namespace PKHeX.Core
         private void ParseFirstLineNoItem(string line)
         {
             // Gender Detection
-            if (line.EndsWith("(M)") || line.EndsWith("(F)"))
+            if (line.EndsWith("(M)"))
             {
-                Gender = line[line.Length - 2].ToString();
-                line = line.Substring(0, line.Length - 3);
+                line = line[..^3];
+                Gender = 0;
             }
-            else // Meowstic Edge Case with no gender provided
+            else if (line.EndsWith("(F)"))
             {
-                var s = Strings.Species;
-                if (line.Contains(s[(int)Meowstic]) || line.Contains(s[(int)Indeedee]))
-                    Gender = "M";
+                line = line[..^3];
+                Gender = 1;
             }
 
             // Nickname Detection
@@ -421,10 +439,13 @@ namespace PKHeX.Core
         private bool ParseSpeciesForm(string speciesLine)
         {
             speciesLine = speciesLine.Trim();
+            if (speciesLine.Length == 0)
+                return false;
+
             if (speciesLine.EndsWith(Gmax))
             {
                 CanGigantamax = true;
-                speciesLine = speciesLine.Substring(0, speciesLine.Length - Gmax.Length);
+                speciesLine = speciesLine[..^Gmax.Length];
             }
 
             if ((Species = StringUtil.FindIndexIgnoreCase(Strings.specieslist, speciesLine)) >= 0) // success, nothing else!
@@ -435,8 +456,8 @@ namespace PKHeX.Core
             if (end < 0)
                 return false;
 
-            Species = StringUtil.FindIndexIgnoreCase(Strings.specieslist, speciesLine.Substring(0, end));
-            FormName = speciesLine.Substring(end + 1);
+            Species = StringUtil.FindIndexIgnoreCase(Strings.specieslist, speciesLine[..end]);
+            FormName = speciesLine[(end + 1)..];
 
             if (Species >= 0)
                 return true;
@@ -448,7 +469,7 @@ namespace PKHeX.Core
                 if (!speciesLine.StartsWith(sn.Replace("♂", "-M").Replace("♀", "-F")))
                     continue;
                 Species = e;
-                FormName = speciesLine.Substring(sn.Length);
+                FormName = speciesLine[sn.Length..];
                 return true;
             }
 
@@ -456,8 +477,8 @@ namespace PKHeX.Core
             end = speciesLine.LastIndexOf('-', Math.Max(0, end - 1));
             if (end < 0)
                 return false;
-            Species = StringUtil.FindIndexIgnoreCase(Strings.specieslist, speciesLine.Substring(0, end));
-            FormName = speciesLine.Substring(end + 1);
+            Species = StringUtil.FindIndexIgnoreCase(Strings.specieslist, speciesLine[..end]);
+            FormName = speciesLine[(end + 1)..];
 
             return Species >= 0;
         }
@@ -465,35 +486,40 @@ namespace PKHeX.Core
         private void ParseSpeciesNickname(string line)
         {
             int index = line.LastIndexOf('(');
-            string n1, n2;
-            if (index > 1) // correct format
+            string species, nickname;
+            if (index > 1) // parenthesis value after: Nickname (Species), correct.
             {
-                n1 = line.Substring(0, index).Trim();
-                n2 = line.Substring(index).Trim();
-                n2 = RemoveAll(n2, ParenJunk); // Trim out excess data
+                nickname = line[..index].Trim();
+                species = line[index..].Trim();
+                species = RemoveAll(species, ParenJunk); // Trim out excess data
             }
-            else // nickname first (manually created set, incorrect)
+            else // parenthesis value before: (Species) Nickname, incorrect
             {
+                int start = index + 1;
                 int end = line.IndexOf(')');
-                n2 = line.Substring(index + 1, end - 1);
-                n1 = end < line.Length - 2 ? line.Substring(end + 2) : n2;
+                var tmp = line[start..end];
+                if (end < line.Length - 2)
+                {
+                    nickname = line[(end + 2)..];
+                    species = tmp;
+                }
+                else // (Species), or garbage
+                {
+                    species = tmp;
+                    nickname = string.Empty;
+                }
             }
 
-            if (ParseSpeciesForm(n2))
-            {
-                // successful parse on n2=>Species/Form, n1 is nickname
-                Nickname = n1;
-                return;
-            }
-            // other case is possibly true (or both invalid).
-            Nickname = n2;
-            ParseSpeciesForm(n1);
+            if (ParseSpeciesForm(species))
+                Nickname = nickname;
+            else if (ParseSpeciesForm(nickname))
+                Nickname = species;
         }
 
         private string ParseLineMove(string line)
         {
             const int hiddenPower = 237;
-            string moveString = line.Substring(line[1] == ' ' ? 2 : 1).Split('/')[0].Trim();
+            string moveString = line[(line[1] == ' ' ? 2 : 1)..].Split('/')[0].Trim();
             if (!moveString.StartsWith(Strings.Move[hiddenPower])) // Hidden Power
                 return moveString; // regular move
 
@@ -501,7 +527,7 @@ namespace PKHeX.Core
                 return Strings.Move[hiddenPower];
 
             // Defined Hidden Power
-            string type = moveString.Substring(13);
+            string type = moveString[13..];
             type = RemoveAll(type, ParenJunk); // Trim out excess data
             int hpVal = StringUtil.FindIndexIgnoreCase(Strings.types, type) - 1; // Get HP Type
 

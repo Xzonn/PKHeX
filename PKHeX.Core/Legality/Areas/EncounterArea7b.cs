@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace PKHeX.Core
 {
@@ -9,6 +8,10 @@ namespace PKHeX.Core
     /// </summary>
     public sealed record EncounterArea7b : EncounterArea
     {
+        public readonly EncounterSlot7b[] Slots;
+
+        protected override IReadOnlyList<EncounterSlot> Raw => Slots;
+
         public static EncounterArea7b[] GetAreas(byte[][] input, GameVersion game)
         {
             var result = new EncounterArea7b[input.Length];
@@ -31,8 +34,8 @@ namespace PKHeX.Core
             for (int i = 0; i < slots.Length; i++)
             {
                 int offset = 2 + (size * i);
-                ushort SpecForm = BitConverter.ToUInt16(data, offset);
-                int species = SpecForm & 0x3FF;
+                int species = data[offset]; // always < 255; only original 151
+                // form is always 0
                 int min = data[offset + 2];
                 int max = data[offset + 3];
                 slots[i] = new EncounterSlot7b(this, species, min, max);

@@ -95,7 +95,7 @@ namespace PKHeX.Core
             AS or OR => Locations.HatchLocation6AO,
 
             SN or MN or US or UM => Locations.HatchLocation7,
-            RD or BU or GN or Y => Locations.Transfer1,
+            RD or BU or GN or YW => Locations.Transfer1,
             GD or SV or C => Locations.Transfer2,
             GSC or RBY => pkm.Met_Level == 0 ? 0 : Locations.HatchLocationC,
 
@@ -203,7 +203,7 @@ namespace PKHeX.Core
         public int LevelMax { get; }
 
         public int GetSuggestedMetLevel(PKM pkm) => EncounterSuggestion.GetSuggestedMetLevel(pkm, LevelMin);
-        public int GetSuggestedEncounterType() => Encounter is IEncounterTypeTile t ? t.TypeEncounter.GetIndex() : 0;
-        public bool HasEncounterType(int format) => Encounter is IEncounterTypeTile t && t.HasTypeEncounter(format);
+        public GroundTileType GetSuggestedGroundTile() => Encounter is IGroundTypeTile t ? t.GroundTile.GetIndex() : 0;
+        public bool HasGroundTile(int format) => Encounter is IGroundTypeTile t && t.HasGroundTile(format);
     }
 }

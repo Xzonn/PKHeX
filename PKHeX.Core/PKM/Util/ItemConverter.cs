@@ -8,7 +8,7 @@ namespace PKHeX.Core
     /// </summary>
     internal static class ItemConverter
     {
-        /// <summary>Unused item ID, placeholder for item/sprite finding</summary>
+        /// <summary>Unused item ID, placeholder for item/sprite finding in Generations 2-4.</summary>
         private const ushort NaN = 128;
 
         /// <summary>
@@ -150,7 +150,7 @@ namespace PKHeX.Core
         };
 
         /// <summary>
-        /// Converts a Gen1 Item to Gen2 Item.
+        /// Converts a Gen1 <see cref="PK1.Catch_Rate"/> value to Gen2 Item.
         /// </summary>
         /// <param name="value">Gen1 Item</param>
         /// <returns>Gen2 Item</returns>
@@ -211,7 +211,7 @@ namespace PKHeX.Core
         internal static bool IsItemHM(ushort item, int generation) => generation switch
         {
             1 => item is >= 196 and <= 200, // HMs
-            2 => item is >= 243, // HMs
+            2 => item    >= 243, // HMs
             3 => item is >= 339 and <= 346,
             _ => item is >= 420 and <= 427 or 737,
         };

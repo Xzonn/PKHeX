@@ -4,7 +4,7 @@ using System.Linq;
 using System.Windows.Forms;
 using PKHeX.Core;
 
-namespace PKHeX.WinForms.Subforms.Save_Editors
+namespace PKHeX.WinForms.Controls
 {
     public partial class TrainerStat : UserControl
     {
@@ -26,12 +26,12 @@ namespace PKHeX.WinForms.Subforms.Save_Editors
             CB_Stats.Items.Clear();
             for (int i = 0; i < sav.RecordCount; i++)
             {
-                if (!RecordList.TryGetValue(i, out var name))
+                if (!records.TryGetValue(i, out var name))
                     name = $"{i:D3}";
 
-                CB_Stats.Items.Add(name);
+                CB_Stats.Items.Add(name!);
             }
-            CB_Stats.SelectedIndex = RecordList.First().Key;
+            CB_Stats.SelectedIndex = records.First().Key;
         }
 
         private void ChangeStat(object sender, EventArgs e)

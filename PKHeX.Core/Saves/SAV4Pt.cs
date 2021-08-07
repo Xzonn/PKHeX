@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace PKHeX.Core
 {
@@ -7,14 +8,27 @@ namespace PKHeX.Core
     /// </summary>
     public sealed class SAV4Pt : SAV4Sinnoh
     {
-        public SAV4Pt() => Initialize();
-        public SAV4Pt(byte[] data) : base(data) => Initialize();
+        public SAV4Pt() : base(GeneralSize, StorageSize)
+        {
+            Initialize();
+            Dex = new Zukan4(this, PokeDex);
+        }
+
+        public SAV4Pt(byte[] data) : base(data, GeneralSize, StorageSize, GeneralSize)
+        {
+            Initialize();
+            Dex = new Zukan4(this, PokeDex);
+        }
+
+        public override Zukan4 Dex { get; }
         protected override SAV4 CloneInternal4() => State.Exportable ? new SAV4Pt(Data) : new SAV4Pt();
         public override PersonalTable Personal => PersonalTable.Pt;
         public override IReadOnlyList<ushort> HeldItems => Legal.HeldItems_Pt;
+        public override int MaxItemID => Legal.MaxItemID_4_Pt;
 
-        protected override int GeneralSize => 0xCF2C;
-        protected override int StorageSize => 0x121E4; // Start 0xCF2C, +4 starts box data
+        private const int GeneralSize = 0xCF2C;
+        private const int StorageSize = 0x121E4; // Start 0xCF2C, +4 starts box data
+        protected override int StorageStart => GeneralSize;
 
         private void Initialize()
         {
@@ -93,5 +107,12 @@ namespace PKHeX.Core
             }
             set => value.SaveAll(General);
         }
+
+        public override int M { get => BitConverter.ToUInt16(General, 0x1280); set => BitConverter.GetBytes((ushort)value).CopyTo(General, 0x1280); }
+        public override int X { get => BitConverter.ToUInt16(General, 0x1288); set => BitConverter.GetBytes((ushort)(X2 = value)).CopyTo(General, 0x1288); }
+        public override int Y { get => BitConverter.ToUInt16(General, 0x128C); set => BitConverter.GetBytes((ushort)(Y2 = value)).CopyTo(General, 0x128C); }
+        public override int X2 { get => BitConverter.ToUInt16(General, 0x287E); set => BitConverter.GetBytes((ushort)value).CopyTo(General, 0x287E); }
+        public override int Y2 { get => BitConverter.ToUInt16(General, 0x2882); set => BitConverter.GetBytes((ushort)value).CopyTo(General, 0x2882); }
+        public override int Z { get => BitConverter.ToUInt16(General, 0x2886); set => BitConverter.GetBytes((ushort)value).CopyTo(General, 0x2886); }
     }
 }

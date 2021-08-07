@@ -78,7 +78,7 @@ namespace PKHeX.Core
             get
             {
                 // Check to see if date is valid
-                if (!Util.IsDateValid(Year, Month, Day))
+                if (!DateUtil.IsDateValid(Year, Month, Day))
                     return null;
 
                 return new DateTime((int)Year, (int)Month, (int)Day);
@@ -107,7 +107,7 @@ namespace PKHeX.Core
 
         public int CardType { get => Data[0x51]; set => Data[0x51] = (byte)value; }
         public override bool GiftUsed { get => Data[0x52] >> 1 > 0; set => Data[0x52] = (byte)((Data[0x52] & ~2) | (value ? 2 : 0)); }
-        public bool MultiObtain { get => Data[0x53] == 1; set => Data[0x53] = value ? 1 : 0; }
+        public bool MultiObtain { get => Data[0x53] == 1; set => Data[0x53] = value ? (byte)1 : (byte)0; }
 
         // Item Properties
         public override bool IsItem { get => CardType == 1; set { if (value) CardType = 1; } }
@@ -175,7 +175,7 @@ namespace PKHeX.Core
         }
 
         public override int Level { get => Data[0xD0]; set => Data[0xD0] = (byte)value; }
-        public override bool IsEgg { get => Data[0xD1] == 1; set => Data[0xD1] = value ? 1 : 0; }
+        public override bool IsEgg { get => Data[0xD1] == 1; set => Data[0xD1] = value ? (byte)1 : (byte)0; }
         public uint PID { get => BitConverter.ToUInt32(Data, 0xD4); set => BitConverter.GetBytes(value).CopyTo(Data, 0xD4); }
 
         public int RelearnMove1 { get => BitConverter.ToUInt16(Data, 0xD8); set => BitConverter.GetBytes((ushort)value).CopyTo(Data, 0xD8); }
@@ -264,6 +264,8 @@ namespace PKHeX.Core
             }
         }
 
+        public bool IsLinkGift => MetLocation == Locations.LinkGift6;
+
         public override PKM ConvertToPKM(ITrainerInfo sav, EncounterCriteria criteria)
         {
             if (!IsPokémon)
@@ -329,7 +331,7 @@ namespace PKHeX.Core
                 OT_Memory = OT_Memory,
                 OT_TextVar = OT_TextVar,
                 OT_Feeling = OT_Feeling,
-                FatefulEncounter = MetLocation != 30011, // Link gifts do not set fateful encounter
+                FatefulEncounter = !IsLinkGift, // Link gifts do not set fateful encounter
 
                 EVs = EVs,
             };
@@ -401,16 +403,16 @@ namespace PKHeX.Core
             var pi = PersonalTable.AO.GetFormEntry(Species, Form);
             pk.Nature = (int)criteria.GetNature((Nature)Nature);
             pk.Gender = criteria.GetGender(Gender, pi);
-            var av = GetAbilityIndex(criteria, pi);
+            var av = GetAbilityIndex(criteria);
             pk.RefreshAbility(av);
             SetPID(pk);
             SetIVs(pk);
         }
 
-        private int GetAbilityIndex(EncounterCriteria criteria, PersonalInfo pi) => AbilityType switch
+        private int GetAbilityIndex(EncounterCriteria criteria) => AbilityType switch
         {
             00 or 01 or 02 => AbilityType, // Fixed 0/1/2
-            03 or 04 => criteria.GetAbilityFromType(AbilityType, pi), // 0/1 or 0/1/H
+            03 or 04 => criteria.GetAbilityFromType(AbilityType), // 0/1 or 0/1/H
             _ => throw new ArgumentException(nameof(AbilityType)),
         };
 

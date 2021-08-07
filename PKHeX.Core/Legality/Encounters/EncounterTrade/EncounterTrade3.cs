@@ -5,6 +5,7 @@ namespace PKHeX.Core
     public sealed record EncounterTrade3 : EncounterTrade, IContestStats
     {
         public override int Generation => 3;
+        public override int Location => Locations.LinkTrade3NPC;
 
         /// <summary>
         /// Fixed <see cref="PKM.PID"/> value the encounter must have.
@@ -70,7 +71,7 @@ namespace PKHeX.Core
             var pi = pk.PersonalInfo;
             int gender = criteria.GetGender(PKX.GetGenderFromPID(Species, PID), pi);
             int nature = (int)criteria.GetNature(Nature);
-            int ability = criteria.GetAbilityFromNumber(Ability, pi);
+            int ability = criteria.GetAbilityFromNumber(Ability);
 
             pk.PID = PID;
             pk.Nature = nature;

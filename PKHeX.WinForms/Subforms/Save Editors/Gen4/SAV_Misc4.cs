@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Globalization;
 using System.Linq;
 using System.Windows.Forms;
 using PKHeX.Core;
@@ -368,10 +369,16 @@ namespace PKHeX.WinForms
 
         private void SetFlagsFromClickPoint(int inpX, int inpY)
         {
-            if (inpX < 0) inpX = 0;
-            else if (inpX > 95) inpX = 95;
-            if (inpY < 0) inpY = 0;
-            else if (inpY > 79) inpY = 79;
+            static int Clamp(int value, int min, int max)
+            {
+                if (value < min)
+                    return min;
+                if (value > max)
+                    return max;
+                return value;
+            }
+            inpX = Clamp(inpX, 0, 95);
+            inpY = Clamp(inpY, 0, 79);
             int i = (inpX >> 2) + (24 * (inpY >> 2));
             byte[] ndab = new byte[120];
             DotArtistByte.CopyTo(ndab, 0);
@@ -443,7 +450,7 @@ namespace PKHeX.WinForms
                 new[] { "Singles", "Doubles", "Multi (Trainer)", "Multi (Friend)", "Wi-Fi" },
             };
             BFN = new[] { "Tower", "Factory", "Hall", "Castle", "Arcade" };
-            if (SAV.DP) BFN = BFN.Take(1).ToArray();
+            if (SAV is SAV4DP) BFN = BFN.Take(1).ToArray();
             StatNUDA = new[] { NUD_Stat0, NUD_Stat1, NUD_Stat2, NUD_Stat3 };
             StatLabelA = new[] { L_Stat0, L_Stat1, L_Stat2, L_Stat3 };
             StatRBA = new[] { RB_Stats3_01, RB_Stats3_02 };
@@ -472,7 +479,7 @@ namespace PKHeX.WinForms
                 bool f = false;
                 for (int i = 0; i < 2; i++, ofsHallStat += 0x14)
                 {
-                    var h = BitConverter.ToInt32(SAV.Data, ofsHallStat);
+                    var h = BitConverter.ToInt32(SAV.General, ofsHallStat);
                     if (h == -1) continue;
                     for (int j = 0; j < 0x20; j++)
                     {
@@ -507,7 +514,9 @@ namespace PKHeX.WinForms
 
             // Fill List
             CB_Species.InitializeBinding();
-            CB_Species.DataSource = new BindingSource(GameInfo.SpeciesDataSource.Skip(1).Where(id => id.Value <= SAV.MaxSpeciesID).ToList(), null);
+
+            var speciesList = GameInfo.FilteredSources.Species.Skip(1).ToList();
+            CB_Species.DataSource = new BindingSource(speciesList, null);
 
             editing = false;
             CB_Stats1.SelectedIndex = 0;
@@ -525,7 +534,7 @@ namespace PKHeX.WinForms
             }
 
             if (HallStatUpdated)
-                BitConverter.GetBytes(Checksums.CRC16_CCITT(SAV.Data, ofsHallStat, 0xBAE)).CopyTo(SAV.Data, ofsHallStat + 0xBAE);
+                BitConverter.GetBytes(Checksums.CRC16_CCITT(new ReadOnlySpan<byte>(SAV.Data, ofsHallStat, 0xBAE))).CopyTo(SAV.Data, ofsHallStat + 0xBAE);
         }
 
         private void SetPrints()
@@ -612,7 +621,7 @@ namespace PKHeX.WinForms
             int addrVal = BFF[Facility][2] + (BFF[Facility][3] * BattleType) + (RBi << 3);
             int addrFlag = BFF[Facility][4];
             byte maskFlag = (byte)(1 << BattleType + (RBi << 2));
-            int TowerContinueCountOfs = SAV.DP ? 3 : 1;
+            int TowerContinueCountOfs = SAV is SAV4DP ? 3 : 1;
 
             if (SetSavToVal)
             {
@@ -767,7 +776,7 @@ namespace PKHeX.WinForms
             if (i < 0) return;
             int ofs = BFF[2][2] + (BFF[2][3] * CB_Stats2.SelectedIndex) + 6 + (i >> 1 << 1);
             SAV.General[ofs] = (byte)((SAV.General[ofs] & ~(0xF << ((i & 1) << 2))) | (int)HallNUDA[i].Value << ((i & 1) << 2));
-            L_SumHall.Text = HallNUDA.Sum(x => x.Value).ToString();
+            L_SumHall.Text = HallNUDA.Sum(x => x.Value).ToString(CultureInfo.InvariantCulture);
         }
 
         private void NUD_HallStreaks_ValueChanged(object sender, EventArgs e)

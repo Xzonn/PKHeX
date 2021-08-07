@@ -22,7 +22,7 @@ namespace PKHeX.Core
         public override PersonalTable Personal => PersonalTable.Pt;
         public override IReadOnlyList<ushort> HeldItems => Legal.HeldItems_Pt;
         protected override SaveFile CloneInternal() => new SAV4Ranch((byte[])Data.Clone());
-        public override string PlayTimeString => Checksums.CRC16(Data, 0, Data.Length).ToString("X4");
+        public override string PlayTimeString => Checksums.CRC16Invert(Data).ToString("X4");
         protected internal override string ShortSummary => $"{OT} {PlayTimeString}";
         public override string Extension => ".bin";
 
@@ -91,7 +91,7 @@ namespace PKHeX.Core
         public override byte[] SetString(string value, int maxLength, int PadToSize = 0, ushort PadWith = 0)
         {
             if (value.Length > maxLength)
-                value = value.Substring(0, maxLength); // Hard cap
+                value = value[..maxLength]; // Hard cap
             string temp = value
                 .PadRight(value.Length + 1, (char)0) // Null Terminator
                 .PadRight(PadToSize, (char)PadWith); // Padding

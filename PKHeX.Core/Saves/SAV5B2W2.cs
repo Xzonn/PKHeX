@@ -2,6 +2,10 @@
 
 namespace PKHeX.Core
 {
+    /// <summary>
+    /// Generation 5 <see cref="SaveFile"/> object for <see cref="GameVersion.B2W2"/>.
+    /// </summary>
+    /// <inheritdoc cref="SAV5" />
     public sealed class SAV5B2W2 : SAV5, ISaveBlock5B2W2
     {
         public SAV5B2W2() : base(SaveUtil.SIZE_G5RAW)
@@ -45,6 +49,11 @@ namespace PKHeX.Core
         public override BoxLayout5 BoxLayout => Blocks.BoxLayout;
         public override PlayerData5 PlayerData => Blocks.PlayerData;
         public override BattleSubway5 BattleSubway => Blocks.BattleSubway;
+        public override Entralink5 Entralink => Blocks.Entralink;
+        public override Musical5 Musical => Blocks.Musical;
+        public FestaBlock5 Festa => Blocks.Festa;
         public PWTBlock5 PWT => Blocks.PWT;
+        public override int Fused => 0x1FA00 + sizeof(uint);
+        public override int GTS => 0x20400;
     }
 }

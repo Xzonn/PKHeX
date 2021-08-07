@@ -1,5 +1,4 @@
-using System.Collections.Generic;
-using System.Linq;
+using System;
 using static PKHeX.Core.EncounterUtil;
 using static PKHeX.Core.GameVersion;
 using static PKHeX.Core.EncounterGBLanguage;
@@ -11,11 +10,11 @@ namespace PKHeX.Core
     /// </summary>
     internal static class Encounters2
     {
-        private static readonly EncounterArea2[] SlotsG = Get("gold", "g2", GD);
-        private static readonly EncounterArea2[] SlotsS = Get("silver", "g2", SV);
+        internal static readonly EncounterArea2[] SlotsGD = Get("gold", "g2", GD);
+        internal static readonly EncounterArea2[] SlotsSV = Get("silver", "g2", SV);
         internal static readonly EncounterArea2[] SlotsC = Get("crystal", "g2", C);
 
-        internal static readonly EncounterArea2[] SlotsGS = ArrayUtil.ConcatAll(SlotsG, SlotsS);
+        internal static readonly EncounterArea2[] SlotsGS = ArrayUtil.ConcatAll(SlotsGD, SlotsSV);
         internal static readonly EncounterArea2[] SlotsGSC = ArrayUtil.ConcatAll(SlotsGS, SlotsC);
         private static EncounterArea2[] Get(string name, string ident, GameVersion game) =>
             EncounterArea2.GetAreas(BinLinker.Unpack(Util.GetBinaryResource($"encounter_{name}.pkl"), ident), game);
@@ -104,9 +103,9 @@ namespace PKHeX.Core
             new EncounterStatic2Roam(245, 40, GS), // Suicune
         };
 
-        private static readonly EncounterStatic2[] Encounter_GS = Encounter_GSC_Common.Concat(Encounter_GS_Exclusive).Concat(Encounter_GSC_Roam).ToArray();
-        private static readonly EncounterStatic2[] Encounter_C = Encounter_GSC_Common.Concat(Encounter_C_Exclusive).Concat(Encounter_GSC_Roam.Slice(0, 2)).ToArray();
-        private static readonly EncounterStatic2[] Encounter_GSC = Encounter_GSC_Common.Concat(Encounter_GS_Exclusive).Concat(Encounter_C_Exclusive).Concat(Encounter_GSC_Roam).ToArray();
+        private static readonly EncounterStatic2[] Encounter_GS = ArrayUtil.ConcatAll(Encounter_GSC_Common, Encounter_GS_Exclusive, Encounter_GSC_Roam);
+        private static readonly EncounterStatic2[] Encounter_C = ArrayUtil.ConcatAll(Encounter_GSC_Common, Encounter_C_Exclusive, Encounter_GSC_Roam.AsSpan(0, 2));
+        private static readonly EncounterStatic2[] Encounter_GSC = ArrayUtil.ConcatAll(Encounter_GSC_Common, Encounter_GS_Exclusive, Encounter_C_Exclusive, Encounter_GSC_Roam);
 
         internal static readonly EncounterTrade2[] TradeGift_GSC =
         {
@@ -127,43 +126,6 @@ namespace PKHeX.Core
 
         private const string tradeGSC = "tradegsc";
         private static readonly string[][] TradeGift_GSC_OTs = Util.GetLanguageStrings8(tradeGSC);
-
-        internal static bool IsTreeAvailable(EncounterSlot encounter, int trainerID)
-        {
-            if (!Trees.TryGetValue(encounter.Location, out var permissions))
-                return false;
-
-            var pivot = trainerID % 10;
-            var type = encounter.Area.Type;
-            return type switch
-            {
-                SlotType.Headbutt => (permissions & (1 << pivot)) != 0,
-                /*special*/_ => (permissions & (1 << (pivot + 12))) != 0,
-            };
-        }
-
-        private static readonly Dictionary<int, int> Trees = new()
-        {
-            {02, 0x3FF_3FF}, // Route 29
-            {04, 0x39D_3FF}, // Route 30
-            {05, 0x13D_3FF}, // Route 31
-            {08, 0x2FF_3FF}, // Route 32
-            {11, 0x009_3FF}, // Route 33
-            {12, 0x3DF_3FF}, // Azalea Town
-            {14, 0x3FF_3FF}, // Ilex Forest
-            {15, 0x100_2FF}, // Route 34
-            {18, 0x099_3FF}, // Route 35
-            {20, 0x3FF_3FF}, // Route 36
-            {21, 0x2F6_3FF}, // Route 37
-            {25, 0x3FF_3FF}, // Route 38
-            {26, 0x188_3FF}, // Route 39
-            {34, 0x3FE_3FF}, // Route 42
-            {37, 0x3B7_3FF}, // Route 43
-            {38, 0x3FF_3FF}, // Lake of Rage
-            {39, 0x2FF_3FF}, // Route 44
-            {91, 0x300_3FF}, // Route 26
-            {92, 0x1FE_3FF}, // Route 27
-        };
 
         internal static readonly EncounterStatic2[] StaticGSC = Encounter_GSC;
         internal static readonly EncounterStatic2[] StaticGS = Encounter_GS;

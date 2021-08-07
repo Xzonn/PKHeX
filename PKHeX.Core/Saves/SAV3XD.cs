@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace PKHeX.Core
 {
@@ -11,8 +10,7 @@ namespace PKHeX.Core
     {
         protected internal override string ShortSummary => $"{OT} ({Version}) #{SaveCount:0000}";
         public override string Extension => this.GCExtension();
-        public bool IsMemoryCardSave => MC != null;
-        private readonly SAV3GCMemoryCard? MC;
+        public SAV3GCMemoryCard? MemoryCard { get; }
 
         private const int SLOT_SIZE = 0x28000;
         private const int SLOT_START = 0x6000;
@@ -28,7 +26,7 @@ namespace PKHeX.Core
         public int MaxShadowID => ShadowInfo.Count;
         private int OFS_PouchHeldItem, OFS_PouchKeyItem, OFS_PouchBalls, OFS_PouchTMHM, OFS_PouchBerry, OFS_PouchCologne, OFS_PouchDisc;
         private readonly int[] subOffsets = new int[16];
-        public SAV3XD(byte[] data, SAV3GCMemoryCard MC) : this(data, MC.Data) { this.MC = MC; }
+        public SAV3XD(byte[] data, SAV3GCMemoryCard memCard) : this(data, memCard.Data) => MemoryCard = memCard;
         public SAV3XD(byte[] data) : this(data, (byte[])data.Clone()) { }
 
         public SAV3XD() : base(SaveUtil.SIZE_G3XD)
@@ -122,11 +120,11 @@ namespace PKHeX.Core
             var newFile = GetInnerData();
 
             // Return the gci if Memory Card is not being exported
-            if (!IsMemoryCardSave)
+            if (MemoryCard is null)
                 return newFile;
 
-            MC!.SelectedSaveData = newFile;
-            return MC.Data;
+            MemoryCard.WriteSaveGameData(newFile);
+            return MemoryCard.Data;
         }
 
         private byte[] GetInnerData()
@@ -143,7 +141,7 @@ namespace PKHeX.Core
             byte[] newSAV = GeniusCrypto.Encrypt(Data, 0x10, 0x27FD8, keys);
 
             // Put save slot back in original save data
-            byte[] newFile = MC != null ? MC.SelectedSaveData : (byte[]) State.BAK.Clone();
+            byte[] newFile = MemoryCard != null ? MemoryCard.ReadSaveGameData() : (byte[]) State.BAK.Clone();
             Array.Copy(newSAV, 0, newFile, SLOT_START + (SaveIndex * SLOT_SIZE), newSAV.Length);
             return newFile;
         }
@@ -152,7 +150,7 @@ namespace PKHeX.Core
         protected override SaveFile CloneInternal()
         {
             var data = GetInnerData();
-            var sav = IsMemoryCardSave ? new SAV3XD(data, MC!) : new SAV3XD(data);
+            var sav = MemoryCard is not null ? new SAV3XD(data, MemoryCard) : new SAV3XD(data);
             return sav;
         }
 
@@ -173,7 +171,7 @@ namespace PKHeX.Core
         protected override int GiftCountMax => 1;
         public override int OTLength => 7;
         public override int NickLength => 10;
-        public override int MaxMoney => 999999;
+        public override int MaxMoney => 9999999;
 
         public override int BoxCount => 8;
 
@@ -198,8 +196,8 @@ namespace PKHeX.Core
                 int newHC = BigEndian.ToInt32(data, start + subOffsets[0] + 0x38);
                 bool header = newHC == oldHC;
 
-                var oldCHK = Data.Skip(0x10).Take(0x10);
-                var newCHK = data.Skip(0x10).Take(0x10);
+                var oldCHK = Data.AsSpan(0x10, 0x10);
+                var newCHK = data.AsSpan(0x10, 0x10);
                 bool body = newCHK.SequenceEqual(oldCHK);
                 return $"Header Checksum {(header ? "V" : "Inv")}alid, Body Checksum {(body ? "V" : "Inv")}alid.";
             }
@@ -221,13 +219,17 @@ namespace PKHeX.Core
             BigEndian.GetBytes(newHC).CopyTo(data, start + subOffset0 + 0x38);
 
             // Body Checksum
-            new byte[16].CopyTo(data, 0x10); // Clear old Checksum Data
+            data.AsSpan(0x10, 0x10).Fill(0); // Clear old Checksum Data
             uint[] checksum = new uint[4];
             int dt = 8;
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < checksum.Length; i++)
             {
-                for (int j = 0; j < 0x9FF4; j += 2, dt += 2)
-                    checksum[i] += BigEndian.ToUInt16(data, dt);
+                uint val = 0;
+                var end = dt + 0x9FF4;
+                for (int j = dt; j < end; j += 2)
+                    val += BigEndian.ToUInt16(data, j);
+                dt = end;
+                checksum[i] = val;
             }
 
             ushort[] newchks = new ushort[8];
@@ -262,7 +264,7 @@ namespace PKHeX.Core
         public override void SetBoxName(int box, string value)
         {
             if (value.Length > 8)
-                value = value.Substring(0, 8); // Hard cap
+                value = value[..8]; // Hard cap
             SetString(value, 8).CopyTo(Data, GetBoxInfoOffset(box));
         }
 
@@ -285,7 +287,7 @@ namespace PKHeX.Core
             return pk;
         }
 
-        protected override void SetPKM(PKM pkm)
+        protected override void SetPKM(PKM pkm, bool isParty = false)
         {
             if (pkm is not XK3 pk)
                 return; // shouldn't ever hit
@@ -314,6 +316,11 @@ namespace PKHeX.Core
         protected override void SetDex(PKM pkm)
         {
             /*
+            if (pkm.Species is 0 or > Legal.MaxSpeciesID_3)
+                return;
+            if (pkm.IsEgg)
+                return;
+
             // Dex Related
             var entry = StrategyMemo.GetEntry(pkm.Species);
             if (entry.IsEmpty) // Populate
@@ -344,7 +351,7 @@ namespace PKHeX.Core
                     new InventoryPouch3GC(InventoryType.TMHMs, Legal.Pouch_TM_RS, 999, OFS_PouchTMHM, 64),
                     new InventoryPouch3GC(InventoryType.Berries, Legal.Pouch_Berries_RS, 999, OFS_PouchBerry, 46),
                     new InventoryPouch3GC(InventoryType.Medicine, Legal.Pouch_Cologne_XD, 999, OFS_PouchCologne, 3), // Cologne
-                    new InventoryPouch3GC(InventoryType.BattleItems, Legal.Pouch_Disc_XD, 999, OFS_PouchDisc, 60)
+                    new InventoryPouch3GC(InventoryType.BattleItems, Legal.Pouch_Disc_XD, 1, OFS_PouchDisc, 60)
                 };
                 return pouch.LoadAll(Data);
             }

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 using PKHeX.Core;
@@ -42,22 +41,23 @@ namespace PKHeX.WinForms
             CB_Move3.Items.Clear();
             CB_Move4.Items.Clear();
 
+            var filtered = GameInfo.FilteredSources;
             CB_Species.InitializeBinding();
-            CB_Species.DataSource = new BindingSource(GameInfo.SpeciesDataSource.Skip(1).Where(s => s.Value <= SAV.MaxSpeciesID).ToList(), null);
+            CB_Species.DataSource = new BindingSource(filtered.Species, null);
 
             CB_Move1.InitializeBinding();
             CB_Move2.InitializeBinding();
             CB_Move3.InitializeBinding();
             CB_Move4.InitializeBinding();
 
-            var MoveList = GameInfo.MoveDataSource;
+            var MoveList = filtered.Moves;
             CB_Move1.DataSource = new BindingSource(MoveList, null);
             CB_Move2.DataSource = new BindingSource(MoveList, null);
             CB_Move3.DataSource = new BindingSource(MoveList, null);
             CB_Move4.DataSource = new BindingSource(MoveList, null);
 
             CB_HeldItem.InitializeBinding();
-            CB_HeldItem.DataSource = new BindingSource(GameInfo.ItemDataSource, null);
+            CB_HeldItem.DataSource = new BindingSource(filtered.Items, null);
         }
 
         private void B_Cancel_Click(object sender, EventArgs e) => Close();
@@ -220,7 +220,7 @@ namespace PKHeX.WinForms
             CB_Form.SelectedIndex = (int)form;
             SetGenderLabel((int)gender);
             UpdateNickname(sender, e);
-            bpkx.Image = SpriteUtil.GetSprite(species, (int)form, (int)gender, 0, item, false, shiny == 1);
+            bpkx.Image = SpriteUtil.GetSprite(species, (int)form, (int)gender, 0, item, false, shiny == 1, 6);
             editing = true;
         }
 
@@ -286,7 +286,7 @@ namespace PKHeX.WinForms
             var form = CB_Form.SelectedIndex & 0x1F;
             var gender = PKX.GetGenderFromString(Label_Gender.Text);
             var item = WinFormsUtil.GetIndex(CB_HeldItem);
-            bpkx.Image = SpriteUtil.GetSprite(species, form, gender, 0, item, false, CHK_Shiny.Checked);
+            bpkx.Image = SpriteUtil.GetSprite(species, form, gender, 0, item, false, CHK_Shiny.Checked, 6);
             DisplayEntry(this, EventArgs.Empty); // refresh text view
         }
 
@@ -345,7 +345,7 @@ namespace PKHeX.WinForms
             var form = CB_Form.SelectedIndex & 0x1F;
             var gender = PKX.GetGenderFromString(Label_Gender.Text);
             var item = WinFormsUtil.GetIndex(CB_HeldItem);
-            bpkx.Image = SpriteUtil.GetSprite(species, form, gender, 0, item, false, CHK_Shiny.Checked);
+            bpkx.Image = SpriteUtil.GetSprite(species, form, gender, 0, item, false, CHK_Shiny.Checked, 6);
 
             Write_Entry(this, EventArgs.Empty);
         }
@@ -355,16 +355,15 @@ namespace PKHeX.WinForms
             // Get Gender Threshold
             int species = WinFormsUtil.GetIndex(CB_Species);
             var pi = SAV.Personal[species];
-
-            var fg = pi.FixedGender;
-            if (fg == -1) // dual gender
+            if (pi.IsDualGender)
             {
-                fg = PKX.GetGenderFromString(Label_Gender.Text);
+                var fg = PKX.GetGenderFromString(Label_Gender.Text);
                 fg = (fg ^ 1) & 1;
                 Label_Gender.Text = Main.GenderSymbols[fg];
             }
             else
             {
+                var fg = pi.FixedGender;
                 Label_Gender.Text = Main.GenderSymbols[fg];
                 return;
             }
@@ -420,7 +419,7 @@ namespace PKHeX.WinForms
                 return;
 
             int offset = LB_DataEntry.SelectedIndex * 0x1B4;
-            var nicktrash = data.Skip(offset + 0x18).Take(24).ToArray();
+            var nicktrash = data.Slice(offset + 0x18, 24);
             SAV.SetString(TB_Nickname.Text, 12).CopyTo(nicktrash, 0);
             var d = new TrashEditor(tb, nicktrash, SAV);
             d.ShowDialog();

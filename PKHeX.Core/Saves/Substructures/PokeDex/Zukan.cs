@@ -3,6 +3,9 @@ using System.Linq;
 
 namespace PKHeX.Core
 {
+    /// <summary>
+    /// Base class for Pokédex logic operations.
+    /// </summary>
     public abstract class ZukanBase
     {
         protected readonly SaveFile SAV;
@@ -14,18 +17,25 @@ namespace PKHeX.Core
             PokeDex = dex;
         }
 
+        #region Overall Info
+        /// <summary> Count of unique Species Seen </summary>
         public int SeenCount => Enumerable.Range(1, SAV.MaxSpeciesID).Count(GetSeen);
+        /// <summary> Count of unique Species Caught (Owned) </summary>
         public int CaughtCount => Enumerable.Range(1, SAV.MaxSpeciesID).Count(GetCaught);
 
         public decimal PercentSeen => (decimal)SeenCount / SAV.MaxSpeciesID;
         public decimal PercentCaught => (decimal)CaughtCount / SAV.MaxSpeciesID;
+        #endregion
 
+        /// <summary> Gets if the Species has been Seen by the player. </summary>
         public abstract bool GetSeen(int species);
+        /// <summary> Gets if the Species has been Caught (Owned) by the player. </summary>
         public abstract bool GetCaught(int species);
 
+        /// <summary> Adds the Pokémon's information to the Pokédex. </summary>
         public abstract void SetDex(PKM pkm);
 
-        // Bulk Manipulation
+        #region Overall Manipulation
         public abstract void SeenNone();
         public abstract void CaughtNone();
 
@@ -36,8 +46,12 @@ namespace PKHeX.Core
 
         public abstract void SetDexEntryAll(int species, bool shinyToo = false);
         public abstract void ClearDexEntryAll(int species);
+        #endregion
     }
 
+    /// <summary>
+    /// Base class for Pokédex operations, exposing the shared structure features used by Generations 5, 6, and 7.
+    /// </summary>
     public abstract class Zukan : ZukanBase
     {
         protected readonly int PokeDexLanguageFlags;
@@ -78,11 +92,11 @@ namespace PKHeX.Core
             return false;
         }
 
-        public bool GetSeen(int species, int i) => GetFlag(OFS_SEEN + (i * BitSeenSize), species - 1);
-        public void SetSeen(int species, int i, bool value) => SetFlag(OFS_SEEN + (i * BitSeenSize), species - 1, value);
+        public bool GetSeen(int species, int bitRegion) => GetFlag(OFS_SEEN + (bitRegion * BitSeenSize), species - 1);
+        public void SetSeen(int species, int bitRegion, bool value) => SetFlag(OFS_SEEN + (bitRegion * BitSeenSize), species - 1, value);
 
-        public bool GetDisplayed(int bit, int i) => GetFlag(OFS_SEEN + ((i + 4) * BitSeenSize), bit);
-        public void SetDisplayed(int bit, int i, bool value) => SetFlag(OFS_SEEN + ((i + 4) * BitSeenSize), bit, value);
+        public bool GetDisplayed(int bit, int bitRegion) => GetFlag(OFS_SEEN + ((bitRegion + 4) * BitSeenSize), bit);
+        public void SetDisplayed(int bit, int bitRegion, bool value) => SetFlag(OFS_SEEN + ((bitRegion + 4) * BitSeenSize), bit, value);
 
         public bool GetLanguageFlag(int bit, int lang) => GetFlag(PokeDexLanguageFlags, (bit * DexLangIDCount) + lang);
         public void SetLanguageFlag(int bit, int lang, bool value) => SetFlag(PokeDexLanguageFlags, (bit * DexLangIDCount) + lang, value);
@@ -114,8 +128,6 @@ namespace PKHeX.Core
 
         public override void SetDex(PKM pkm)
         {
-            if (SAV.Version == GameVersion.Invalid) // sanity
-                return;
             if ((uint)(pkm.Species - 1) >= (uint)SAV.MaxSpeciesID) // out of range
                 return;
             if (pkm.IsEgg) // do not add

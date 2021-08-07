@@ -8,7 +8,7 @@ namespace PKHeX.Core
     /// </summary>
     public sealed class FrameGenerator
     {
-        public uint Nature;
+        public uint Nature { get; init; }
         public readonly bool Gendered;
         public readonly int GenderHigh;
         public readonly int GenderLow;
@@ -42,7 +42,7 @@ namespace PKHeX.Core
                 case R or S or E or FR or LG:
                     DPPt = false;
                     FrameType = FrameType.MethodH;
-                    Safari3 = pk.Ball == 5 && !pk.FRLG;
+                    Safari3 = pk.Ball == 5 && ver is not (FR or LG);
 
                     if (ver != E)
                         return;
@@ -88,7 +88,9 @@ namespace PKHeX.Core
         /// <returns>Returns the maximum or minimum gender value that corresponds to the input gender ratio.</returns>
         private static int GetGenderMinMax(int gender, int ratio, bool max) => ratio switch
         {
-            0 or >254 => max ? 255 : 0,
+            PersonalInfo.RatioMagicMale => max ? 255 : 0,
+            PersonalInfo.RatioMagicFemale => max ? 255 : 0,
+            PersonalInfo.RatioMagicGenderless => max ? 255 : 0,
             _ => gender switch
             {
                 0 => max ? 255 : ratio, // male

@@ -7,10 +7,9 @@ namespace PKHeX.Core
     /// </summary>
     public abstract class SAV4Sinnoh : SAV4
     {
-        protected override int StorageStart => GeneralSize;
         protected override int FooterSize => 0x14;
-        protected SAV4Sinnoh() { }
-        protected SAV4Sinnoh(byte[] data) : base(data) { }
+        protected SAV4Sinnoh(int gSize, int sSize) : base(gSize, sSize) { }
+        protected SAV4Sinnoh(byte[] data, int gSize, int sSize, int sStart) : base(data, gSize, sSize, sStart) { }
 
         #region Storage
         // u32 currentBox
@@ -49,7 +48,7 @@ namespace PKHeX.Core
         {
             const int maxlen = 8;
             if (value.Length > maxlen)
-                value = value.Substring(0, maxlen); // Hard cap
+                value = value[..maxlen]; // Hard cap
             int offset = GetBoxNameOffset(box);
             var str = SetString(value, maxlen);
             SetData(Storage, str, offset);
@@ -57,7 +56,7 @@ namespace PKHeX.Core
         #endregion
 
         #region Poketch
-        public int PoketchStart { get; protected set; }
+        protected int PoketchStart { private get; set; }
         private byte PoketchPacked { get => General[PoketchStart]; set => General[PoketchStart] = value; }
 
         public bool PoketchEnabled { get => (PoketchPacked & 1) != 0; set => PoketchPacked = (byte)(value ? (PoketchPacked | 1) : (PoketchPacked & ~1)); }
@@ -117,14 +116,14 @@ namespace PKHeX.Core
         protected int OFS_HONEY;
         protected const int HONEY_SIZE = 8;
 
-        public HoneyTree GetHoneyTree(int index)
+        public HoneyTreeValue GetHoneyTree(int index)
         {
             if ((uint)index > 21)
                 throw new ArgumentException(nameof(index));
-            return new HoneyTree(General.Slice(OFS_HONEY + (HONEY_SIZE * index), HONEY_SIZE));
+            return new HoneyTreeValue(General.Slice(OFS_HONEY + (HONEY_SIZE * index), HONEY_SIZE));
         }
 
-        public void SetHoneyTree(HoneyTree tree, int index)
+        public void SetHoneyTree(HoneyTreeValue tree, int index)
         {
             if (index <= 21)
                 SetData(General, tree.Data, OFS_HONEY + (HONEY_SIZE * index));

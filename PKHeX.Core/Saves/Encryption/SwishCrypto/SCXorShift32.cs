@@ -1,4 +1,6 @@
-﻿namespace PKHeX.Core
+﻿using System.Runtime.CompilerServices;
+
+namespace PKHeX.Core
 {
     /// <summary>
     /// Self-mutating value that returns a crypto value to be xor-ed with another (unaligned) byte stream.
@@ -14,9 +16,13 @@
 
         public SCXorShift32(uint seed)
         {
+#if NET5
+            var pop_count = System.Numerics.BitOperations.PopCount(seed);
+#else
             var pop_count = PopCount(seed);
+#endif
             for (var i = 0; i < pop_count; i++)
-                XorshiftAdvance(ref seed);
+                seed = XorshiftAdvance(seed);
 
             Counter = 0;
             Seed = seed;
@@ -31,7 +37,7 @@
             var val = (Seed >> (c << 3)) & 0xFF;
             if (c == 3)
             {
-                XorshiftAdvance(ref Seed);
+                Seed = XorshiftAdvance(Seed);
                 Counter = 0;
             }
             else
@@ -49,13 +55,16 @@
             return Next() | (Next() << 8) | (Next() << 16) | (Next() << 24);
         }
 
-        private static void XorshiftAdvance(ref uint key)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static uint XorshiftAdvance(uint key)
         {
             key ^= key << 2;
             key ^= key >> 15;
             key ^= key << 13;
+            return key;
         }
 
+#if !NET5
         /// <summary>
         /// Count of bits set in value
         /// </summary>
@@ -68,5 +77,6 @@
             x += (x >> 16);
             return x & 0x0000003Fu;
         }
+#endif
     }
 }

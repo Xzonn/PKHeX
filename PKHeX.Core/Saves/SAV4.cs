@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace PKHeX.Core
 {
@@ -13,7 +12,7 @@ namespace PKHeX.Core
     public abstract class SAV4 : SaveFile
     {
         protected internal override string ShortSummary => $"{OT} ({Version}) - {PlayTimeString}";
-        public override string Extension => ".sav";
+        public sealed override string Extension => ".sav";
 
         // Blocks & Offsets
         private readonly int GeneralBlockPosition; // Small Block
@@ -23,33 +22,26 @@ namespace PKHeX.Core
         // SaveData is chunked into two pieces.
         protected readonly byte[] Storage;
         public readonly byte[] General;
-        protected override byte[] BoxBuffer => Storage;
-        protected override byte[] PartyBuffer => General;
+        protected sealed override byte[] BoxBuffer => Storage;
+        protected sealed override byte[] PartyBuffer => General;
 
-        protected abstract int StorageSize { get; }
-        protected abstract int GeneralSize { get; }
         protected abstract int StorageStart { get; }
+        public abstract Zukan4 Dex { get; }
 
-        /// <inheritdoc />
-        public override bool GetFlag(int offset, int bitIndex) => FlagUtil.GetFlag(General, offset, bitIndex);
+        public sealed override bool GetFlag(int offset, int bitIndex) => FlagUtil.GetFlag(General, offset, bitIndex);
+        public sealed override void SetFlag(int offset, int bitIndex, bool value) => FlagUtil.SetFlag(General, offset, bitIndex, value);
 
-        /// <inheritdoc />
-        public override void SetFlag(int offset, int bitIndex, bool value) => FlagUtil.SetFlag(General, offset, bitIndex, value);
-
-        protected SAV4()
+        protected SAV4(int gSize, int sSize)
         {
-            Storage = new byte[StorageSize];
-            General = new byte[GeneralSize];
+            General = new byte[gSize];
+            Storage = new byte[sSize];
             ClearBoxes();
         }
 
-        protected SAV4(byte[] data) : base(data)
+        protected SAV4(byte[] data, int gSize, int sSize, int sStart) : base(data)
         {
-            var gSize = GeneralSize;
-            var sSize = StorageSize;
-            var sStart = StorageStart;
-            GeneralBlockPosition = GetActiveBlock(Data, 0, gSize);
-            StorageBlockPosition = GetActiveBlock(Data, sStart, sSize);
+            GeneralBlockPosition = GetActiveBlock(data, 0, gSize);
+            StorageBlockPosition = GetActiveBlock(data, sStart, sSize);
 
             var gbo = (GeneralBlockPosition == 0 ? 0 : PartitionSize);
             var sbo = (StorageBlockPosition == 0 ? 0 : PartitionSize) + sStart;
@@ -58,7 +50,7 @@ namespace PKHeX.Core
         }
 
         // Configuration
-        protected override SaveFile CloneInternal()
+        protected sealed override SaveFile CloneInternal()
         {
             var sav = CloneInternal4();
             SetData(sav.General, General, 0);
@@ -68,7 +60,7 @@ namespace PKHeX.Core
 
         protected abstract SAV4 CloneInternal4();
 
-        public override void CopyChangesFrom(SaveFile sav)
+        public sealed override void CopyChangesFrom(SaveFile sav)
         {
             SetData(sav.Data, 0);
             var s4 = (SAV4)sav;
@@ -76,39 +68,36 @@ namespace PKHeX.Core
             SetData(Storage, s4.Storage, 0);
         }
 
-        protected override int SIZE_STORED => PokeCrypto.SIZE_4STORED;
-        protected override int SIZE_PARTY => PokeCrypto.SIZE_4PARTY;
-        public override PKM BlankPKM => new PK4();
-        public override Type PKMType => typeof(PK4);
+        protected sealed override int SIZE_STORED => PokeCrypto.SIZE_4STORED;
+        protected sealed override int SIZE_PARTY => PokeCrypto.SIZE_4PARTY;
+        public sealed override PKM BlankPKM => new PK4();
+        public sealed override Type PKMType => typeof(PK4);
 
-        public override int BoxCount => 18;
-        public override int MaxEV => 255;
-        public override int Generation => 4;
-        protected override int EventFlagMax => 0xB60; // 2912
-        protected override int EventConstMax => (EventFlag - EventConst) >> 1;
-        protected override int GiftCountMax => 11;
-        public override int OTLength => 7;
-        public override int NickLength => 10;
-        public override int MaxMoney => 999999;
-        public override int MaxCoins => 50_000;
+        public sealed override int BoxCount => 18;
+        public sealed override int MaxEV => 255;
+        public sealed override int Generation => 4;
+        protected sealed override int EventFlagMax => 0xB60; // 2912
+        protected sealed override int EventConstMax => (EventFlag - EventConst) >> 1;
+        protected sealed override int GiftCountMax => 11;
+        public sealed override int OTLength => 7;
+        public sealed override int NickLength => 10;
+        public sealed override int MaxMoney => 999999;
+        public sealed override int MaxCoins => 50_000;
 
-        public override int MaxMoveID => Legal.MaxMoveID_4;
-        public override int MaxSpeciesID => Legal.MaxSpeciesID_4;
-        public override int MaxItemID => Version == GameVersion.HGSS ? Legal.MaxItemID_4_HGSS : Version == GameVersion.Pt ? Legal.MaxItemID_4_Pt : Legal.MaxItemID_4_DP;
-        public override int MaxAbilityID => Legal.MaxAbilityID_4;
-        public override int MaxBallID => Legal.MaxBallID_4;
-        public override int MaxGameID => Legal.MaxGameID_4; // Colo/XD
-
-        public bool HGSS => Version == GameVersion.HGSS;
-        public bool DP => Version == GameVersion.DP;
+        public sealed override int MaxMoveID => Legal.MaxMoveID_4;
+        public sealed override int MaxSpeciesID => Legal.MaxSpeciesID_4;
+        // MaxItemID
+        public sealed override int MaxAbilityID => Legal.MaxAbilityID_4;
+        public sealed override int MaxBallID => Legal.MaxBallID_4;
+        public sealed override int MaxGameID => Legal.MaxGameID_4; // Colo/XD
 
         // Checksums
         protected abstract int FooterSize { get; }
-        private ushort CalcBlockChecksum(byte[] data) => Checksums.CRC16_CCITT(data, 0, data.Length - FooterSize);
+        private ushort CalcBlockChecksum(byte[] data) => Checksums.CRC16_CCITT(new ReadOnlySpan<byte>(data, 0, data.Length - FooterSize));
         private static ushort GetBlockChecksumSaved(byte[] data) => BitConverter.ToUInt16(data, data.Length - 2);
         private bool GetBlockChecksumValid(byte[] data) => CalcBlockChecksum(data) == GetBlockChecksumSaved(data);
 
-        protected override void SetChecksums()
+        protected sealed override void SetChecksums()
         {
             BitConverter.GetBytes(CalcBlockChecksum(General)).CopyTo(General, General.Length - 2);
             BitConverter.GetBytes(CalcBlockChecksum(Storage)).CopyTo(Storage, Storage.Length - 2);
@@ -118,7 +107,7 @@ namespace PKHeX.Core
             Storage.CopyTo(Data, (StorageBlockPosition * PartitionSize) + StorageStart);
         }
 
-        public override bool ChecksumsValid
+        public sealed override bool ChecksumsValid
         {
             get
             {
@@ -131,7 +120,7 @@ namespace PKHeX.Core
             }
         }
 
-        public override string ChecksumInfo
+        public sealed override string ChecksumInfo
         {
             get
             {
@@ -155,7 +144,7 @@ namespace PKHeX.Core
         protected int AdventureInfo = int.MinValue;
         protected int Seal = int.MinValue;
         protected int Trainer1;
-        public int GTS { get; } = int.MinValue;
+        public int GTS { get; protected set; } = int.MinValue;
 
         // Storage
         public override int PartyCount
@@ -164,7 +153,7 @@ namespace PKHeX.Core
             protected set => General[Party - 4] = (byte)value;
         }
 
-        public override int GetPartyOffset(int slot) => Party + (SIZE_PARTY * slot);
+        public sealed override int GetPartyOffset(int slot) => Party + (SIZE_PARTY * slot);
 
         // Trainer Info
         public override string OT
@@ -239,169 +228,21 @@ namespace PKHeX.Core
             set => General[Trainer1 + 0x25] = (byte)value;
         }
 
-        public int M
-        {
-            get
-            {
-                int ofs = 0;
-                switch (Version)
-                {
-                    case GameVersion.DP:   ofs = 0x1238; break;
-                    case GameVersion.Pt:   ofs = 0x1280; break;
-                    case GameVersion.HGSS: ofs = 0x1234; break;
-                }
-                return BitConverter.ToUInt16(General, ofs);
-            }
-            set
-            {
-                int ofs = 0;
-                switch (Version)
-                {
-                    case GameVersion.DP:   ofs = 0x1238; break;
-                    case GameVersion.Pt:   ofs = 0x1280; break;
-                    case GameVersion.HGSS: ofs = 0x1234; break;
-                }
-                BitConverter.GetBytes((ushort)value).CopyTo(General, ofs);
-            }
-        }
+        public abstract int M { get; set; }
+        public abstract int X { get; set; }
+        public abstract int Y { get; set; }
 
-        public int X
-        {
-            get
-            {
-                int ofs = 0;
-                switch (Version)
-                {
-                    case GameVersion.DP:   ofs = 0x1240; break;
-                    case GameVersion.Pt:   ofs = 0x1288; break;
-                    case GameVersion.HGSS: ofs = 0x123C; break;
-                }
-                return BitConverter.ToUInt16(General, ofs);
-            }
-            set
-            {
-                int ofs = 0;
-                switch (Version)
-                {
-                    case GameVersion.DP:   ofs = 0x1240; break;
-                    case GameVersion.Pt:   ofs = 0x1288; break;
-                    case GameVersion.HGSS: ofs = 0x123C; break;
-                }
-                BitConverter.GetBytes((ushort)(X2 = value)).CopyTo(General, ofs);
-            }
-        }
-
-        public int Y
-        {
-            get
-            {
-                int ofs = 0;
-                switch (Version)
-                {
-                    case GameVersion.DP:   ofs = 0x1244; break;
-                    case GameVersion.Pt:   ofs = 0x128C; break;
-                    case GameVersion.HGSS: ofs = 0x1240; break;
-                }
-                return BitConverter.ToUInt16(General, ofs);
-            }
-            set
-            {
-                int ofs = 0;
-                switch (Version)
-                {
-                    case GameVersion.DP:   ofs = 0x1244; break;
-                    case GameVersion.Pt:   ofs = 0x128C; break;
-                    case GameVersion.HGSS: ofs = 0x1240; break;
-                }
-                BitConverter.GetBytes((ushort)(Y2 = value)).CopyTo(General, ofs);
-            }
-        }
-
-        public int X2
-        {
-            get
-            {
-                int ofs = 0;
-                switch (Version)
-                {
-                    case GameVersion.DP:   ofs = 0x25FA; break;
-                    case GameVersion.Pt:   ofs = 0x287E; break;
-                    case GameVersion.HGSS: ofs = 0x236E; break;
-                }
-                return BitConverter.ToUInt16(General, ofs);
-            }
-            set
-            {
-                int ofs = 0;
-                switch (Version)
-                {
-                    case GameVersion.DP:   ofs = 0x25FA; break;
-                    case GameVersion.Pt:   ofs = 0x287E; break;
-                    case GameVersion.HGSS: ofs = 0x236E; break;
-                }
-                BitConverter.GetBytes((ushort)value).CopyTo(General, ofs);
-            }
-        }
-
-        public int Y2
-        {
-            get
-            {
-                int ofs = 0;
-                switch (Version)
-                {
-                    case GameVersion.DP:   ofs = 0x25FE; break;
-                    case GameVersion.Pt:   ofs = 0x2882; break;
-                    case GameVersion.HGSS: ofs = 0x2372; break;
-                }
-                return BitConverter.ToUInt16(General, ofs);
-            }
-            set
-            {
-                int ofs = 0;
-                switch (Version)
-                {
-                    case GameVersion.DP:   ofs = 0x25FE; break;
-                    case GameVersion.Pt:   ofs = 0x2882; break;
-                    case GameVersion.HGSS: ofs = 0x2372; break;
-                }
-                BitConverter.GetBytes((ushort)value).CopyTo(General, ofs);
-            }
-        }
-
-        public int Z
-        {
-            get
-            {
-                int ofs = 0;
-                switch (Version)
-                {
-                    case GameVersion.DP:   ofs = 0x2602; break;
-                    case GameVersion.Pt:   ofs = 0x2886; break;
-                    case GameVersion.HGSS: ofs = 0x2376; break;
-                }
-                return BitConverter.ToUInt16(General, ofs);
-            }
-            set
-            {
-                int ofs = 0;
-                switch (Version)
-                {
-                    case GameVersion.DP:   ofs = 0x2602; break;
-                    case GameVersion.Pt:   ofs = 0x2886; break;
-                    case GameVersion.HGSS: ofs = 0x2376; break;
-                }
-                BitConverter.GetBytes((ushort)value).CopyTo(General, ofs);
-            }
-        }
+        public abstract int X2 { get; set; }
+        public abstract int Y2 { get; set; }
+        public abstract int Z { get; set; }
 
         public override uint SecondsToStart { get => BitConverter.ToUInt32(General, AdventureInfo + 0x34); set => BitConverter.GetBytes(value).CopyTo(General, AdventureInfo + 0x34); }
         public override uint SecondsToFame { get => BitConverter.ToUInt32(General, AdventureInfo + 0x3C); set => BitConverter.GetBytes(value).CopyTo(General, AdventureInfo + 0x3C); }
 
-        protected override PKM GetPKM(byte[] data) => new PK4(data);
-        protected override byte[] DecryptPKM(byte[] data) => PokeCrypto.DecryptArray45(data);
+        protected sealed override PKM GetPKM(byte[] data) => new PK4(data);
+        protected sealed override byte[] DecryptPKM(byte[] data) => PokeCrypto.DecryptArray45(data);
 
-        protected override void SetPKM(PKM pkm)
+        protected sealed override void SetPKM(PKM pkm, bool isParty = false)
         {
             var pk4 = (PK4)pkm;
             // Apply to this Save File
@@ -444,7 +285,7 @@ namespace PKHeX.Core
             }
             for (int i = 8; i < 11; i++) // 3 PCD
             {
-                if (value[i] is PCD d && d.Gift.CardType != 0)
+                if (value[i] is PCD {Gift: {CardType: not 0}})
                     return true;
             }
             return false;
@@ -518,7 +359,7 @@ namespace PKHeX.Core
             }
         }
 
-        protected override bool[] MysteryGiftReceivedFlags
+        protected sealed override bool[] MysteryGiftReceivedFlags
         {
             get
             {
@@ -543,7 +384,7 @@ namespace PKHeX.Core
             }
         }
 
-        protected override DataMysteryGift[] MysteryGiftCards
+        protected sealed override DataMysteryGift[] MysteryGiftCards
         {
             get
             {
@@ -573,286 +414,9 @@ namespace PKHeX.Core
             }
         }
 
-        protected override void SetDex(PKM pkm)
-        {
-            if (pkm.Species == 0)
-                return;
-            if (pkm.Species > MaxSpeciesID)
-                return;
-
-            const int brSize = 0x40;
-            int bit = pkm.Species - 1;
-            byte mask = (byte)(1 << (bit & 7));
-            int ofs = PokeDex + (bit >> 3) + 0x4;
-
-            /* 4 BitRegions with 0x40*8 bits
-            * Region 0: Caught (Captured/Owned) flags
-            * Region 1: Seen flags
-            * Region 2/3: Toggle for gender display
-            * 4 possible states: 00, 01, 10, 11
-            * 00 - 1Seen: Male Only
-            * 01 - 2Seen: Male First, Female Second
-            * 10 - 2Seen: Female First, Male Second
-            * 11 - 1Seen: Female Only
-            * (bit1 ^ bit2) + 1 = forms in dex
-            * bit2 = male/female shown first toggle
-            */
-
-            // Set the Species Owned Flag
-            General[ofs + (brSize * 0)] |= mask;
-
-            // Check if already Seen
-            if ((General[ofs + (brSize * 1)] & mask) == 0) // Not seen
-            {
-                General[ofs + (brSize * 1)] |= mask; // Set seen
-                int gr = pkm.PersonalInfo.Gender;
-                switch (gr)
-                {
-                    case 255: // Genderless
-                    case 0: // Male Only
-                        General[ofs + (brSize * 2)] &= (byte)~mask; // unset
-                        General[ofs + (brSize * 3)] &= (byte)~mask; // unset
-                        break;
-                    case 254: // Female Only
-                        General[ofs + (brSize * 2)] |= mask;
-                        General[ofs + (brSize * 3)] |= mask;
-                        break;
-                    default: // Male or Female
-                        bool m = (General[ofs + (brSize * 2)] & mask) != 0;
-                        bool f = (General[ofs + (brSize * 3)] & mask) != 0;
-                        if (m || f) // bit already set?
-                            break;
-                        int gender = pkm.Gender & 1;
-                        General[ofs + (brSize * 2)] &= (byte)~mask; // unset
-                        General[ofs + (brSize * 3)] &= (byte)~mask; // unset
-                        gender ^= 1; // Set OTHER gender seen bit so it appears second
-                        General[ofs + (brSize * (2 + gender))] |= mask;
-                        break;
-                }
-            }
-
-            int FormOffset1 = PokeDex + 4 + (brSize * 4) + 4;
-            var forms = GetForms(pkm.Species);
-            if (forms.Length > 0)
-            {
-                if (pkm.Species == (int)Species.Unown) // Unown
-                {
-                    for (int i = 0; i < 0x1C; i++)
-                    {
-                        byte val = General[FormOffset1 + 4 + i];
-                        if (val == pkm.Form)
-                            break; // already set
-                        if (val != 0xFF)
-                            continue; // keep searching
-
-                        General[FormOffset1 + 4 + i] = (byte)pkm.Form;
-                        break; // form now set
-                    }
-                }
-                else if (pkm.Species == (int)Species.Pichu && HGSS) // Pichu (HGSS Only)
-                {
-                    int form = pkm.Form == 1 ? 2 : pkm.Gender;
-                    if (TryInsertForm(forms, form))
-                        SetForms(pkm.Species, forms);
-                }
-                else
-                {
-                    if (TryInsertForm(forms, pkm.Form))
-                        SetForms(pkm.Species, forms);
-                }
-            }
-
-            int dpl = 1 + Array.IndexOf(DPLangSpecies, pkm.Species);
-            if (DP && dpl <= 0)
-                return;
-
-            // Set the Language
-            int PokeDexLanguageFlags = FormOffset1 + (HGSS ? 0x3C : 0x20);
-            int lang = GetGen4LanguageBitIndex(pkm.Language);
-            General[PokeDexLanguageFlags + (DP ? dpl : pkm.Species)] |= (byte)(1 << lang);
-        }
-
-        private static readonly int[] DPLangSpecies = { 23, 25, 54, 77, 120, 129, 202, 214, 215, 216, 228, 278, 287, 315 };
-
-        private static int GetGen4LanguageBitIndex(int lang) => --lang switch
-        {
-            3 => 4, // invert ITA/GER
-            4 => 3, // invert ITA/GER
-            > 5 => 0, // Japanese
-            < 0 => 1, // English
-            _ => lang,
-        };
-
-        public override bool GetCaught(int species)
-        {
-            int bit = species - 1;
-            int bd = bit >> 3; // div8
-            int bm = bit & 7; // mod8
-            int ofs = PokeDex // Raw Offset
-                      + 0x4; // Magic
-            return (1 << bm & General[ofs + bd]) != 0;
-        }
-
-        public override bool GetSeen(int species)
-        {
-            const int brSize = 0x40;
-
-            int bit = species - 1;
-            int bd = bit >> 3; // div8
-            int bm = bit & 7; // mod8
-            int ofs = PokeDex // Raw Offset
-                      + 0x4; // Magic
-
-            return (1 << bm & General[ofs + bd + (brSize * 1)]) != 0;
-        }
-
-        public int[] GetForms(int species)
-        {
-            const int brSize = 0x40;
-            if (species == (int)Species.Deoxys)
-            {
-                uint val = (uint) (General[PokeDex + 0x4 + (1 * brSize) - 1] | General[PokeDex + 0x4 + (2 * brSize) - 1] << 8);
-                return GetDexFormValues(val, 4, 4);
-            }
-
-            int FormOffset1 = PokeDex + 4 + (4 * brSize) + 4;
-            switch (species)
-            {
-                case (int)Species.Shellos: // Shellos
-                    return GetDexFormValues(General[FormOffset1 + 0], 1, 2);
-                case (int)Species.Gastrodon: // Gastrodon
-                    return GetDexFormValues(General[FormOffset1 + 1], 1, 2);
-                case (int)Species.Burmy: // Burmy
-                    return GetDexFormValues(General[FormOffset1 + 2], 2, 3);
-                case (int)Species.Wormadam: // Wormadam
-                    return GetDexFormValues(General[FormOffset1 + 3], 2, 3);
-                case (int)Species.Unown: // Unown
-                    return General.Slice(FormOffset1 + 4, 0x1C).Select(i => (int)i).ToArray();
-            }
-            if (DP)
-                return Array.Empty<int>();
-
-            int PokeDexLanguageFlags = FormOffset1 + (HGSS ? 0x3C : 0x20);
-            int FormOffset2 = PokeDexLanguageFlags + 0x1F4;
-            return species switch
-            {
-                (int)Species.Rotom => GetDexFormValues(BitConverter.ToUInt32(General, FormOffset2), 3, 6),
-                (int)Species.Shaymin => GetDexFormValues(General[FormOffset2 + 4], 1, 2),
-                (int)Species.Giratina => GetDexFormValues(General[FormOffset2 + 5], 1, 2),
-                (int)Species.Pichu when HGSS => GetDexFormValues(General[FormOffset2 + 6], 2, 3),
-                _ => Array.Empty<int>()
-            };
-        }
-
-        public void SetForms(int species, int[] forms)
-        {
-            const int brSize = 0x40;
-            switch (species)
-            {
-                case (int)Species.Deoxys: // Deoxys
-                    uint newval = SetDexFormValues(forms, 4, 4);
-                    General[PokeDex + 0x4 + (1 * brSize) - 1] = (byte) (newval & 0xFF);
-                    General[PokeDex + 0x4 + (2 * brSize) - 1] = (byte) ((newval >> 8) & 0xFF);
-                    break;
-            }
-
-            int FormOffset1 = PokeDex + 4 + (4 * brSize) + 4;
-            switch (species)
-            {
-                case (int)Species.Shellos: // Shellos
-                    General[FormOffset1 + 0] = (byte)SetDexFormValues(forms, 1, 2);
-                    return;
-                case (int)Species.Gastrodon: // Gastrodon
-                    General[FormOffset1 + 1] = (byte)SetDexFormValues(forms, 1, 2);
-                    return;
-                case (int)Species.Burmy: // Burmy
-                    General[FormOffset1 + 2] = (byte)SetDexFormValues(forms, 2, 3);
-                    return;
-                case (int)Species.Wormadam: // Wormadam
-                    General[FormOffset1 + 3] = (byte)SetDexFormValues(forms, 2, 3);
-                    return;
-                case (int)Species.Unown: // Unown
-                    int ofs = FormOffset1 + 4;
-                    int len = forms.Length;
-                    Array.Resize(ref forms, 0x1C);
-                    for (int i = len; i < forms.Length; i++)
-                        forms[i] = 0xFF;
-                    Array.Copy(forms.Select(b => (byte)b).ToArray(), 0, General, ofs, forms.Length);
-                    return;
-            }
-
-            if (DP)
-                return;
-
-            int PokeDexLanguageFlags = FormOffset1 + (HGSS ? 0x3C : 0x20);
-            int FormOffset2 = PokeDexLanguageFlags + 0x1F4;
-            switch (species)
-            {
-                case (int)Species.Rotom: // Rotom
-                    BitConverter.GetBytes(SetDexFormValues(forms, 3, 6)).CopyTo(General, FormOffset2);
-                    return;
-                case (int)Species.Shaymin: // Shaymin
-                    General[FormOffset2 + 4] = (byte)SetDexFormValues(forms, 1, 2);
-                    return;
-                case (int)Species.Giratina: // Giratina
-                    General[FormOffset2 + 5] = (byte)SetDexFormValues(forms, 1, 2);
-                    return;
-                case (int)Species.Pichu when HGSS: // Pichu
-                    General[FormOffset2 + 6] = (byte)SetDexFormValues(forms, 2, 3);
-                    return;
-            }
-        }
-
-        private static int[] GetDexFormValues(uint Value, int BitsPerForm, int readCt)
-        {
-            int[] Forms = new int[readCt];
-            int n1 = 0xFF >> (8 - BitsPerForm);
-            for (int i = 0; i < Forms.Length; i++)
-            {
-                int val = (int)(Value >> (i * BitsPerForm)) & n1;
-                if (n1 == val && BitsPerForm > 1)
-                    Forms[i] = -1;
-                else
-                    Forms[i] = val;
-            }
-
-            // (BitsPerForm > 1) was already handled, handle (BitsPerForm == 1)
-            if (BitsPerForm == 1 && Forms[0] == Forms[1] && Forms[0] == 1)
-                Forms[0] = Forms[1] = -1;
-
-            return Forms;
-        }
-
-        private static uint SetDexFormValues(int[] Forms, int BitsPerForm, int readCt)
-        {
-            int n1 = 0xFF >> (8 - BitsPerForm);
-            uint Value = 0xFFFFFFFF << (readCt * BitsPerForm);
-            for (int i = 0; i < Forms.Length; i++)
-            {
-                int val = Forms[i];
-                if (val == -1)
-                    val = n1;
-
-                Value |= (uint)(val << (BitsPerForm*i));
-                if (i >= readCt)
-                    throw new ArgumentException("Array count should be less than bitfield count", nameof(Forms));
-            }
-            return Value;
-        }
-
-        private static bool TryInsertForm(int[] forms, int form)
-        {
-            if (Array.IndexOf(forms, form) >= 0)
-                return false; // already in list
-
-            // insert at first empty
-            var index = Array.IndexOf(forms, -1);
-            if (index < 0)
-                return false; // no free slots?
-
-            forms[index] = form;
-            return true;
-        }
+        protected sealed override void SetDex(PKM pkm) => Dex.SetDex(pkm);
+        public sealed override bool GetCaught(int species) => Dex.GetCaught(species);
+        public sealed override bool GetSeen(int species) => Dex.GetSeen(species);
 
         public int DexUpgraded
         {
@@ -885,31 +449,31 @@ namespace PKHeX.Core
                 switch (Version)
                 {
                     case GameVersion.DP:
-                        General[0x1413] = value == 4 ? 1 : 0;
-                        General[0x1415] = value >= 3 ? 1 : 0;
-                        General[0x1404] = value >= 2 ? 1 : 0;
-                        General[0x1414] = value >= 1 ? 1 : 0;
+                        General[0x1413] = value == 4 ? (byte)1 : (byte)0;
+                        General[0x1415] = value >= 3 ? (byte)1 : (byte)0;
+                        General[0x1404] = value >= 2 ? (byte)1 : (byte)0;
+                        General[0x1414] = value >= 1 ? (byte)1 : (byte)0;
                         break;
                     case GameVersion.HGSS:
-                        General[0x15ED] = value == 3 ? 1 : 0;
-                        General[0x15EF] = value >= 2 ? 1 : 0;
-                        General[0x15EE] = value >= 1 ? 1 : 0;
+                        General[0x15ED] = value == 3 ? (byte)1 : (byte)0;
+                        General[0x15EF] = value >= 2 ? (byte)1 : (byte)0;
+                        General[0x15EE] = value >= 1 ? (byte)1 : (byte)0;
                         General[0x10D1] = (byte)((General[0x10D1] & ~8) | (value >= 1 ? 8 : 0));
                         break;
                     case GameVersion.Pt:
-                        General[0x1641] = value == 4 ? 1 : 0;
-                        General[0x1643] = value >= 3 ? 1 : 0;
-                        General[0x1640] = value >= 2 ? 1 : 0;
-                        General[0x1642] = value >= 1 ? 1 : 0;
+                        General[0x1641] = value == 4 ? (byte)1 : (byte)0;
+                        General[0x1643] = value >= 3 ? (byte)1 : (byte)0;
+                        General[0x1640] = value >= 2 ? (byte)1 : (byte)0;
+                        General[0x1642] = value >= 1 ? (byte)1 : (byte)0;
                         break;
                     default: return;
                 }
             }
         }
 
-        public override string GetString(byte[] data, int offset, int length) => StringConverter4.GetString4(data, offset, length);
+        public sealed override string GetString(byte[] data, int offset, int length) => StringConverter4.GetString4(data, offset, length);
 
-        public override byte[] SetString(string value, int maxLength, int PadToSize = 0, ushort PadWith = 0)
+        public sealed override byte[] SetString(string value, int maxLength, int PadToSize = 0, ushort PadWith = 0)
         {
             if (PadToSize == 0)
                 PadToSize = maxLength + 1;
@@ -917,7 +481,7 @@ namespace PKHeX.Core
         }
 
         /// <summary> All Event Constant values for the savegame </summary>
-        public override ushort[] GetEventConsts()
+        public sealed override ushort[] GetEventConsts()
         {
             if (EventConstMax <= 0)
                 return Array.Empty<ushort>();
@@ -929,7 +493,7 @@ namespace PKHeX.Core
         }
 
         /// <summary> All Event Constant values for the savegame </summary>
-        public override void SetEventConsts(ushort[] value)
+        public sealed override void SetEventConsts(ushort[] value)
         {
             if (EventConstMax <= 0)
                 return;
@@ -969,5 +533,11 @@ namespace PKHeX.Core
         }
 
         public byte[] GetMailData(int ofs) => General.Slice(ofs, Mail4.SIZE);
+
+        public Mail4 GetMail(int mailIndex)
+        {
+            int ofs = GetMailOffset(mailIndex);
+            return new Mail4(GetMailData(ofs), ofs);
+        }
     }
 }

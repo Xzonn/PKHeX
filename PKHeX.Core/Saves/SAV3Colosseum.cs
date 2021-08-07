@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Security.Cryptography;
 
 namespace PKHeX.Core
@@ -14,8 +13,7 @@ namespace PKHeX.Core
         public override string Extension => this.GCExtension();
         public override PersonalTable Personal => PersonalTable.RS;
         public override IReadOnlyList<ushort> HeldItems => Legal.HeldItems_COLO;
-        public bool IsMemoryCardSave => MC != null;
-        private readonly SAV3GCMemoryCard? MC;
+        public SAV3GCMemoryCard? MemoryCard { get; }
 
         // 3 Save files are stored
         // 0x0000-0x6000 contains memory card data
@@ -34,7 +32,7 @@ namespace PKHeX.Core
         private readonly StrategyMemo StrategyMemo;
         public const int MaxShadowID = 0x80; // 128
         private int Memo;
-        public SAV3Colosseum(byte[] data, SAV3GCMemoryCard MC) : this(data, MC.Data) { this.MC = MC; }
+        public SAV3Colosseum(byte[] data, SAV3GCMemoryCard memCard) : this(data, memCard.Data) => MemoryCard = memCard;
         public SAV3Colosseum(byte[] data) : this(data, (byte[])data.Clone()) { }
 
         public SAV3Colosseum() : base(SaveUtil.SIZE_G3COLO)
@@ -102,11 +100,11 @@ namespace PKHeX.Core
             var newFile = GetInnerData();
 
             // Return the gci if Memory Card is not being exported
-            if (!IsMemoryCardSave)
+            if (MemoryCard is null)
                 return newFile;
 
-            MC!.SelectedSaveData = newFile;
-            return MC.Data;
+            MemoryCard.WriteSaveGameData(newFile);
+            return MemoryCard.Data;
         }
 
         private byte[] GetInnerData()
@@ -119,7 +117,7 @@ namespace PKHeX.Core
             byte[] newSAV = EncryptColosseum(Data, digest);
 
             // Put save slot back in original save data
-            byte[] newFile = MC != null ? MC.SelectedSaveData : (byte[]) State.BAK.Clone();
+            byte[] newFile = MemoryCard != null ? MemoryCard.ReadSaveGameData() : (byte[]) State.BAK.Clone();
             Array.Copy(newSAV, 0, newFile, SLOT_START + (SaveIndex * SLOT_SIZE), newSAV.Length);
             return newFile;
         }
@@ -128,7 +126,7 @@ namespace PKHeX.Core
         protected override SaveFile CloneInternal()
         {
             var data = GetInnerData();
-            var sav = IsMemoryCardSave ? new SAV3Colosseum(data, MC!) : new SAV3Colosseum(data);
+            var sav = MemoryCard is not null ? new SAV3Colosseum(data, MemoryCard) : new SAV3Colosseum(data);
             return sav;
         }
 
@@ -149,7 +147,7 @@ namespace PKHeX.Core
         protected override int GiftCountMax => 1;
         public override int OTLength => 10; // as evident by Mattle Ho-Oh
         public override int NickLength => 10;
-        public override int MaxMoney => 999999;
+        public override int MaxMoney => 9999999;
 
         public override int BoxCount => 3;
         public override bool IsPKMPresent(byte[] data, int offset) => PKX.IsPKMPresentGC(data, offset);
@@ -257,7 +255,7 @@ namespace PKHeX.Core
                 newHC -= BigEndian.ToInt32(D, 0);
                 newHC -= BigEndian.ToInt32(D, 4);
 
-                byte[] chk = data.Slice(data.Length - 20, 20);
+                var chk = data.AsSpan(data.Length - 20, 20);
 
                 bool header = newHC == oldHC;
                 bool body = chk.SequenceEqual(checksum);
@@ -302,7 +300,7 @@ namespace PKHeX.Core
             return data;
         }
 
-        protected override void SetPKM(PKM pkm)
+        protected override void SetPKM(PKM pkm, bool isParty = false)
         {
             if (pkm is not CK3 pk)
                 return;
@@ -315,6 +313,11 @@ namespace PKHeX.Core
 
         protected override void SetDex(PKM pkm)
         {
+            if (pkm.Species is 0 or > Legal.MaxSpeciesID_3)
+                return;
+            if (pkm.IsEgg)
+                return;
+
             // Dex Related
             var entry = StrategyMemo.GetEntry(pkm.Species);
             if (entry.IsEmpty) // Populate
@@ -373,12 +376,12 @@ namespace PKHeX.Core
             {
                 InventoryPouch[] pouch =
                 {
-                    new InventoryPouch3GC(InventoryType.Items, Legal.Pouch_Items_COLO, 999, 0x007F8, 20), // 20 COLO, 30 XD
+                    new InventoryPouch3GC(InventoryType.Items, Legal.Pouch_Items_COLO, 99, 0x007F8, 20), // 20 COLO, 30 XD
                     new InventoryPouch3GC(InventoryType.KeyItems, Legal.Pouch_Key_COLO, 1, 0x00848, 43),
-                    new InventoryPouch3GC(InventoryType.Balls, Legal.Pouch_Ball_RS, 999, 0x008F4, 16),
-                    new InventoryPouch3GC(InventoryType.TMHMs, Legal.Pouch_TM_RS, 999, 0x00934, 64), // no HMs
+                    new InventoryPouch3GC(InventoryType.Balls, Legal.Pouch_Ball_RS, 99, 0x008F4, 16),
+                    new InventoryPouch3GC(InventoryType.TMHMs, Legal.Pouch_TM_RS, 99, 0x00934, 64), // no HMs
                     new InventoryPouch3GC(InventoryType.Berries, Legal.Pouch_Berries_RS, 999, 0x00A34, 46),
-                    new InventoryPouch3GC(InventoryType.Medicine, Legal.Pouch_Cologne_COLO, 999, 0x00AEC, 3), // Cologne
+                    new InventoryPouch3GC(InventoryType.Medicine, Legal.Pouch_Cologne_COLO, 99, 0x00AEC, 3), // Cologne
                 };
                 return pouch.LoadAll(Data);
             }

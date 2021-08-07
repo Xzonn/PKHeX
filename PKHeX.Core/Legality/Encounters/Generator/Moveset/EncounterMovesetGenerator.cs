@@ -140,7 +140,10 @@ namespace PKHeX.Core
         public static IEnumerable<IEncounterable> GenerateVersionEncounters(PKM pk, IEnumerable<int> moves, GameVersion version)
         {
             pk.Version = (int)version;
-            var et = EvolutionTree.GetEvolutionTree(pk.Format);
+            var format = pk.Format;
+            if (format is 2 && version is GameVersion.RD or GameVersion.GN or GameVersion.BU or GameVersion.YW)
+                format = 1; // try excluding baby pokemon from our evolution chain, for move learning purposes.
+            var et = EvolutionTree.GetEvolutionTree(format);
             var chain = et.GetValidPreEvolutions(pk, maxLevel: 100, skipChecks: true);
             int[] needs = GetNeededMoves(pk, moves, chain);
 
@@ -150,29 +153,54 @@ namespace PKHeX.Core
         private static int[] GetNeededMoves(PKM pk, IEnumerable<int> moves, IReadOnlyList<EvoCriteria> chain)
         {
             if (pk.Species == (int)Species.Smeargle)
-                return moves.Intersect(Legal.InvalidSketch).ToArray(); // Can learn anything
+                return moves.Where(z => !Legal.IsValidSketch(z, pk.Format)).ToArray(); // Can learn anything
 
             // Roughly determine the generation the PKM is originating from
+            var ver = pk.Version;
             int origin = pk.Generation;
             if (origin < 0)
-                origin = ((GameVersion)pk.Version).GetGeneration();
+                origin = ((GameVersion)ver).GetGeneration();
 
-            var gens = VerifyCurrentMoves.GetGenMovesCheckOrder(pk, origin);
+            // Temporarily replace the Version for VC1 transfers, so that they can have VC2 moves if needed.
+            bool vcBump = origin == 1 && pk.Format >= 7;
+            if (vcBump)
+                pk.Version = (int)GameVersion.C;
+
+            var gens = GenerationTraversal.GetVisitedGenerationOrder(pk, origin);
             var canlearn = gens.SelectMany(z => GetMovesForGeneration(pk, chain, z));
-            return moves.Except(canlearn).Where(z => z != 0).ToArray();
+            if (origin is (1 or 2)) // gb initial moves
+            {
+                var max = origin == 1 ? Legal.MaxSpeciesID_1 : Legal.MaxSpeciesID_2;
+                foreach (var evo in chain)
+                {
+                    var species = evo.Species;
+                    if (species > max)
+                        continue;
+                    var enc = MoveLevelUp.GetEncounterMoves(species, 0, 1, (GameVersion)ver);
+                    canlearn = canlearn.Concat(enc);
+                }
+            }
+            var result = moves.Where(z => z != 0).Except(canlearn).ToArray();
+
+            if (vcBump)
+                pk.Version = ver;
+
+            return result;
         }
 
         private static IEnumerable<int> GetMovesForGeneration(PKM pk, IReadOnlyList<EvoCriteria> chain, int generation)
         {
             IEnumerable<int> moves = MoveList.GetValidMoves(pk, chain, generation);
+            if (generation <= 2)
+                moves = moves.Concat(MoveList.GetValidMoves(pk, chain, generation, MoveSourceType.LevelUp));
             if (pk.Format >= 8)
             {
                 // Shared Egg Moves via daycare
                 // Any egg move can be obtained
-                var evo = chain[chain.Count - 1];
-                var shared = MoveEgg.GetEggMoves(8, evo.Species, evo.Form, GameVersion.SW);
-                if (shared.Length != 0)
-                    moves = moves.Concat(shared);
+                moves = moves.Concat(MoveEgg.GetSharedEggMoves(pk, generation));
+
+                // TR moves -- default logic checks the TR flags, so we need to add all possible ones here.
+                moves = moves.Concat(MoveTechnicalMachine.GetAllPossibleRecords(pk.Species, pk.Form));
             }
             if (pk.Species == (int)Species.Shedinja)
             {
@@ -189,15 +217,15 @@ namespace PKHeX.Core
             return moves;
         }
 
-        private static IEnumerable<IEncounterable> GetPossibleOfType(PKM pk, IReadOnlyCollection<int> needs, GameVersion version, EncounterOrder type, IReadOnlyList<EvoCriteria> chain)
+        private static IEnumerable<IEncounterable> GetPossibleOfType(PKM pk, IReadOnlyList<int> needs, GameVersion version, EncounterOrder type, IReadOnlyList<EvoCriteria> chain)
         {
             return type switch
             {
                 EncounterOrder.Egg => GetEggs(pk, needs, chain, version),
                 EncounterOrder.Mystery => GetGifts(pk, needs, chain),
-                EncounterOrder.Static => GetStatic(pk, needs, chain),
-                EncounterOrder.Trade => GetTrades(pk, needs, chain),
-                EncounterOrder.Slot => GetSlots(pk, needs, chain),
+                EncounterOrder.Static => GetStatic(pk, needs, chain, version),
+                EncounterOrder.Trade => GetTrades(pk, needs, chain, version),
+                EncounterOrder.Slot => GetSlots(pk, needs, chain, version),
                 _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
             };
         }
@@ -219,7 +247,7 @@ namespace PKHeX.Core
                 yield break;
             var eggs = gen == 2
                 ? EncounterEggGenerator2.GenerateEggs(pk, chain, all: true)
-                : EncounterEggGenerator.GenerateEggs(pk, chain, all: true);
+                : EncounterEggGenerator.GenerateEggs(pk, chain, gen, all: true);
             foreach (var egg in eggs)
             {
                 if (needs.Count == 0)
@@ -229,8 +257,11 @@ namespace PKHeX.Core
                 }
 
                 IEnumerable<int> em = MoveEgg.GetEggMoves(pk.PersonalInfo, egg.Species, egg.Form, egg.Version, egg.Generation);
-                if (Legal.LightBall.Contains(egg.Species) && needs.Contains((int)Move.VoltTackle))
+                if (egg.Generation <= 2)
+                    em = em.Concat(MoveLevelUp.GetEncounterMoves(egg.Species, 0, egg.Level, egg.Version));
+                else if (Legal.LightBall.Contains(egg.Species) && needs.Contains((int)Move.VoltTackle))
                     em = em.Concat(new[] { (int)Move.VoltTackle });
+
                 if (!needs.Except(em).Any())
                     yield return egg;
             }
@@ -245,10 +276,13 @@ namespace PKHeX.Core
         /// <returns>A consumable <see cref="IEncounterable"/> list of possible encounters.</returns>
         private static IEnumerable<MysteryGift> GetGifts(PKM pk, IReadOnlyCollection<int> needs, IReadOnlyList<EvoCriteria> chain)
         {
+            var format = pk.Format;
             var gifts = MysteryGiftGenerator.GetPossible(pk, chain);
             foreach (var gift in gifts)
             {
                 if (gift is WC3 {NotDistributed: true})
+                    continue;
+                if (!IsSane(chain, gift, format))
                     continue;
                 if (needs.Count == 0)
                 {
@@ -267,16 +301,15 @@ namespace PKHeX.Core
         /// <param name="pk">Rough Pokémon data which contains the requested species, gender, and form.</param>
         /// <param name="needs">Moves which cannot be taught by the player.</param>
         /// <param name="chain">Origin possible evolution chain</param>
+        /// <param name="version">Specific version to iterate for.</param>
         /// <returns>A consumable <see cref="IEncounterable"/> list of possible encounters.</returns>
-        private static IEnumerable<EncounterStatic> GetStatic(PKM pk, IReadOnlyCollection<int> needs, IReadOnlyList<EvoCriteria> chain)
+        private static IEnumerable<EncounterStatic> GetStatic(PKM pk, IReadOnlyCollection<int> needs, IReadOnlyList<EvoCriteria> chain, GameVersion version)
         {
-            var encounters = EncounterStaticGenerator.GetPossible(pk, chain);
-            int gen = pk.Generation;
-            if ((uint)gen <= 2)
-                encounters = encounters.Concat(EncounterStaticGenerator.GetPossibleGBGifts(pk, chain, gen == 2 ? GameVersion.C : GameVersion.RBY));
+            var format = pk.Format;
+            var encounters = EncounterStaticGenerator.GetPossible(pk, chain, version);
             foreach (var enc in encounters)
             {
-                if (enc.IsUnobtainable())
+                if (!IsSane(chain, enc, format))
                     continue;
                 if (needs.Count == 0)
                 {
@@ -288,14 +321,18 @@ namespace PKHeX.Core
                 IEnumerable<int> em = enc.Moves;
                 if (enc is IRelearn r)
                     em = em.Concat(r.Relearn);
+                if (enc.Generation <= 2)
+                    em = em.Concat(MoveLevelUp.GetEncounterMoves(enc.Species, 0, enc.Level, enc.Version));
+
                 if (!needs.Except(em).Any())
                     yield return enc;
             }
 
+            int gen = version.GetGeneration();
             if ((uint)gen >= 3)
                 yield break;
 
-            var gifts = EncounterStaticGenerator.GetPossibleGBGifts(pk, chain);
+            var gifts = EncounterStaticGenerator.GetPossibleGBGifts(chain, version);
             foreach (var enc in gifts)
             {
                 if (needs.Count == 0)
@@ -316,18 +353,24 @@ namespace PKHeX.Core
         /// <param name="pk">Rough Pokémon data which contains the requested species, gender, and form.</param>
         /// <param name="needs">Moves which cannot be taught by the player.</param>
         /// <param name="chain">Origin possible evolution chain</param>
+        /// <param name="version">Specific version to iterate for.</param>
         /// <returns>A consumable <see cref="IEncounterable"/> list of possible encounters.</returns>
-        private static IEnumerable<EncounterTrade> GetTrades(PKM pk, IReadOnlyCollection<int> needs, IReadOnlyList<EvoCriteria> chain)
+        private static IEnumerable<EncounterTrade> GetTrades(PKM pk, IReadOnlyCollection<int> needs, IReadOnlyList<EvoCriteria> chain, GameVersion version)
         {
-            var trades = EncounterTradeGenerator.GetPossible(pk, chain);
+            var format = pk.Format;
+            var trades = EncounterTradeGenerator.GetPossible(pk, chain, version);
             foreach (var trade in trades)
             {
+                if (!IsSane(chain, trade, format))
+                    continue;
                 if (needs.Count == 0)
                 {
                     yield return trade;
                     continue;
                 }
-                var em = trade.Moves;
+                IEnumerable<int> em = trade.Moves;
+                if (trade.Generation <= 2)
+                    em = em.Concat(MoveLevelUp.GetEncounterMoves(trade.Species, 0, trade.Level, trade.Version));
                 if (!needs.Except(em).Any())
                     yield return trade;
             }
@@ -339,13 +382,15 @@ namespace PKHeX.Core
         /// <param name="pk">Rough Pokémon data which contains the requested species, gender, and form.</param>
         /// <param name="needs">Moves which cannot be taught by the player.</param>
         /// <param name="chain">Origin possible evolution chain</param>
+        /// <param name="version">Origin version</param>
         /// <returns>A consumable <see cref="IEncounterable"/> list of possible encounters.</returns>
-        private static IEnumerable<EncounterSlot> GetSlots(PKM pk, IReadOnlyCollection<int> needs, IReadOnlyList<EvoCriteria> chain)
+        private static IEnumerable<EncounterSlot> GetSlots(PKM pk, IReadOnlyList<int> needs, IReadOnlyList<EvoCriteria> chain, GameVersion version)
         {
-            var slots = EncounterSlotGenerator.GetPossible(pk, chain);
+            var format = pk.Format;
+            var slots = EncounterSlotGenerator.GetPossible(pk, chain, version);
             foreach (var slot in slots)
             {
-                if (slot.IsUnobtainable(pk))
+                if (!IsSane(chain, slot, format))
                     continue;
 
                 if (needs.Count == 0)
@@ -354,42 +399,35 @@ namespace PKHeX.Core
                     continue;
                 }
 
-                if (slot is IMoveset m && needs.Except(m.Moves).Any())
+                if (slot is IMoveset m && !needs.Except(m.Moves).Any())
+                    yield return slot;
+                else if (needs.Count == 1 && slot is EncounterSlot6AO {CanDexNav: true} dn && dn.CanBeDexNavMove(needs[0]))
+                    yield return slot;
+                else if (slot.Generation <= 2 && !needs.Except(MoveLevelUp.GetEncounterMoves(slot.Species, 0, slot.LevelMin, slot.Version)).Any())
                     yield return slot;
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static bool IsUnobtainable(this EncounterSlot slot, ITrainerID pk)
+        private static bool IsSane(IReadOnlyList<EvoCriteria> chain, IEncounterTemplate enc, int format)
         {
-            switch (slot.Generation)
+            foreach (var evo in chain)
             {
-                case 2:
-                    if ((slot.Area.Type & SlotType.Headbutt) != 0) // Unreachable Headbutt Trees.
-                        return !Encounters2.IsTreeAvailable(slot, pk.TID);
-                    break;
-                case 4:
-                    if (slot.Location == 193 && slot.Area.Type == SlotType.Surf) // Johto Route 45 surfing encounter. Unreachable Water tiles.
-                        return true;
-                    break;
+                if (evo.Species != enc.Species)
+                    continue;
+                if (evo.Form == enc.Form)
+                    return true;
+                if (FormInfo.IsFormChangeable(enc.Species, enc.Form, evo.Form, enc.Generation))
+                    return true;
+                if (enc is EncounterSlot {IsRandomUnspecificForm: true})
+                    return true;
+                if (enc is EncounterStatic {IsRandomUnspecificForm: true})
+                    return true;
+                if (enc is EncounterStatic7 {IsTotem: true} && evo.Form == 0 && format > 7) // totems get form wiped
+                    return true;
+                break;
             }
-
             return false;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static bool IsUnobtainable(this EncounterStatic enc)
-        {
-            if (enc is not EncounterStatic4 s)
-                return false;
-
-            return s.Species switch
-            {
-                (int)Species.Darkrai when s.Version != GameVersion.Pt => true, // DP Darkrai
-                (int)Species.Shaymin when s.Version != GameVersion.Pt => true, // DP Shaymin
-                (int)Species.Arceus => true, // Azure Flute Arceus
-                _ => false
-            };
         }
     }
 }

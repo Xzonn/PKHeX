@@ -32,19 +32,19 @@ namespace PKHeX.Core
         {
             // Don't use the byte[] constructor, the DecryptIfEncrypted call is based on checksum.
             // An invalid checksum will shuffle the data; we already know it's un-shuffled. Set up manually.
-            var pk = new PK3 {Identifier = Identifier};
+            var pk = new PK3();
             Data.CopyTo(pk.Data, 0);
             return pk;
         }
 
-        private string GetString(int Offset, int Count) => StringConverter3.GetString3(Data, Offset, Count, Japanese);
+        private string GetString(int offset, int count) => StringConverter3.GetString3(Data, offset, count, Japanese);
         private byte[] SetString(string value, int maxLength) => StringConverter3.SetString3(value, maxLength, Japanese);
 
         private const string EggNameJapanese = "タマゴ";
 
         // Trash Bytes
-        public override byte[] Nickname_Trash { get => GetData(0x08, 10); set { if (value.Length == 10) value.CopyTo(Data, 0x08); } }
-        public override byte[] OT_Trash { get => GetData(0x14, 7); set { if (value.Length == 7) value.CopyTo(Data, 0x14); } }
+        public override Span<byte> Nickname_Trash { get => Data.AsSpan(0x08, 10); set { if (value.Length == 10) value.CopyTo(Data.AsSpan(0x08)); } }
+        public override Span<byte> OT_Trash { get => Data.AsSpan(0x14, 7); set { if (value.Length == 7) value.CopyTo(Data.AsSpan(0x14)); } }
 
         // At top for System.Reflection execution order hack
 
@@ -157,7 +157,7 @@ namespace PKHeX.Core
         public override int RibbonCountG3Cute        { get => (int)(RIB0 >> 06) & 7; set => RIB0 = ((RIB0 & ~(7u << 06)) | (uint)(value & 7) << 06); }
         public override int RibbonCountG3Smart       { get => (int)(RIB0 >> 09) & 7; set => RIB0 = ((RIB0 & ~(7u << 09)) | (uint)(value & 7) << 09); }
         public override int RibbonCountG3Tough       { get => (int)(RIB0 >> 12) & 7; set => RIB0 = ((RIB0 & ~(7u << 12)) | (uint)(value & 7) << 12); }
-        public override bool RibbonChampionG3Hoenn   { get => (RIB0 & (1 << 15)) == 1 << 15; set => RIB0 = ((RIB0 & ~(1u << 15)) | (value ? 1u << 15 : 0u)); }
+        public override bool RibbonChampionG3        { get => (RIB0 & (1 << 15)) == 1 << 15; set => RIB0 = ((RIB0 & ~(1u << 15)) | (value ? 1u << 15 : 0u)); }
         public override bool RibbonWinning           { get => (RIB0 & (1 << 16)) == 1 << 16; set => RIB0 = ((RIB0 & ~(1u << 16)) | (value ? 1u << 16 : 0u)); }
         public override bool RibbonVictory           { get => (RIB0 & (1 << 17)) == 1 << 17; set => RIB0 = ((RIB0 & ~(1u << 17)) | (value ? 1u << 17 : 0u)); }
         public override bool RibbonArtist            { get => (RIB0 & (1 << 18)) == 1 << 18; set => RIB0 = ((RIB0 & ~(1u << 18)) | (value ? 1u << 18 : 0u)); }
@@ -254,7 +254,7 @@ namespace PKHeX.Core
                 Met_Level = CurrentLevel,
                 Met_Location = Locations.Transfer3, // Pal Park
 
-                RibbonChampionG3Hoenn = RibbonChampionG3Hoenn,
+                RibbonChampionG3 = RibbonChampionG3,
                 RibbonWinning = RibbonWinning,
                 RibbonVictory = RibbonVictory,
                 RibbonArtist = RibbonArtist,

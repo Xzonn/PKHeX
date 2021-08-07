@@ -18,6 +18,7 @@ namespace PKHeX.WinForms
     {
         private readonly PKMEditor PKME_Tabs;
         private SaveFile SAV => PKME_Tabs.RequestSaveFile;
+        private readonly SummaryPreviewer ShowSet = new();
 
         public SAV_Encounters(PKMEditor f1)
         {
@@ -53,6 +54,8 @@ namespace PKHeX.WinForms
                         ClickView(sender, e);
                 };
                 slot.ContextMenuStrip = mnu;
+                if (Main.Settings.Hover.HoverSlotShowText)
+                    slot.MouseEnter += (o, args) => ShowHoverTextForSlot(slot, args);
             }
 
             Counter = L_Count.Text;
@@ -102,6 +105,14 @@ namespace PKHeX.WinForms
         private const int RES_MIN = 6;
         private readonly string Counter;
 
+        private bool GetShiftedIndex(ref int index)
+        {
+            if (index >= RES_MAX)
+                return false;
+            index += SCR_Box.Value * RES_MIN;
+            return index < Results.Count;
+        }
+
         // Important Events
         private void ClickView(object sender, EventArgs e)
         {
@@ -120,12 +131,35 @@ namespace PKHeX.WinForms
             }
 
             var enc = Results[index];
-            var pk = enc.ConvertToPKM(SAV);
+            var criteria = GetCriteria(enc, Main.Settings.EncounterDb);
+            var pk = enc.ConvertToPKM(SAV, criteria);
             pk.RefreshChecksum();
             PKME_Tabs.PopulateFields(pk, false);
             slotSelected = index;
             slotColor = SpriteUtil.Spriter.View;
             FillPKXBoxes(SCR_Box.Value);
+        }
+
+        private EncounterCriteria GetCriteria(ISpeciesForm enc, EncounterDatabaseSettings settings)
+        {
+            if (!settings.UseTabsAsCriteria)
+                return EncounterCriteria.Unrestricted;
+
+            var editor = PKME_Tabs.Data;
+            var tree = EvolutionTree.GetEvolutionTree(editor, editor.Format);
+            bool isInChain = tree.IsSpeciesDerivedFrom(editor.Species, editor.Form, enc.Species, enc.Form);
+
+            if (!settings.UseTabsAsCriteriaAnySpecies)
+            {
+                if (!isInChain)
+                    return EncounterCriteria.Unrestricted;
+            }
+
+            var set = new ShowdownSet(editor);
+            var criteria = EncounterCriteria.GetCriteria(set, editor.PersonalInfo);
+            if (!isInChain)
+                criteria = criteria with {Gender = -1}; // Genderless tabs and a gendered enc -> let's play safe.
+            return criteria;
         }
 
         private void PopulateComboBoxes()
@@ -179,25 +213,58 @@ namespace PKHeX.WinForms
             var moves = settings.Moves.ToArray();
 
             // If nothing is specified, instead of just returning all possible encounters, just return nothing.
-            if (settings.Species <= 0 && moves.Length == 0)
+            if (settings.Species <= 0 && moves.Length == 0 && Main.Settings.EncounterDb.ReturnNoneIfEmptySearch)
                 return Array.Empty<IEncounterInfo>();
             var pk = SAV.BlankPKM;
 
-            var species = settings.Species <= 0 ? Enumerable.Range(1, SAV.MaxSpeciesID) : new[] { settings.Species };
             var versions = settings.GetVersions(SAV);
-            var results = species.SelectMany(z => GetEncounters(z, moves, pk, versions));
+            var species = settings.Species <= 0 ? Enumerable.Range(1, SAV.MaxSpeciesID) : new[] { settings.Species };
+            var results = GetAllSpeciesFormEncounters(species, SAV.Personal, versions, moves, pk);
             if (settings.SearchEgg != null)
                 results = results.Where(z => z.EggEncounter == settings.SearchEgg);
+            if (settings.SearchShiny != null)
+                results = results.Where(z => z.IsShiny == settings.SearchShiny);
 
             // return filtered results
             var comparer = new ReferenceComparer<IEncounterInfo>();
             results = results.Distinct(comparer); // only distinct objects
 
-            // when all sprites in new size are available, remove this filter
-            results = SAV is SAV8SWSH
-                ? results.Where(z => ((PersonalInfoSWSH)PersonalTable.SWSH.GetFormEntry(z.Species, z.Form)).IsPresentInGame)
-                : results.Where(z => z.Generation <= 7);
+            if (Main.Settings.EncounterDb.FilterUnavailableSpecies)
+            {
+                results = SAV is SAV8SWSH
+                    ? results.Where(z => ((PersonalInfoSWSH)PersonalTable.SWSH.GetFormEntry(z.Species, z.Form)).IsPresentInGame)
+                    : results.Where(z => z.Generation <= 7);
+            }
+
+            if (RTB_Instructions.Lines.Any(line => line.Length > 0))
+            {
+                var filters = StringInstruction.GetFilters(RTB_Instructions.Lines).ToArray();
+                BatchEditing.ScreenStrings(filters);
+                results = results.Where(enc => BatchEditing.IsFilterMatch(filters, enc)); // Compare across all filters
+            }
+
             return results;
+        }
+
+        private static IEnumerable<IEncounterInfo> GetAllSpeciesFormEncounters(IEnumerable<int> species, PersonalTable pt, IReadOnlyList<GameVersion> versions, int[] moves, PKM pk)
+        {
+            foreach (var s in species)
+            {
+                var pi = pt.GetFormEntry(s, 0);
+                var fc = pi.FormCount;
+                if (fc == 0 && !Main.Settings.EncounterDb.FilterUnavailableSpecies) // not present in game
+                {
+                    // try again using past-gen table
+                    pi = PersonalTable.USUM.GetFormEntry(s, 0);
+                    fc = pi.FormCount;
+                }
+                for (int f = 0; f < fc; f++)
+                {
+                    var encs = GetEncounters(s, f, moves, pk, versions);
+                    foreach (var enc in encs)
+                        yield return enc;
+                }
+            }
         }
 
         private sealed class ReferenceComparer<T> : IEqualityComparer<T> where T : class
@@ -218,9 +285,11 @@ namespace PKHeX.WinForms
             }
         }
 
-        private static IEnumerable<IEncounterInfo> GetEncounters(int species, int[] moves, PKM pk, IReadOnlyList<GameVersion> vers)
+        private static IEnumerable<IEncounterInfo> GetEncounters(int species, int form, int[] moves, PKM pk, IReadOnlyList<GameVersion> vers)
         {
             pk.Species = species;
+            pk.Form = form;
+            pk.SetGender(pk.GetSaneGender());
             return EncounterMovesetGenerator.GenerateEncounters(pk, moves, vers);
         }
 
@@ -244,6 +313,9 @@ namespace PKHeX.WinForms
 
             if (CHK_IsEgg.CheckState != CheckState.Indeterminate)
                 settings.SearchEgg = CHK_IsEgg.CheckState == CheckState.Checked;
+
+            if (CHK_Shiny.CheckState != CheckState.Indeterminate)
+                settings.SearchShiny = CHK_Shiny.CheckState == CheckState.Checked;
 
             return settings;
         }
@@ -274,6 +346,7 @@ namespace PKHeX.WinForms
         private void SetResults(List<IEncounterInfo> res)
         {
             Results = res;
+            ShowSet.Clear();
 
             SCR_Box.Maximum = (int)Math.Ceiling((decimal)Results.Count / RES_MIN);
             if (SCR_Box.Maximum > 0) SCR_Box.Maximum--;
@@ -288,35 +361,53 @@ namespace PKHeX.WinForms
 
         private void FillPKXBoxes(int start)
         {
+            var boxes = PKXBOXES;
             if (Results.Count == 0)
             {
                 for (int i = 0; i < RES_MAX; i++)
                 {
-                    PKXBOXES[i].Image = null;
-                    PKXBOXES[i].BackgroundImage = null;
+                    boxes[i].Image = null;
+                    boxes[i].BackgroundImage = null;
                 }
                 return;
             }
+
+            // Load new sprites
             int begin = start*RES_MIN;
             int end = Math.Min(RES_MAX, Results.Count - begin);
             for (int i = 0; i < end; i++)
             {
                 var enc = Results[i + begin];
-                PKXBOXES[i].Image = SpriteUtil.GetSprite(enc.Species, enc.Form, 0, 0, 0, enc.EggEncounter, false, enc.Generation);
+                boxes[i].Image = GetImage(enc);
             }
+
+            // Clear empty slots
             for (int i = end; i < RES_MAX; i++)
-                PKXBOXES[i].Image = null;
+                boxes[i].Image = null;
 
+            // Reset backgrounds for all
             for (int i = 0; i < RES_MAX; i++)
-                PKXBOXES[i].BackgroundImage = SpriteUtil.Spriter.Transparent;
+                boxes[i].BackgroundImage = SpriteUtil.Spriter.Transparent;
+
+            // Reload last viewed index's background if still within view
             if (slotSelected != -1 && slotSelected >= begin && slotSelected < begin + RES_MAX)
-                PKXBOXES[slotSelected - begin].BackgroundImage = slotColor ?? SpriteUtil.Spriter.View;
+                boxes[slotSelected - begin].BackgroundImage = slotColor ?? SpriteUtil.Spriter.View;
         }
 
-        private void Menu_SearchAdvanced_Click(object sender, EventArgs e)
+        private static Image GetImage(IEncounterTemplate enc)
         {
-            // todo
+            var gender = GetDisplayGender(enc);
+            return SpriteUtil.GetSprite(enc.Species, enc.Form, gender, 0, 0, enc.EggEncounter, enc.IsShiny, enc.Generation);
         }
+
+        public static int GetDisplayGender(IEncounterTemplate enc) => enc switch
+        {
+            EncounterSlotGO g => (int) g.Gender & 1,
+            EncounterStatic s => Math.Max(0, s.Gender),
+            EncounterTrade t => Math.Max(0, t.Gender),
+            MysteryGift f => Math.Max(0, f.Gender),
+            _ => 0,
+        };
 
         private void Menu_Exit_Click(object sender, EventArgs e) => Close();
 
@@ -328,6 +419,16 @@ namespace PKHeX.WinForms
             int newval = oldval + (e.Delta < 0 ? 1 : -1);
             if (newval >= SCR_Box.Minimum && SCR_Box.Maximum >= newval)
                 FillPKXBoxes(SCR_Box.Value = newval);
+        }
+
+        private void ShowHoverTextForSlot(object sender, EventArgs e)
+        {
+            var pb = (PictureBox)sender;
+            int index = Array.IndexOf(PKXBOXES, pb);
+            if (!GetShiftedIndex(ref index))
+                return;
+
+            ShowSet.Show(pb, Results[index]);
         }
     }
 }

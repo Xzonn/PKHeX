@@ -167,10 +167,10 @@ namespace PKHeX.Core
             pk.SetMaximumPPCurrent(Moves);
         }
 
-        private void SetPINGA(PK3 pk, EncounterCriteria criteria)
+        private void SetPINGA(PK3 pk, EncounterCriteria _)
         {
             var seed = Util.Rand32();
-            seed = OT_Name == "MYSTRY" ? MystryMew.GetSeed((int)seed, Method) : GetSaneSeed(seed);
+            seed = TID == 06930 ? MystryMew.GetSeed(seed, Method) : GetSaneSeed(seed);
             PIDGenerator.SetValuesFromSeed(pk, Method, seed);
         }
 
@@ -199,7 +199,7 @@ namespace PKHeX.Core
 
         private static GameVersion GetRandomVersion(GameVersion version)
         {
-            if (version <= GameVersion.CXD && version > GameVersion.Unknown) // single game
+            if (version is <= GameVersion.CXD and > 0) // single game
                 return version;
 
             return version switch

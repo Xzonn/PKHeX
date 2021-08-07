@@ -18,6 +18,9 @@
         public const int LinkTrade5NPC = 30002;
         public const int LinkTrade6NPC = 30001;
 
+        public const int Breeder5 = 60003;
+        public const int Breeder6 = 60004;
+
         public const int PokeWalker4 = 233;
         public const int Ranger4 = 3001;
         public const int Faraway4 = 3002;
@@ -28,8 +31,8 @@
         /// <summary> Route 117 in <see cref="GameVersion.RSE"/> </summary>
         public const int HatchLocationRSE = 32;
 
-        /// <summary> Route 17 in <see cref="GameVersion.FRLG"/> </summary>
-        public const int HatchLocationFRLG = 117;
+        /// <summary> Four Island in <see cref="GameVersion.FRLG"/> </summary>
+        public const int HatchLocationFRLG = 146;
 
         /// <summary> Solaceon Town in <see cref="GameVersion.DPPt"/> </summary>
         public const int HatchLocationDPPt = 4;
@@ -79,6 +82,9 @@
         /// <summary> Generation 6 Gift from Pokémon Link </summary>
         public const int LinkGift6 = 30011;
 
+        /// <summary> Generation 7 Poké Pelago </summary>
+        public const int Pelago7 = 30016;
+
         /// <summary> Generation 7 Transfer from GO to Pokémon LGP/E's GO Park </summary>
         public const int GO7 = 50;
 
@@ -107,9 +113,10 @@
             _ => LinkTrade6
         };
 
-        public static bool IsPtHGSSLocation(int location) => 111 < location && location < 2000;
-        public static bool IsPtHGSSLocationEgg(int location) => 2010 < location && location < 3000;
-        public static bool IsEventLocation5(int location) => 40000 < location && location < 50000;
+        public static bool IsPtHGSSLocation(int location) => location is > 111 and < 2000;
+        public static bool IsPtHGSSLocationEgg(int location) => location is > 2010 and < 3000;
+        public static bool IsEventLocation4(int location) => location is >= 3000 and <= 3076;
+        public static bool IsEventLocation5(int location) => location is > 40000 and < 50000;
 
         private const int SafariLocation_RSE = 57;
         private const int SafariLocation_FRLG = 136;
@@ -117,5 +124,15 @@
         private const int MarshLocation_DPPt = 52;
         public static bool IsSafariZoneLocation3(int loc) => loc is SafariLocation_RSE or SafariLocation_FRLG;
         public static bool IsSafariZoneLocation4(int loc) => loc is MarshLocation_DPPt or SafariLocation_HGSS;
+
+        public static bool IsEggLocationBred4(int loc, GameVersion ver)
+        {
+            if (loc is Daycare4 or LinkTrade4)
+                return true;
+            return loc == Faraway4 && ver is GameVersion.Pt or GameVersion.HG or GameVersion.SS;
+        }
+
+        public static bool IsEggLocationBred5(int loc) => loc is Daycare5 or LinkTrade5;
+        public static bool IsEggLocationBred6(int loc) => loc is Daycare5 or LinkTrade6;
     }
 }

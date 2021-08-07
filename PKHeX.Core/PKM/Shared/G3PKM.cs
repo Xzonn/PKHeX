@@ -24,9 +24,6 @@
         public sealed override int PSV => (int)((PID >> 16 ^ (PID & 0xFFFF)) >> 3);
         public sealed override int TSV => (TID ^ SID) >> 3;
         public sealed override bool Japanese => Language == (int)LanguageID.Japanese;
-        public sealed override bool WasEvent => Met_Location == 255; // Fateful
-        public sealed override bool WasGiftEgg => IsEgg && Met_Location == 253; // Gift Egg, indistinguible from normal eggs after hatch
-        public sealed override bool WasEventEgg => IsEgg && Met_Location == 255; // Event Egg, indistinguible from normal eggs after hatch
 
         public sealed override int Ability { get => ((PersonalInfoG3)PersonalInfo).GetAbility(AbilityBit); set { } }
         public sealed override uint EncryptionConstant { get => PID; set { } }
@@ -53,7 +50,7 @@
         public abstract bool RibbonChampionBattle { get; set; }
         public abstract bool RibbonChampionRegional { get; set; }
         public abstract bool RibbonChampionNational { get; set; }
-        public abstract bool RibbonChampionG3Hoenn { get; set; }
+        public abstract bool RibbonChampionG3 { get; set; }
         public abstract bool RibbonArtist { get; set; }
         public abstract bool RibbonEffort { get; set; }
         public abstract bool RibbonWinning { get; set; }
@@ -167,7 +164,7 @@
                 RibbonCountG3Cute = RibbonCountG3Cute,
                 RibbonCountG3Smart = RibbonCountG3Smart,
                 RibbonCountG3Tough = RibbonCountG3Tough,
-                RibbonChampionG3Hoenn = RibbonChampionG3Hoenn,
+                RibbonChampionG3 = RibbonChampionG3,
                 RibbonWinning = RibbonWinning,
                 RibbonVictory = RibbonVictory,
                 RibbonArtist = RibbonArtist,

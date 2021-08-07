@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Linq;
 using static PKHeX.Core.LegalityAnalyzers;
 using static PKHeX.Core.LegalityCheckStrings;
-using static PKHeX.Core.ParseSettings;
 
 namespace PKHeX.Core
 {
@@ -14,9 +13,14 @@ namespace PKHeX.Core
     /// </summary>
     public sealed class LegalityAnalysis
     {
+        /// <summary> The entity we are checking. </summary>
         internal readonly PKM pkm;
+
+        /// <summary> The entity's <see cref="PersonalInfo"/>, which may have been sourced from the Save File it resides on. </summary>
+        /// <remarks>We store this rather than re-fetching, as some games that use the same <see cref="PKM"/> format have different values.</remarks>
         internal readonly PersonalInfo PersonalInfo;
-        private readonly List<CheckResult> Parse = new();
+
+        private readonly List<CheckResult> Parse = new(8);
 
         /// <summary>
         /// Parse result list allowing view of the legality parse.
@@ -42,6 +46,8 @@ namespace PKHeX.Core
         /// </remarks>
         public IEncounterable EncounterOriginal => Info.EncounterOriginal;
 
+        public readonly SlotOrigin SlotOrigin;
+
         /// <summary>
         /// Indicates if all checks ran to completion.
         /// </summary>
@@ -59,78 +65,50 @@ namespace PKHeX.Core
         public readonly LegalInfo Info;
 
         /// <summary>
-        /// Creates a report message with optional verbosity for in-depth analysis.
-        /// </summary>
-        /// <param name="verbose">Include all details in the parse, including valid check messages.</param>
-        /// <returns>Single line string</returns>
-        public string Report(bool verbose = false) => verbose ? GetVerboseLegalityReport() : GetLegalityReport();
-
-        private string EncounterName
-        {
-            get
-            {
-                var enc = EncounterOriginal;
-                var str = SpeciesStrings;
-                var name = (uint) enc.Species < str.Count ? str[enc.Species] : enc.Species.ToString();
-                return $"{enc.LongName} ({name})";
-            }
-        }
-
-        private string? EncounterLocation
-        {
-            get
-            {
-                var enc = EncounterOriginal as ILocation;
-                return enc?.GetEncounterLocation(Info.Generation, pkm.Version);
-            }
-        }
-
-        /// <summary>
         /// Checks the input <see cref="PKM"/> data for legality. This is the best method for checking with context, as some games do not have all Alternate Form data available.
         /// </summary>
         /// <param name="pk">Input data to check</param>
         /// <param name="table"><see cref="SaveFile"/> specific personal data</param>
-        public LegalityAnalysis(PKM pk, PersonalTable table) : this(pk, table.GetFormEntry(pk.Species, pk.Form)) { }
+        /// <param name="source">Details about where the <see cref="pk"/> originated from.</param>
+        public LegalityAnalysis(PKM pk, PersonalTable table, SlotOrigin source = SlotOrigin.Party) : this(pk, table.GetFormEntry(pk.Species, pk.Form), source) { }
 
         /// <summary>
         /// Checks the input <see cref="PKM"/> data for legality.
         /// </summary>
         /// <param name="pk">Input data to check</param>
-        public LegalityAnalysis(PKM pk) : this(pk, pk.PersonalInfo) { }
+        /// <param name="source">Details about where the <see cref="pk"/> originated from.</param>
+        public LegalityAnalysis(PKM pk, SlotOrigin source = SlotOrigin.Party) : this(pk, pk.PersonalInfo, source) { }
 
         /// <summary>
         /// Checks the input <see cref="PKM"/> data for legality.
         /// </summary>
         /// <param name="pk">Input data to check</param>
         /// <param name="pi">Personal info to parse with</param>
-        public LegalityAnalysis(PKM pk, PersonalInfo pi)
+        /// <param name="source">Details about where the <see cref="pk"/> originated from.</param>
+        public LegalityAnalysis(PKM pk, PersonalInfo pi, SlotOrigin source = SlotOrigin.Party)
         {
             pkm = pk;
             PersonalInfo = pi;
+            SlotOrigin = source;
 
             if (pkm.Format <= 2) // prior to storing GameVersion
                 pkm.TradebackStatus = GBRestrictions.GetTradebackStatusInitial(pkm);
 
+            Info = new LegalInfo(pkm, Parse);
 #if SUPPRESS
             try
 #endif
             {
-                Info = EncounterFinder.FindVerifiedEncounter(pkm);
+                EncounterFinder.FindVerifiedEncounter(pkm, Info);
                 if (!pkm.IsOriginValid)
                     AddLine(Severity.Invalid, LEncConditionBadSpecies, CheckIdentifier.GameOrigin);
                 GetParseMethod()();
-
-                if (Parse.Count == 0) // shouldn't ever happen as at least one is yielded above.
-                {
-                    AddLine(Severity.Invalid, L_AError, CheckIdentifier.Misc);
-                    return;
-                }
 
                 Valid = Parse.All(chk => chk.Valid)
                     && Info.Moves.All(m => m.Valid)
                     && Info.Relearn.All(m => m.Valid);
 
-                if (!Valid && pkm.FatefulEncounter && Info.Relearn.Any(chk => !chk.Valid) && EncounterMatch is EncounterInvalid)
+                if (!Valid && IsPotentiallyMysteryGift(Info, pkm))
                     AddLine(Severity.Indeterminate, LFatefulGiftMissing, CheckIdentifier.Fateful);
                 Parsed = true;
             }
@@ -141,11 +119,37 @@ namespace PKHeX.Core
 #pragma warning restore CA1031 // Do not catch general exception types
             {
                 System.Diagnostics.Debug.WriteLine(e.Message);
-                Info = new LegalInfo(pkm);
                 Valid = false;
+
+                var moves = Info.Moves;
+                // Moves and Relearn arrays can potentially be empty on error.
+                // ReSharper disable once ConstantNullCoalescingCondition
+                for (int i = 0; i < moves.Length; i++)
+                    moves[i] ??= new CheckMoveResult(MoveSource.None, pkm.Format, Severity.Indeterminate, L_AError, CheckIdentifier.CurrentMove);
+
+                var relearn = Info.Relearn;
+                // ReSharper disable once ConstantNullCoalescingCondition
+                for (int i = 0; i < relearn.Length; i++)
+                    relearn[i] ??= new CheckResult(Severity.Indeterminate, L_AError, CheckIdentifier.RelearnMove);
+
                 AddLine(Severity.Invalid, L_AError, CheckIdentifier.Misc);
             }
 #endif
+        }
+
+        private static bool IsPotentiallyMysteryGift(LegalInfo info, PKM pk)
+        {
+            if (info.EncounterOriginal is not EncounterInvalid enc)
+                return false;
+            if (enc.Generation <= 3)
+                return true;
+            if (!pk.FatefulEncounter)
+                return false;
+            if (enc.Generation < 6)
+                return true;
+            if (info.Relearn.Any(chk => !chk.Valid))
+                return true;
+            return false;
         }
 
         private Action GetParseMethod()
@@ -175,7 +179,6 @@ namespace PKHeX.Core
 
         private void ParsePK1()
         {
-            UpdateInfo();
             if (pkm.TradebackStatus == TradebackType.Any && Info.Generation != pkm.Format)
                 pkm.TradebackStatus = TradebackType.WasTradeback; // Example: GSC Pokemon with only possible encounters in RBY, like the legendary birds
 
@@ -190,7 +193,6 @@ namespace PKHeX.Core
 
         private void ParsePK3()
         {
-            UpdateInfo();
             UpdateChecks();
             if (pkm.Format > 3)
                 Transfer.VerifyTransferLegalityG3(this);
@@ -207,7 +209,6 @@ namespace PKHeX.Core
 
         private void ParsePK4()
         {
-            UpdateInfo();
             UpdateChecks();
             if (pkm.Format > 4)
                 Transfer.VerifyTransferLegalityG4(this);
@@ -217,7 +218,6 @@ namespace PKHeX.Core
 
         private void ParsePK5()
         {
-            UpdateInfo();
             UpdateChecks();
             NHarmonia.Verify(this);
             if (pkm.Format >= 8)
@@ -226,7 +226,6 @@ namespace PKHeX.Core
 
         private void ParsePK6()
         {
-            UpdateInfo();
             UpdateChecks();
             if (pkm.Format >= 8)
                 Transfer.VerifyTransferLegalityG8(this);
@@ -234,7 +233,6 @@ namespace PKHeX.Core
 
         private void ParsePK7()
         {
-            UpdateInfo();
             if (pkm.VC)
                 UpdateVCTransferInfo();
             UpdateChecks();
@@ -244,7 +242,6 @@ namespace PKHeX.Core
 
         private void ParsePK8()
         {
-            UpdateInfo();
             UpdateChecks();
             Transfer.VerifyTransferLegalityG8(this);
         }
@@ -268,18 +265,13 @@ namespace PKHeX.Core
             var enc = (Info.EncounterOriginalGB = EncounterMatch);
             if (enc is EncounterInvalid)
                 return;
-            var vc = EncounterStaticGenerator.GetVCStaticTransferEncounter(pkm, enc);
+            var vc = EncounterStaticGenerator.GetVCStaticTransferEncounter(pkm, enc, Info.EvoChainsAllGens[7]);
             Info.EncounterMatch = vc;
 
             foreach (var z in Transfer.VerifyVCEncounter(pkm, enc, vc, Info.Moves))
                 AddLine(z);
 
             Transfer.VerifyTransferLegalityG12(this);
-        }
-
-        private void UpdateInfo()
-        {
-            Parse.AddRange(Info.Parse);
         }
 
         private void UpdateChecks()
@@ -301,15 +293,15 @@ namespace PKHeX.Core
             Contest.Verify(this);
 
             var format = pkm.Format;
-            if (format is 4 or 5)
-                Gen4EncounterType.Verify(this); // Gen 6->7 transfer deletes encounter type data
+            if (format is 4 or 5 or 6) // Gen 6->7 transfer removes this property.
+                Gen4GroundTile.Verify(this);
 
             if (format < 6)
                 return;
 
             History.Verify(this);
-            if (format < 8)
-                ConsoleRegion.Verify(this); // Gen 7->8 transfer deletes geolocation tracking data
+            if (format < 8) // Gen 7->8 transfer removes these properties.
+                ConsoleRegion.Verify(this);
 
             if (pkm is ITrainerMemories)
                 Memory.Verify(this);
@@ -326,103 +318,6 @@ namespace PKHeX.Core
                 return;
 
             Mark.Verify(this);
-        }
-
-        private string GetLegalityReport()
-        {
-            if (Valid)
-                return L_ALegal;
-            if (!Parsed)
-                return L_AnalysisUnavailable;
-
-            var lines = new List<string>();
-            var vMoves = Info.Moves;
-            var vRelearn = Info.Relearn;
-            for (int i = 0; i < 4; i++)
-            {
-                if (!vMoves[i].Valid)
-                    lines.Add(vMoves[i].Format(L_F0_M_1_2, i + 1));
-            }
-
-            if (pkm.Format >= 6)
-            {
-                for (int i = 0; i < 4; i++)
-                {
-                    if (!vRelearn[i].Valid)
-                        lines.Add(vRelearn[i].Format(L_F0_RM_1_2, i + 1));
-                }
-            }
-
-            // Build result string...
-            var outputLines = Parse.Where(chk => !chk.Valid);
-            lines.AddRange(outputLines.Select(chk => chk.Format(L_F0_1)));
-
-            return string.Join(Environment.NewLine, lines);
-        }
-
-        private string GetVerboseLegalityReport()
-        {
-            if (!Parsed)
-                return L_AnalysisUnavailable;
-
-            const string separator = "===";
-            string[] br = {separator, string.Empty};
-            var lines = new List<string> {br[1]};
-            lines.AddRange(br);
-            int rl = lines.Count;
-
-            var vMoves = Info.Moves;
-            var vRelearn = Info.Relearn;
-            for (int i = 0; i < 4; i++)
-            {
-                var move = vMoves[i];
-                if (!move.Valid)
-                    continue;
-                var msg = move.Format(L_F0_M_1_2, i + 1);
-                if (pkm.Format != move.Generation)
-                    msg += $" [Gen{move.Generation}]";
-                lines.Add(msg);
-            }
-
-            if (pkm.Format >= 6)
-            {
-                for (int i = 0; i < 4; i++)
-                {
-                    if (vRelearn[i].Valid)
-                        lines.Add(vRelearn[i].Format(L_F0_RM_1_2, i + 1));
-                }
-            }
-
-            if (rl != lines.Count) // move info added, break for next section
-                lines.Add(br[1]);
-
-            var outputLines = Parse.Where(chk => chk?.Valid == true && chk.Comment != L_AValid).OrderBy(chk => chk.Judgement); // Fishy sorted to top
-            lines.AddRange(outputLines.Select(chk => chk.Format(L_F0_1)));
-
-            lines.AddRange(br);
-            lines.Add(string.Format(L_FEncounterType_0, EncounterName));
-            var loc = EncounterLocation;
-            if (!string.IsNullOrEmpty(loc))
-                lines.Add(string.Format(L_F0_1, "Location", loc));
-            if (Info.Generation <= 2)
-                lines.Add(string.Format(L_F0_1, nameof(GameVersion), Info.Game));
-
-            if (!Info.PIDParsed)
-                Info.PIDIV = MethodFinder.Analyze(pkm);
-
-            var pidiv = Info.PIDIV;
-            {
-                if (!pidiv.NoSeed)
-                    lines.Add(string.Format(L_FOriginSeed_0, pidiv.OriginSeed.ToString("X8")));
-                lines.Add(string.Format(L_FPIDType_0, pidiv.Type));
-            }
-            if (!Valid && Info.InvalidMatches != null)
-            {
-                lines.Add("Other match(es):");
-                lines.AddRange(Info.InvalidMatches.Select(z => $"{z.Encounter.LongName}: {z.Reason}"));
-            }
-
-            return GetLegalityReport() + string.Join(Environment.NewLine, lines);
         }
     }
 }

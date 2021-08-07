@@ -1,5 +1,8 @@
 ﻿namespace PKHeX.Core
 {
+    /// <summary>
+    /// Collection of analyzers that are used for parsing secondary details.
+    /// </summary>
     internal static class LegalityAnalyzers
     {
         public static readonly LanguageVerifier LanguageIndex = new();
@@ -13,7 +16,7 @@
         public static readonly MedalVerifier Medal = new();
         public static readonly RibbonVerifier Ribbon = new();
         public static readonly ItemVerifier Item = new();
-        public static readonly EncounterTypeVerifier Gen4EncounterType = new();
+        public static readonly GroundTileVerifier Gen4GroundTile = new();
         public static readonly HyperTrainingVerifier HyperTraining = new();
         public static readonly GenderVerifier GenderValues = new();
         public static readonly PIDVerifier PIDEC = new();

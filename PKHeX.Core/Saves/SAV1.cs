@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace PKHeX.Core
 {
@@ -20,18 +19,18 @@ namespace PKHeX.Core
         public override PersonalTable Personal { get; }
         public override IReadOnlyList<ushort> HeldItems => Array.Empty<ushort>();
 
-        public override IReadOnlyList<string> PKMExtensions => PKM.Extensions.Where(f =>
+        public override IReadOnlyList<string> PKMExtensions => Array.FindAll(PKM.Extensions, f =>
         {
-            int gen = f.Last() - 0x30;
+            int gen = f[^1] - 0x30;
             return gen is 1 or 2;
-        }).ToArray();
+        });
 
         public SAV1(GameVersion version = GameVersion.RBY, bool japanese = false) : base(SaveUtil.SIZE_G1RAW)
         {
             Version = version;
             Japanese = japanese;
             Offsets = Japanese ? SAV1Offsets.JPN : SAV1Offsets.INT;
-            Personal = version == GameVersion.Y ? PersonalTable.Y : PersonalTable.RB;
+            Personal = version == GameVersion.YW ? PersonalTable.Y : PersonalTable.RB;
             Initialize(version);
             ClearBoxes();
         }
@@ -42,7 +41,7 @@ namespace PKHeX.Core
             Offsets = Japanese ? SAV1Offsets.JPN : SAV1Offsets.INT;
 
             Version = versionOverride != GameVersion.Any ? versionOverride : SaveUtil.GetIsG1SAV(data);
-            Personal = Version == GameVersion.Y ? PersonalTable.Y : PersonalTable.RB;
+            Personal = Version == GameVersion.YW ? PersonalTable.Y : PersonalTable.RB;
             if (Version == GameVersion.Invalid)
                 return;
 
@@ -163,7 +162,7 @@ namespace PKHeX.Core
             // Daycare is read-only, but in case it ever becomes editable, copy it back in.
             byte[] rawDC = GetData(GetDaycareSlotOffset(loc: 0, slot: 0), SIZE_STORED);
             byte[] dc = new byte[1 + (2 * StringLength) + PokeCrypto.SIZE_1STORED];
-            dc[0] = IsDaycareOccupied(0, 0) == true ? 1 : 0;
+            dc[0] = IsDaycareOccupied(0, 0) == true ? (byte)1 : (byte)0;
             Array.Copy(rawDC, 2 + 1 + PokeCrypto.SIZE_1PARTY + StringLength, dc, 1, StringLength);
             Array.Copy(rawDC, 2 + 1 + PokeCrypto.SIZE_1PARTY, dc, 1 + StringLength, StringLength);
             Array.Copy(rawDC, 2 + 1, dc, 1 + (2 * StringLength), PokeCrypto.SIZE_1STORED);
@@ -175,11 +174,11 @@ namespace PKHeX.Core
             return outData;
         }
 
-        private int GetBoxRawDataOffset(int i)
+        private int GetBoxRawDataOffset(int box)
         {
-            if (i < BoxCount / 2)
-                return 0x4000 + (i * SIZE_STOREDBOX);
-            return 0x6000 + ((i - (BoxCount / 2)) * SIZE_STOREDBOX);
+            if (box < BoxCount / 2)
+                return 0x4000 + (box * SIZE_STOREDBOX);
+            return 0x6000 + ((box - (BoxCount / 2)) * SIZE_STOREDBOX);
         }
 
         // Configuration
@@ -213,7 +212,7 @@ namespace PKHeX.Core
         public override int BoxSlotCount => Japanese ? 30 : 20;
 
         public override bool HasParty => true;
-        private int StringLength => Japanese ? GBPKML.STRLEN_J : GBPKML.STRLEN_U;
+        private int StringLength => Japanese ? GBPKML.StringLengthJapanese : GBPKML.StringLengthNotJapan;
 
         public override bool IsPKMPresent(byte[] data, int offset) => PKX.IsPKMPresentGB(data, offset);
 
@@ -240,7 +239,7 @@ namespace PKHeX.Core
             set => SetString(value, OTLength).CopyTo(Data, Offsets.OT);
         }
 
-        public byte[] OT_Trash { get => GetData(Offsets.OT, StringLength); set { if (value.Length == StringLength) SetData(value, Offsets.OT); } }
+        public Span<byte> OT_Trash { get => Data.AsSpan(Offsets.OT, StringLength); set { if (value.Length == StringLength) value.CopyTo(Data.AsSpan(Offsets.OT)); } }
 
         public override int Gender
         {
@@ -267,8 +266,8 @@ namespace PKHeX.Core
 
         public int PikaBeachScore
         {
-            get => BigEndian.BCDToInt32_LE(Data, Offsets.PikaBeachScore, 2);
-            set => SetData(BigEndian.Int32ToBCD_LE(Math.Min(9999, value), 2), Offsets.PikaBeachScore);
+            get => BinaryCodedDecimal.ToInt32LE(Data, Offsets.PikaBeachScore, 2);
+            set => BinaryCodedDecimal.WriteBytesLE(Data.AsSpan(Offsets.PikaBeachScore, 2), Math.Min(9999, value));
         }
 
         public override string PlayTimeString => !PlayedMaximum ? base.PlayTimeString : $"{base.PlayTimeString} {Checksums.CRC16_CCITT(Data):X4}";
@@ -291,7 +290,7 @@ namespace PKHeX.Core
         public bool PlayedMaximum
         {
             get => Data[Offsets.PlayTime + 1] != 0;
-            set => Data[Offsets.PlayTime + 1] = value ? 1 : 0;
+            set => Data[Offsets.PlayTime + 1] = value ? (byte)1 : (byte)0;
         }
 
         public override int PlayedMinutes
@@ -353,21 +352,21 @@ namespace PKHeX.Core
 
         public override uint Money
         {
-            get => (uint)BigEndian.BCDToInt32(Data, Offsets.Money, 3);
+            get => (uint)BinaryCodedDecimal.ToInt32BE(Data, Offsets.Money, 3);
             set
             {
                 value = (uint)Math.Min(value, MaxMoney);
-                BigEndian.Int32ToBCD((int)value, 3).CopyTo(Data, Offsets.Money);
+                BinaryCodedDecimal.WriteBytesBE(Data.AsSpan(Offsets.Money, 3), (int)value);
             }
         }
 
         public uint Coin
         {
-            get => (uint)BigEndian.BCDToInt32(Data, Offsets.Coin, 2);
+            get => (uint)BinaryCodedDecimal.ToInt32BE(Data, Offsets.Coin, 2);
             set
             {
                 value = (ushort)Math.Min(value, MaxCoins);
-                BigEndian.Int32ToBCD((int)value, 2).CopyTo(Data, Offsets.Coin);
+                BinaryCodedDecimal.WriteBytesBE(Data.AsSpan(Offsets.Coin, 2), (int)value);
             }
         }
 
@@ -544,7 +543,7 @@ namespace PKHeX.Core
         {
             if (PadToSize == 0)
                 PadToSize = maxLength + 1;
-            return StringConverter12.SetString1(value, maxLength, Japanese, PadToSize, PadWith);
+            return StringConverter12.SetString1(value, maxLength, Japanese, PadToSize, (byte)PadWith);
         }
     }
 }

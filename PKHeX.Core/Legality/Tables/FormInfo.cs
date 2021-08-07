@@ -201,15 +201,21 @@ namespace PKHeX.Core
         }
 
         /// <summary>
-        /// Chhecks if the <see cref="form"/> for the <see cref="species"/> is a Totem form.
+        /// Checks if the <see cref="form"/> for the <see cref="species"/> is a Totem form.
         /// </summary>
         /// <param name="species">Entity species</param>
         /// <param name="form">Entity form</param>
         /// <param name="format">Current generation format</param>
-        public static bool IsTotemForm(int species, int form, int format)
+        public static bool IsTotemForm(int species, int form, int format) => format == 7 && IsTotemForm(species, form);
+
+        /// <summary>
+        /// Checks if the <see cref="form"/> for the <see cref="species"/> is a Totem form.
+        /// </summary>
+        /// <remarks>Use <see cref="IsTotemForm(int,int,int)"/> if you aren't 100% sure the format is 7.</remarks>
+        /// <param name="species">Entity species</param>
+        /// <param name="form">Entity form</param>
+        public static bool IsTotemForm(int species, int form)
         {
-            if (format != 7)
-                return false;
             if (form == 0)
                 return false;
             if (!Legal.Totem_USUM.Contains(species))
@@ -257,7 +263,7 @@ namespace PKHeX.Core
         /// <param name="pi">Game specific personal info</param>
         /// <param name="species"><see cref="Species"/> ID</param>
         /// <param name="format"><see cref="PKM.Form"/> ID</param>
-        /// <returns>True if has formes that can be provided by <see cref="FormConverter.GetFormList"/>, otherwise false for none.</returns>
+        /// <returns>True if has forms that can be provided by <see cref="FormConverter.GetFormList"/>, otherwise false for none.</returns>
         public static bool HasFormSelection(PersonalInfo pi, int species, int format)
         {
             if (format <= 3 && species != (int)Unown)
@@ -276,7 +282,7 @@ namespace PKHeX.Core
         private static readonly HashSet<int> HasFormValuesNotIndicatedByPersonal = new()
         {
             (int)Unown,
-            (int)Mothim, // (Burmy forme carried over, not cleared)
+            (int)Mothim, // (Burmy form is not cleared on evolution)
             (int)Scatterbug, (int)Spewpa, // Vivillon pre-evos
         };
     }

@@ -17,7 +17,8 @@ namespace PKHeX.Core
             var pkm = data.pkm;
 
             // If the Pokémon is not nicknamed, it should match one of the language strings.
-            if (pkm.Nickname.Length == 0)
+            var nickname = pkm.Nickname;
+            if (nickname.Length == 0)
             {
                 data.AddLine(GetInvalid(LNickLengthShort));
                 return;
@@ -29,10 +30,16 @@ namespace PKHeX.Core
             }
 
             var enc = data.EncounterOriginal;
+            if (enc is ILangNicknamedTemplate n)
+            {
+                VerifyFixedNicknameEncounter(data, n, enc, pkm, nickname);
+                return;
+            }
+
             if (pkm.Format <= 7 && pkm.IsNicknamed) // can nickname afterwards
             {
                 if (pkm.VC)
-                    VerifyG1NicknameWithinBounds(data, pkm.Nickname);
+                    VerifyG1NicknameWithinBounds(data, nickname.AsSpan());
                 else if (enc is MysteryGift {IsEgg: false})
                     data.AddLine(Get(LEncGiftNicknamed, ParseSettings.NicknamedMysteryGift));
             }
@@ -50,7 +57,6 @@ namespace PKHeX.Core
                 return;
             }
 
-            string nickname = pkm.Nickname.Replace('\'', '’');
             if (VerifyUnNicknamedEncounter(data, pkm, nickname))
                 return;
 
@@ -64,16 +70,86 @@ namespace PKHeX.Core
             }
         }
 
+        private void VerifyFixedNicknameEncounter(LegalityAnalysis data, ILangNicknamedTemplate n, IEncounterTemplate enc, PKM pkm, string nickname)
+        {
+            var nick = n.GetNickname(pkm.Language);
+
+            if (string.IsNullOrWhiteSpace(nick))
+            {
+                if (n is WC8 {IsHOMEGift: true})
+                {
+                    VerifyHomeGiftNickname(data, enc, pkm, nickname);
+                    return;
+                }
+
+                if (n.CanHandleOT(pkm.Language))
+                    return;
+
+                if (pkm.IsNicknamed)
+                    data.AddLine(Get(LEncGiftNicknamed, Severity.Invalid));
+                return;
+            }
+
+            if (!pkm.IsNicknamed)
+            {
+                // Check if it had a nickname at all
+                var orig = SpeciesName.GetSpeciesNameGeneration(enc.Species, pkm.Language, enc.Generation);
+                if (orig == nick)
+                {
+                    // Didn't have a nickname. Ensure that the language matches the current nickname string.
+                    if (!SpeciesName.IsNicknamed(pkm.Species, nickname, pkm.Language, pkm.Format))
+                        return;
+                }
+
+                // Should have a nickname present.
+                data.AddLine(GetInvalid(LNickMatchLanguageFail));
+                return;
+            }
+
+            // Encounter has a nickname, and PKM should have it.
+            var severity = nick != nickname || !pkm.IsNicknamed ? Severity.Invalid : Severity.Valid;
+            data.AddLine(Get(LEncGiftNicknamed, severity));
+        }
+
+        private void VerifyHomeGiftNickname(LegalityAnalysis data, IEncounterTemplate enc, ILangNick pkm, string nickname)
+        {
+            // can nickname on redemption
+            if (!pkm.IsNicknamed)
+                return;
+
+            // Can't nickname everything.
+            if (enc.Species == (int) Species.Melmetal)
+            {
+                data.AddLine(GetInvalid(LEncGiftNicknamed));
+                return;
+            }
+
+            // Ensure the nickname does not match species name
+            var orig = SpeciesName.GetSpeciesNameGeneration(enc.Species, pkm.Language, enc.Generation);
+            if (nickname == orig)
+                data.AddLine(GetInvalid(LNickMatchLanguageFlag));
+        }
+
         private bool VerifyUnNicknamedEncounter(LegalityAnalysis data, PKM pkm, string nickname)
         {
             if (pkm.IsNicknamed)
             {
-                for (int i = 0; i < SpeciesName.SpeciesLang.Count; i++)
+                if (data.Info.Generation >= 8)
                 {
-                    if (!SpeciesName.SpeciesDict[i].TryGetValue(nickname, out int index))
+                    // Can only nickname if it matches your language.
+                    // Setting the nickname to the same as the species name does not set the Nickname flag (equals unmodified, no flag)
+                    if (!SpeciesName.IsNicknamed(pkm.Species, nickname, pkm.Language, pkm.Format))
+                    {
+                        data.AddLine(Get(LNickMatchLanguageFlag, Severity.Invalid));
+                        return true;
+                    }
+                }
+                for (int i = 0; i < SpeciesName.SpeciesDict.Count; i++)
+                {
+                    if (!SpeciesName.SpeciesDict[i].TryGetValue(nickname, out int species))
                         continue;
-                    var msg = index == pkm.Species && i != pkm.Language ? LNickMatchNoOthersFail : LNickMatchLanguageFlag;
-                    data.AddLine(Get(msg, Severity.Fishy));
+                    var msg = species == pkm.Species && i != pkm.Language ? LNickMatchNoOthersFail : LNickMatchLanguageFlag;
+                    data.AddLine(Get(msg, ParseSettings.NicknamedAnotherSpecies));
                     return true;
                 }
                 if (pkm.Format <= 7 && StringConverter.HasEastAsianScriptCharacters(nickname) && pkm is not PB7) // East Asian Scripts
@@ -106,7 +182,7 @@ namespace PKHeX.Core
             return false;
         }
 
-        private static bool IsNicknameValid(PKM pkm, IEncounterable enc, string nickname)
+        private static bool IsNicknameValid(PKM pkm, IEncounterTemplate enc, string nickname)
         {
             int species = pkm.Species;
             int format = pkm.Format;
@@ -118,7 +194,7 @@ namespace PKHeX.Core
             // Starting in Generation 8, hatched language-traded eggs will take the Language from the trainer that hatched it.
             // Also in Generation 8, evolving in a foreign language game will retain the original language as the source for the newly evolved species name.
             // Transferring from Gen7->Gen8 realigns the Nickname string to the Language, if not nicknamed.
-            bool canHaveAnyLanguage = format <= 7 && (enc.Species != species || pkm.WasTradedEgg);
+            bool canHaveAnyLanguage = format <= 7 && (enc.Species != species || pkm.WasTradedEgg) && !pkm.GG;
             if (canHaveAnyLanguage && !SpeciesName.IsNicknamedAnyLanguage(species, nickname, format))
                 return true;
 
@@ -142,7 +218,7 @@ namespace PKHeX.Core
             return false;
         }
 
-        private void VerifyNicknameEgg(LegalityAnalysis data)
+        private static void VerifyNicknameEgg(LegalityAnalysis data)
         {
             var Info = data.Info;
             var pkm = data.pkm;
@@ -188,7 +264,7 @@ namespace PKHeX.Core
             }
         }
 
-        private void VerifyG1NicknameWithinBounds(LegalityAnalysis data, string str)
+        private void VerifyG1NicknameWithinBounds(LegalityAnalysis data, ReadOnlySpan<char> str)
         {
             var pkm = data.pkm;
             if (StringConverter12.GetIsG1English(str))
@@ -253,11 +329,18 @@ namespace PKHeX.Core
                     break;
 
                 default:
-                    if (lang == 1 && (pkm.Version is (int)GameVersion.D or (int)GameVersion.P))
+                    if (pkm.Version is (int)GameVersion.D or (int)GameVersion.P && t is EncounterTrade4PID) // mainline DP
                     {
-                        // DP English origin are Japanese lang
-                        if (pkm.OT_Name != t.GetOT(1)) // not japanese
-                            lang = 2; // English
+                        // DP English origin are Japanese lang. Can't have LanguageID 2
+                        if (lang == 2)
+                        {
+                            data.AddLine(GetInvalid(string.Format(LOTLanguage, Japanese, English), CheckIdentifier.Language));
+                            break;
+                        }
+
+                        // Since two locales (JPN/ENG) can have the same LanguageID, check which we should be validating with.
+                        if (lang == 1 && pkm.OT_Name != t.GetOT(1)) // not Japanese
+                            lang = 2; // verify strings with English locale instead.
                     }
                     break;
             }

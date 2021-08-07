@@ -7,7 +7,6 @@ namespace PKHeX.Drawing
 {
     public static class SpriteUtil
     {
-        public static readonly SpriteBuilder3040 SB17 = new();
         public static readonly SpriteBuilder5668 SB8 = new();
         public static SpriteBuilder Spriter { get; set; } = SB8;
 
@@ -24,7 +23,7 @@ namespace PKHeX.Drawing
 
         public static Image? GetRibbonSprite(string name)
         {
-            var resource = name.Replace("CountG3", "G3").ToLower();
+            var resource = name.Replace("CountG3", "G3").ToLowerInvariant();
             return (Bitmap?)Resources.ResourceManager.GetObject(resource);
         }
 
@@ -38,14 +37,14 @@ namespace PKHeX.Drawing
         {
             if (max != 4) // Memory
             {
-                var sprite = name.ToLower();
+                var sprite = name.ToLowerInvariant();
                 if (max == value)
                     return sprite + "2";
                 return sprite;
             }
 
             // Count ribbons
-            string n = name.Replace("Count", string.Empty).ToLower();
+            string n = name.Replace("Count", string.Empty).ToLowerInvariant();
             return value switch
             {
                 2 => n + "super",
@@ -65,7 +64,7 @@ namespace PKHeX.Drawing
         private static Image GetSprite(MysteryGift gift)
         {
             if (gift.Empty)
-                return Resources._0;
+                return Spriter.None;
 
             var img = GetBaseImage(gift);
             if (gift.GiftUsed)
@@ -76,7 +75,7 @@ namespace PKHeX.Drawing
         private static Image GetBaseImage(MysteryGift gift)
         {
             if (gift.IsEgg && gift.Species == (int)Species.Manaphy) // Manaphy Egg
-                return Resources._490_e;
+                return Resources.b_490_e;
             if (gift.IsPokémon)
                 return GetSprite(gift.Species, gift.Form, gift.Gender, 0, gift.HeldItem, gift.IsEgg, gift.IsShiny, gift.Generation);
             if (gift.IsItem)
@@ -86,7 +85,7 @@ namespace PKHeX.Drawing
                     item = value;
                 return (Image)(Resources.ResourceManager.GetObject($"item_{item}") ?? Resources.Bag_Key);
             }
-            return Resources.unknown;
+            return Resources.b_unknown;
         }
 
         private static Image GetSprite(PKM pk, bool isBoxBGRed = false)
@@ -113,10 +112,12 @@ namespace PKHeX.Drawing
 
         private static Image? GetSprite(SaveFile sav)
         {
-            string file = "tr_00";
-            if (sav is SAV6AO)
-                file = $"tr_{sav.MultiplayerSpriteID:00}";
-            return Resources.ResourceManager.GetObject(file) as Image;
+            if (sav is SAV6XY or SAV6AO)
+            {
+                string file = $"tr_{sav.MultiplayerSpriteID:00}";
+                return Resources.ResourceManager.GetObject(file) as Image ?? Resources.tr_00;
+            }
+            return null;
         }
 
         private static Image GetWallpaper(SaveFile sav, int box)
@@ -128,17 +129,15 @@ namespace PKHeX.Drawing
         private static Image GetSprite(PKM pk, SaveFile sav, int box, int slot, bool flagIllegal = false)
         {
             if (!pk.Valid)
-                return Resources._0;
+                return Spriter.None;
 
             bool inBox = (uint)slot < MaxSlotCount;
             bool empty = pk.Species == 0;
-            var sprite = empty ? Resources._0 : pk.Sprite(isBoxBGRed: inBox && BoxWallpaper.IsWallpaperRed(sav.Version, sav.GetBoxWallpaper(box)));
+            var sprite = empty ? Spriter.None : pk.Sprite(isBoxBGRed: inBox && BoxWallpaper.IsWallpaperRed(sav.Version, sav.GetBoxWallpaper(box)));
 
             if (!empty && flagIllegal)
             {
-                if (box >= 0)
-                    pk.Box = box;
-                var la = new LegalityAnalysis(pk, sav.Personal);
+                var la = new LegalityAnalysis(pk, sav.Personal, box != -1 ? SlotOrigin.Box : SlotOrigin.Party);
                 if (!la.Valid)
                     sprite = ImageUtil.LayerImage(sprite, Resources.warn, 0, FlagIllegalShiftY);
                 else if (pk.Format >= 8 && pk.Moves.Any(Legal.DummiedMoves_SWSH.Contains))
@@ -217,25 +216,6 @@ namespace PKHeX.Drawing
         public static Image Sprite(this PKM pk, SaveFile sav, int box, int slot, bool flagIllegal = false)
             => GetSprite(pk, sav, box, slot, flagIllegal);
 
-        public static bool UseLargeAlways { get; set; } = true;
-
-        public static void Initialize(SaveFile sav)
-        {
-            var s = GetSpriter(sav);
-
-            // gen3 specific sprites
-            s.Initialize(sav);
-
-            Spriter = s;
-        }
-
-        private static SpriteBuilder GetSpriter(SaveFile sav)
-        {
-            if (UseLargeAlways)
-                return SB8;
-
-            var big = GameVersion.GG.Contains(sav.Version) || sav.Generation >= 8;
-            return big ? (SpriteBuilder) SB8 : SB17;
-        }
+        public static void Initialize(SaveFile sav) => Spriter.Initialize(sav);
     }
 }

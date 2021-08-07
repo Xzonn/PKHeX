@@ -58,20 +58,18 @@ namespace PKHeX.Core
                 _cgb = data;
             }
 
-            byte[] Region1 = data.Slice(0, 0x1FE0);
-            byte[] ColorData = data.Slice(0x1FE0, 0x20);
-            byte[] Region2 = data.Slice(0x2000, 0x600);
+            var Region1 = data.AsSpan(0, 0x1FE0);
+            var ColorData = data.Slice(0x1FE0, 0x20);
+            var Region2 = data.Slice(0x2000, 0x600);
 
             ColorPalette = new int[ColorCount];
             for (int i = 0; i < ColorPalette.Length; i++)
                 ColorPalette[i] = GetRGB555_16(BitConverter.ToUInt16(ColorData, i * 2));
 
             Tiles = new Tile[0xFF];
-            for (int i = 0; i < 0xFF; i++)
+            for (int i = 0; i < Tiles.Length; i++)
             {
-                byte[] tiledata = new byte[Tile.SIZE_TILE];
-                Array.Copy(Region1, i * Tile.SIZE_TILE, tiledata, 0, Tile.SIZE_TILE);
-
+                byte[] tiledata = Region1.Slice(i * Tile.SIZE_TILE, Tile.SIZE_TILE).ToArray();
                 Tiles[i] = new Tile(tiledata);
                 Tiles[i].SetTile(ColorPalette);
             }
@@ -184,10 +182,10 @@ namespace PKHeX.Core
 
         private static int GetRGB555_32(int val)
         {
-            var R = (val >> 0 >> 3) & 0x1F;
-            var G = (val >> 8 >> 3) & 0x1F;
-            var B = (val >> 16 >> 3) & 0x1F;
-            return 0xFF << 24 | R << 16 | G << 8 | B;
+            var R = (val >> 00) & 0xFF;
+            var G = (val >> 08) & 0xFF;
+            var B = (val >> 16) & 0xFF;
+            return 0xFF << 24 | B << 16 | G << 8 | R;
         }
 
         private static int GetRGB555_16(ushort val)
@@ -307,9 +305,9 @@ namespace PKHeX.Core
             }
 
             // No tile found, add to list
+            tilelist.Add(t);
             tm.TileChoices[tileIndex] = tilelist.Count - 1;
             tm.Rotations[tileIndex] = 0;
-            tilelist.Add(t);
         }
 
         private CGearBackground(int[] Palette, Tile[] tilelist, TileMap tm)

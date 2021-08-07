@@ -23,18 +23,17 @@ namespace PKHeX.Core
 
         private static IEnumerable<IEncounterable> GetEncountersMainline(PKM pkm, IReadOnlyList<EvoCriteria> chain)
         {
-            // Static Encounters can collide with wild encounters (close match); don't break if a Static Encounter is yielded.
             int ctr = 0;
-            if (pkm.WasEvent || pkm.WasEventEgg)
+            if (pkm.FatefulEncounter)
             {
                 foreach (var z in GetValidGifts(pkm, chain))
                 { yield return z; ++ctr; }
                 if (ctr != 0) yield break;
             }
 
-            if (pkm.WasBredEgg)
+            if (Locations.IsEggLocationBred6(pkm.Egg_Location))
             {
-                foreach (var z in GenerateEggs(pkm))
+                foreach (var z in GenerateEggs(pkm, 8))
                 { yield return z; ++ctr; }
                 if (ctr == 0) yield break;
             }
@@ -42,35 +41,50 @@ namespace PKHeX.Core
             IEncounterable? deferred = null;
             IEncounterable? partial = null;
 
+            // Trades
+            if (pkm.Met_Location == Locations.LinkTrade6NPC)
+            {
+                foreach (var z in GetValidEncounterTrades(pkm, chain))
+                {
+                    var match = z.GetMatchRating(pkm);
+                    switch (match)
+                    {
+                        case Match: yield return z; ++ctr; break;
+                        case Deferred: deferred ??= z; break;
+                        case PartialMatch: partial ??= z; break;
+                    }
+                }
+
+                if (ctr != 0)
+                {
+                    if (deferred != null)
+                        yield return deferred;
+
+                    if (partial != null)
+                        yield return partial;
+                }
+
+                yield break;
+            }
+
+            // Static Encounters can collide with wild encounters (close match); don't break if a Static Encounter is yielded.
             foreach (var z in GetValidStaticEncounter(pkm, chain))
             {
                 var match = z.GetMatchRating(pkm);
                 switch (match)
                 {
-                    case Match: yield return z; ++ctr; break;
-                    case Deferred: deferred ??= z; break;
-                    case PartialMatch: partial ??= z; break;
-                }
-            }
-            // if (ctr != 0) yield break;
-            foreach (var z in GetValidWildEncounters(pkm, chain))
-            {
-                var match = z.GetMatchRating(pkm);
-                switch (match)
-                {
-                    case Match: yield return z; ++ctr; break;
+                    case Match: yield return z; break;
                     case Deferred: deferred ??= z; break;
                     case PartialMatch: partial ??= z; break;
                 }
             }
 
-            if (ctr != 0) yield break;
-            foreach (var z in GetValidEncounterTrades(pkm, chain))
+            foreach (var z in GetValidWildEncounters(pkm, chain))
             {
                 var match = z.GetMatchRating(pkm);
                 switch (match)
                 {
-                    case Match: yield return z; /*++ctr*/ break;
+                    case Match: yield return z; break;
                     case Deferred: deferred ??= z; break;
                     case PartialMatch: partial ??= z; break;
                 }

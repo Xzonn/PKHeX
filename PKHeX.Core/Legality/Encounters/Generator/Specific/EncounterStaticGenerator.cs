@@ -25,18 +25,21 @@ namespace PKHeX.Core
             if (gameSource == Any)
                 gameSource = (GameVersion)pkm.Version;
 
-            var table = GetEncounterStaticTable(pkm, gameSource);
+            var table = gameSource switch
+            {
+                RD or GN or BU or YW => StaticRBY.Where(z => z.Version.Contains(gameSource)),
+                GD or SV => StaticGS.Where(z => z.Version.Contains(gameSource)),
+                C => StaticC,
+                _ => GetEncounterStaticTable(pkm, gameSource),
+            };
             return table.Where(e => chain.Any(d => d.Species == e.Species));
         }
 
-        public static IEnumerable<EncounterStatic> GetPossibleGBGifts(PKM pkm, IReadOnlyList<DexLevel> chain, GameVersion gameSource = Any)
+        public static IEnumerable<EncounterStatic> GetPossibleGBGifts(IReadOnlyList<DexLevel> chain, GameVersion gameSource)
         {
-            if (gameSource == Any)
-                gameSource = (GameVersion)pkm.Version;
-
             static IEnumerable<EncounterStatic> GetEvents(GameVersion g)
             {
-                if (g == RBY)
+                if (g.GetGeneration() == 1)
                     return !ParseSettings.AllowGBCartEra ? Encounters1.StaticEventsVC : Encounters1.StaticEventsGB;
 
                 return !ParseSettings.AllowGBCartEra ? Encounters2.StaticEventsVC : Encounters2.StaticEventsGB;
@@ -48,18 +51,19 @@ namespace PKHeX.Core
 
         public static IEnumerable<EncounterStatic> GetValidStaticEncounter(PKM pkm, IReadOnlyList<DexLevel> chain, GameVersion gameSource = Any)
         {
-            var poss = GetPossible(pkm, chain, gameSource: gameSource);
+            if (gameSource == Any)
+                gameSource = (GameVersion)pkm.Version;
+
+            var table = GetEncounterStaticTable(pkm, gameSource);
+            var poss = table.Where(e => chain.Any(d => d.Species == e.Species));
 
             // Back Check against pkm
             return GetMatchingStaticEncounters(pkm, poss, chain);
         }
 
-        public static IEnumerable<EncounterStatic> GetValidGBGifts(PKM pkm, IReadOnlyList<DexLevel> chain, GameVersion gameSource = Any)
+        public static IEnumerable<EncounterStatic> GetValidGBGifts(PKM pkm, IReadOnlyList<DexLevel> chain, GameVersion gameSource)
         {
-            if (gameSource == Any)
-                gameSource = (GameVersion)pkm.Version;
-
-            var poss = GetPossibleGBGifts(pkm, chain, gameSource: gameSource);
+            var poss = GetPossibleGBGifts(chain, gameSource: gameSource);
             foreach (EncounterStatic e in poss)
             {
                 foreach (var dl in chain)
@@ -91,19 +95,25 @@ namespace PKHeX.Core
             }
         }
 
-        internal static EncounterStatic7 GetVCStaticTransferEncounter(PKM pkm, IEncounterable enc)
+        internal static EncounterStatic7 GetVCStaticTransferEncounter(PKM pkm, IEncounterTemplate enc, IReadOnlyList<EvoCriteria> chain)
         {
-            var species = pkm.Species;
+            // Obtain the lowest evolution species with matching OT friendship. Not all species chains have the same base friendship.
             var met = pkm.Met_Level;
             if (pkm.VC1)
             {
                 // Only yield a VC1 template if it could originate in VC1.
                 // Catch anything that can only exist in VC2 (Entei) even if it was "transferred" from VC1.
+                var species = chain.Where(z => z.Species < MaxSpeciesID_1 && z.Form == 0)
+                    .LastOrDefault(z => PersonalTable.SM.GetFormEntry(z.Species, z.Form).BaseFriendship == pkm.OT_Friendship)?.Species ?? pkm.Species;
                 var vc1Species = species > MaxSpeciesID_1 ? enc.Species : species;
                 if (vc1Species <= MaxSpeciesID_1)
                     return EncounterStatic7.GetVC1(vc1Species, met);
             }
-            return EncounterStatic7.GetVC2(species > MaxSpeciesID_2 ? enc.Species : species, met);
+            // fall through else
+            {
+                var species = chain.LastOrDefault(z => PersonalTable.SM.GetFormEntry(z.Species, z.Form).BaseFriendship == pkm.OT_Friendship)?.Species ?? pkm.Species;
+                return EncounterStatic7.GetVC2(species > MaxSpeciesID_2 ? enc.Species : species, met);
+            }
         }
 
         internal static EncounterStatic? GetStaticLocation(PKM pkm)

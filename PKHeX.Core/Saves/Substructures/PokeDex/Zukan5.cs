@@ -2,6 +2,9 @@
 
 namespace PKHeX.Core
 {
+    /// <summary>
+    /// Pokédex structure used for Generation 5 games.
+    /// </summary>
     public sealed class Zukan5 : Zukan
     {
         protected override int OFS_SEEN => OFS_CAUGHT + BitSeenSize;
@@ -64,9 +67,9 @@ namespace PKHeX.Core
 
         public override void SetDex(PKM pkm)
         {
-            if (pkm.Species == 0)
+            if (pkm.Species is 0 or > Legal.MaxSpeciesID_5)
                 return;
-            if (pkm.Species > SAV.MaxSpeciesID)
+            if (pkm.IsEgg) // do not add
                 return;
 
             int bit = pkm.Species - 1;

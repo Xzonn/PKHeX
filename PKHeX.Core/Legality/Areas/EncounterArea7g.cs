@@ -15,12 +15,16 @@ namespace PKHeX.Core
         public int Species { get; }
         /// <summary> Form of the Species </summary>
         public int Form { get; }
+        public readonly EncounterSlot7GO[] Slots;
 
-        private EncounterArea7g(int species, int form) : base(GameVersion.GO)
+        protected override IReadOnlyList<EncounterSlot> Raw => Slots;
+
+        private EncounterArea7g(int species, int form, EncounterSlot7GO[] slots) : base(GameVersion.GO)
         {
             Species = species;
             Form = form;
             Location = Locations.GO7;
+            Slots = slots;
         }
 
         internal static EncounterArea7g[] GetArea(byte[][] data)
@@ -35,12 +39,12 @@ namespace PKHeX.Core
 
         private static EncounterArea7g GetArea(byte[] data)
         {
-            var sf = BitConverter.ToInt16(data, 0);
+            var sf = BitConverter.ToUInt16(data, 0);
             int species = sf & 0x7FF;
             int form = sf >> 11;
 
             var result = new EncounterSlot7GO[(data.Length - 2) / entrySize];
-            var area = new EncounterArea7g(species, form) { Slots = result };
+            var area = new EncounterArea7g(species, form, result);
             for (int i = 0; i < result.Length; i++)
             {
                 var offset = (i * entrySize) + 2;
@@ -63,15 +67,19 @@ namespace PKHeX.Core
 
         public override IEnumerable<EncounterSlot> GetMatchingSlots(PKM pkm, IReadOnlyList<EvoCriteria> chain)
         {
+            // Find the first chain that has slots defined.
+            // Since it is possible to evolve before transferring, we only need the highest evolution species possible.
+            // PoGoEncTool has already extrapolated the evolutions to separate encounters!
             var sf = chain.FirstOrDefault(z => z.Species == Species && z.Form == Form);
             if (sf == null)
                 yield break;
 
             var stamp = EncounterSlotGO.GetTimeStamp(pkm.Met_Year + 2000, pkm.Met_Month, pkm.Met_Day);
             var met = Math.Max(sf.MinLevel, pkm.Met_Level);
-            foreach (var s in Slots)
+            EncounterSlot7GO? deferredIV = null;
+
+            foreach (var slot in Slots)
             {
-                var slot = (EncounterSlot7GO)s;
                 if (!slot.IsLevelWithinRange(met))
                     continue;
                 //if (!slot.IsBallValid(ball)) -- can have any of the in-game balls due to re-capture
@@ -83,8 +91,17 @@ namespace PKHeX.Core
                 if (!slot.IsWithinStartEnd(stamp))
                     continue;
 
+                if (!slot.GetIVsValid(pkm))
+                {
+                    deferredIV ??= slot;
+                    continue;
+                }
+
                 yield return slot;
             }
+
+            if (deferredIV != null)
+                yield return deferredIV;
         }
     }
 }

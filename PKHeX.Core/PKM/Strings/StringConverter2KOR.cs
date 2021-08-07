@@ -12,7 +12,19 @@ namespace PKHeX.Core
     /// </summary>
     public static class StringConverter2KOR
     {
-        public static bool GetIsG2Korean(string str) => str.All(z => U2GSC_KOR.Any(x => x.ContainsKey(z)));
+        /// <summary>
+        /// Checks if any of the characters inside <see cref="str"/> are from the special Korean codepoint pages.
+        /// </summary>
+        public static bool GetIsG2Korean(ReadOnlySpan<char> str)
+        {
+            var dict = U2GSC_KOR;
+            foreach (var c in str)
+            {
+                if (!dict.Any(d => d.ContainsKey(c)))
+                    return false;
+            }
+            return true;
+        }
 
         /// <summary>
         /// Converts Generation 2 Korean encoded data into a string.
@@ -48,13 +60,13 @@ namespace PKHeX.Core
         /// <param name="padTo">Pad the input <see cref="value"/> to given length</param>
         /// <param name="padWith">Pad the input <see cref="value"/> with this character value</param>
         /// <returns>Encoded data.</returns>
-        public static byte[] SetString2KOR(string value, int maxLength, int padTo = 0, ushort padWith = 0)
+        public static byte[] SetString2KOR(string value, int maxLength, int padTo = 0, byte padWith = 0)
         {
             if (value.StartsWith(G1TradeOTStr)) // Handle "[TRAINER]"
                 return new[] { G1TradeOTCode, G1TerminatorCode };
 
             if (value.Length > maxLength)
-                value = value.Substring(0, maxLength); // Hard cap
+                value = value[..maxLength]; // Hard cap
 
             var kor = U2GSC_KOR;
             var dict = U2RBY_U;
@@ -87,7 +99,7 @@ namespace PKHeX.Core
                 arr.RemoveRange(maxLength, arr.Count - maxLength);
             arr.Add(0x50); // terminator
             while (arr.Count < padTo)
-                arr.Add((byte)padWith);
+                arr.Add(padWith);
             return arr.ToArray();
         }
 
@@ -516,6 +528,7 @@ namespace PKHeX.Core
 
         private static readonly Dictionary<byte, char> GSC2U_KOR_B = GSC2U_KOR_0;
 
+        /// <summary> Unicode codepoint => Gen2 value dictionary pages. </summary>
         private static readonly Dictionary<char, byte>[] U2GSC_KOR =
         {
             U2GSC_KOR_0, U2GSC_KOR_1, U2GSC_KOR_2, U2GSC_KOR_3,
@@ -523,6 +536,7 @@ namespace PKHeX.Core
             U2GSC_KOR_8, U2GSC_KOR_9, U2GSC_KOR_A, U2GSC_KOR_B,
         };
 
+        /// <summary> Gen2 value => Unicode codepoint dictionary pages. </summary>
         private static readonly Dictionary<byte, char>[] GSC2U_KOR =
         {
             GSC2U_KOR_0, GSC2U_KOR_1, GSC2U_KOR_2, GSC2U_KOR_3,

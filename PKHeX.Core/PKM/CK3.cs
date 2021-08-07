@@ -23,14 +23,14 @@ namespace PKHeX.Core
         public override PersonalInfo PersonalInfo => PersonalTable.RS[Species];
         public CK3(byte[] data) : base(data) { }
         public CK3() : this(new byte[PokeCrypto.SIZE_3CSTORED]) { }
-        public override PKM Clone() => new CK3((byte[])Data.Clone()) {Identifier = Identifier};
+        public override PKM Clone() => new CK3((byte[])Data.Clone());
 
-        private string GetString(int Offset, int Count) => StringConverter3.GetBEString3(Data, Offset, Count);
+        private string GetString(int offset, int count) => StringConverter3.GetBEString3(Data, offset, count);
         private static byte[] SetString(string value, int maxLength) => StringConverter3.SetBEString3(value, maxLength);
 
         // Trash Bytes
-        public override byte[] Nickname_Trash { get => GetData(0x2E, 20); set { if (value.Length == 20) value.CopyTo(Data, 0x2E); } }
-        public override byte[] OT_Trash { get => GetData(0x18, 20); set { if (value.Length == 20) value.CopyTo(Data, 0x18); } }
+        public override Span<byte> Nickname_Trash { get => Data.AsSpan(0x2E, 20); set { if (value.Length == 20) value.CopyTo(Data.AsSpan(0x2E)); } }
+        public override Span<byte> OT_Trash { get => Data.AsSpan(0x18, 20); set { if (value.Length == 20) value.CopyTo(Data.AsSpan(0x18)); } }
 
         // Future Attributes
 
@@ -155,27 +155,27 @@ namespace PKHeX.Core
         public override byte CNT_Sheen { get => Data[0xBC]; set => Data[0xBC] = value; }
 
         // Ribbons
-        public override bool RibbonChampionG3Hoenn { get => Data[0xBD] == 1; set => Data[0xBD] = value ? 1 : 0; }
-        public override bool RibbonWinning { get => Data[0xBE] == 1; set => Data[0xBE] = value ? 1 : 0; }
-        public override bool RibbonVictory { get => Data[0xBF] == 1; set => Data[0xBF] = value ? 1 : 0; }
-        public override bool RibbonArtist { get => Data[0xC0] == 1; set => Data[0xC0] = value ? 1 : 0; }
-        public override bool RibbonEffort { get => Data[0xC1] == 1; set => Data[0xC1] = value ? 1 : 0; }
-        public override bool RibbonChampionBattle { get => Data[0xC2] == 1; set => Data[0xC2] = value ? 1 : 0; }
-        public override bool RibbonChampionRegional { get => Data[0xC3] == 1; set => Data[0xC3] = value ? 1 : 0; }
-        public override bool RibbonChampionNational { get => Data[0xC4] == 1; set => Data[0xC4] = value ? 1 : 0; }
-        public override bool RibbonCountry { get => Data[0xC5] == 1; set => Data[0xC5] = value ? 1 : 0; }
-        public override bool RibbonNational { get => Data[0xC6] == 1; set => Data[0xC6] = value ? 1 : 0; }
-        public override bool RibbonEarth { get => Data[0xC7] == 1; set => Data[0xC7] = value ? 1 : 0; }
-        public override bool RibbonWorld { get => Data[0xC8] == 1; set => Data[0xC8] = value ? 1 : 0; }
-        public override bool Unused1 { get => ((Data[0xC9] >> 0) & 1) == 1; set => Data[0xC9] = (byte)((Data[0xC9] & ~1) | (value ? 1 : 0)); }
-        public override bool Unused2 { get => ((Data[0xC9] >> 1) & 1) == 1; set => Data[0xC9] = (byte)((Data[0xC9] & ~2) | (value ? 2 : 0)); }
-        public override bool Unused3 { get => ((Data[0xC9] >> 2) & 1) == 1; set => Data[0xC9] = (byte)((Data[0xC9] & ~4) | (value ? 4 : 0)); }
-        public override bool Unused4 { get => ((Data[0xC9] >> 3) & 1) == 1; set => Data[0xC9] = (byte)((Data[0xC9] & ~8) | (value ? 8 : 0)); }
+        public override bool RibbonChampionG3       { get => Data[0xBD] == 1; set => Data[0xBD] = value ? (byte)1 : (byte)0; }
+        public override bool RibbonWinning          { get => Data[0xBE] == 1; set => Data[0xBE] = value ? (byte)1 : (byte)0; }
+        public override bool RibbonVictory          { get => Data[0xBF] == 1; set => Data[0xBF] = value ? (byte)1 : (byte)0; }
+        public override bool RibbonArtist           { get => Data[0xC0] == 1; set => Data[0xC0] = value ? (byte)1 : (byte)0; }
+        public override bool RibbonEffort           { get => Data[0xC1] == 1; set => Data[0xC1] = value ? (byte)1 : (byte)0; }
+        public override bool RibbonChampionBattle   { get => Data[0xC2] == 1; set => Data[0xC2] = value ? (byte)1 : (byte)0; }
+        public override bool RibbonChampionRegional { get => Data[0xC3] == 1; set => Data[0xC3] = value ? (byte)1 : (byte)0; }
+        public override bool RibbonChampionNational { get => Data[0xC4] == 1; set => Data[0xC4] = value ? (byte)1 : (byte)0; }
+        public override bool RibbonCountry          { get => Data[0xC5] == 1; set => Data[0xC5] = value ? (byte)1 : (byte)0; }
+        public override bool RibbonNational         { get => Data[0xC6] == 1; set => Data[0xC6] = value ? (byte)1 : (byte)0; }
+        public override bool RibbonEarth            { get => Data[0xC7] == 1; set => Data[0xC7] = value ? (byte)1 : (byte)0; }
+        public override bool RibbonWorld            { get => Data[0xC8] == 1; set => Data[0xC8] = value ? (byte)1 : (byte)0; }
+        public override bool Unused1                { get => ((Data[0xC9] >> 0) & 1) == 1; set => Data[0xC9] = (byte)((Data[0xC9] & ~1) | (value ? 1 : 0)); }
+        public override bool Unused2                { get => ((Data[0xC9] >> 1) & 1) == 1; set => Data[0xC9] = (byte)((Data[0xC9] & ~2) | (value ? 2 : 0)); }
+        public override bool Unused3                { get => ((Data[0xC9] >> 2) & 1) == 1; set => Data[0xC9] = (byte)((Data[0xC9] & ~4) | (value ? 4 : 0)); }
+        public override bool Unused4                { get => ((Data[0xC9] >> 3) & 1) == 1; set => Data[0xC9] = (byte)((Data[0xC9] & ~8) | (value ? 8 : 0)); }
 
         public override int PKRS_Strain { get => Data[0xCA] & 0xF; set => Data[0xCA] = (byte)(value & 0xF); }
-        public override bool IsEgg { get => Data[0xCB] == 1; set => Data[0xCB] = value ? 1 : 0; }
-        public override bool AbilityBit { get => Data[0xCC] == 1; set => Data[0xCC] = value ? 1 : 0; }
-        private bool Invalid { get => Data[0xCD] != 0; set => Data[0xCD] = value ? 1 : 0; }
+        public override bool IsEgg { get => Data[0xCB] == 1; set => Data[0xCB] = value ? (byte)1 : (byte)0; }
+        public override bool AbilityBit { get => Data[0xCC] == 1; set => Data[0xCC] = value ? (byte)1 : (byte)0; }
+        private bool Invalid { get => Data[0xCD] != 0; set => Data[0xCD] = value ? (byte)1 : (byte)0; }
 
         public override int MarkValue { get => SwapBits(Data[0xCF], 1, 2); protected set => Data[0xCF] = (byte)SwapBits(value, 1, 2); }
         public override int PKRS_Days { get => Math.Max((sbyte)Data[0xD0], (sbyte)0); set => Data[0xD0] = (byte)(value == 0 ? 0xFF : value & 0xF); }

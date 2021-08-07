@@ -8,54 +8,21 @@ namespace PKHeX.Core
     /// </summary>
     public static class ArrayUtil
     {
-        public static bool IsRangeAll<T>(this T[] data, T value, int offset, int length) where T : IEquatable<T>
+        public static bool IsRangeEmpty(this ReadOnlySpan<byte> data, byte value = 0)
         {
-            int start = offset + length - 1;
-            int end = offset;
-            for (int i = start; i >= end; i--)
+            for (int i = data.Length - 1; i >= 0; i--)
             {
-                if (!data[i].Equals(value))
+                if (data[i] != value)
                     return false;
             }
-
             return true;
         }
 
-        public static byte[] Truncate(byte[] data, int newSize)
-        {
-            Array.Resize(ref data, newSize);
-            return data;
-        }
-
-        public static byte[] Slice(this byte[] src, int offset, int length)
-        {
-            byte[] data = new byte[length];
-            Buffer.BlockCopy(src, offset, data, 0, data.Length);
-            return data;
-        }
-
-        public static byte[] SliceEnd(this byte[] src, int offset)
-        {
-            int length = src.Length - offset;
-            byte[] data = new byte[length];
-            Buffer.BlockCopy(src, offset, data, 0, data.Length);
-            return data;
-        }
-
-        public static T[] Slice<T>(this T[] src, int offset, int length)
-        {
-            var data = new T[length];
-            Array.Copy(src, offset, data, 0, data.Length);
-            return data;
-        }
-
-        public static T[] SliceEnd<T>(this T[] src, int offset)
-        {
-            int length = src.Length - offset;
-            var data = new T[length];
-            Array.Copy(src, offset, data, 0, data.Length);
-            return data;
-        }
+        public static byte[] Truncate(byte[] data, int newSize) => data.AsSpan(0, newSize).ToArray();
+        public static byte[] Slice(this byte[] src, int offset, int length) => src.AsSpan(offset, length).ToArray();
+        public static byte[] SliceEnd(this byte[] src, int offset) => src.AsSpan(offset).ToArray();
+        public static T[] Slice<T>(this T[] src, int offset, int length) => src.AsSpan(offset, length).ToArray();
+        public static T[] SliceEnd<T>(this T[] src, int offset) => src.AsSpan(offset).ToArray();
 
         public static bool WithinRange(int value, int min, int max) => min <= value && value < max;
 
@@ -117,7 +84,7 @@ namespace PKHeX.Core
         /// <param name="skip">Criteria for skipping a slot</param>
         /// <param name="start">Starting point to copy to</param>
         /// <returns>Count of <see cref="T"/> copied.</returns>
-        public static int CopyTo<T>(this IEnumerable<T> list, IList<T> dest, Func<T, bool> skip, int start = 0)
+        public static int CopyTo<T>(this IEnumerable<T> list, IList<T> dest, Func<int, bool> skip, int start = 0)
         {
             int ctr = start;
             int skipped = 0;
@@ -134,14 +101,14 @@ namespace PKHeX.Core
             return ctr - start - skipped;
         }
 
-        public static int FindNextValidIndex<T>(IList<T> dest, Func<T, bool> skip, int ctr)
+        public static int FindNextValidIndex<T>(IList<T> dest, Func<int, bool> skip, int ctr)
         {
             while (true)
             {
                 if ((uint)ctr >= dest.Count)
                     return -1;
                 var exist = dest[ctr];
-                if (exist == null || !skip(exist))
+                if (exist == null || !skip(ctr))
                     return ctr;
                 ctr++;
             }
@@ -201,6 +168,16 @@ namespace PKHeX.Core
             arr1.CopyTo(result, 0);
             arr2.CopyTo(result, arr1.Length);
             arr3.CopyTo(result, arr1.Length + arr2.Length);
+            return result;
+        }
+
+        internal static T[] ConcatAll<T>(T[] arr1, T[] arr2, Span<T> arr3)
+        {
+            int len = arr1.Length + arr2.Length + arr3.Length;
+            var result = new T[len];
+            arr1.CopyTo(result, 0);
+            arr2.CopyTo(result, arr1.Length);
+            arr3.CopyTo(result.AsSpan(arr1.Length + arr2.Length));
             return result;
         }
     }
