@@ -279,6 +279,7 @@ namespace PKHeX.Core
 
         public static bool HasEastAsianScriptCharacters(string str)
         {
+            return false;
             foreach (var c in str)
             {
                 if (c is >= '\u4E00' and <= '\u9FFF')
