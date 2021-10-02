@@ -35,7 +35,7 @@ namespace PKHeX.Core
         {
             if (pkm is IDynamaxLevel d && d.DynamaxLevel < DynamaxLevel)
                 return false;
-            if (pkm.Met_Level < EncounterArea8.BoostLevel && Weather is AreaWeather8.Heavy_Fog && EncounterArea8.IsWildArea8(Location))
+            if (pkm.Met_Level < EncounterArea8.BoostLevel && Weather is AreaWeather8.Heavy_Fog && EncounterArea8.IsBoostedArea60Fog(Location))
                 return false;
             return base.IsMatchExact(pkm, evo);
         }
@@ -43,7 +43,7 @@ namespace PKHeX.Core
         protected override void ApplyDetails(ITrainerInfo sav, EncounterCriteria criteria, PKM pk)
         {
             base.ApplyDetails(sav, criteria, pk);
-            if (Weather is AreaWeather8.Heavy_Fog)
+            if (Weather is AreaWeather8.Heavy_Fog && EncounterArea8.IsBoostedArea60Fog(Location))
                 pk.CurrentLevel = pk.Met_Level = EncounterArea8.BoostLevel;
 
             var req = GetRequirement(pk);
@@ -86,7 +86,7 @@ namespace PKHeX.Core
             var req = GetRequirement(pkm);
             bool correlation = IsOverworldCorrelationCorrect(pkm);
             if ((req == MustHave) != correlation)
-                return EncounterMatchRating.Deferred;
+                return EncounterMatchRating.DeferredErrors;
 
             // Only encounter slots can have these marks; defer for collisions.
             if (pkm.Species == (int) Core.Species.Shedinja)
@@ -94,14 +94,14 @@ namespace PKHeX.Core
                 // Loses Mark on evolution to Shedinja, but not affixed ribbon value.
                 return pkm switch
                 {
-                    IRibbonSetMark8 {RibbonMarkCurry: true} => EncounterMatchRating.Deferred,
+                    IRibbonSetMark8 {RibbonMarkCurry: true} => EncounterMatchRating.DeferredErrors,
                     PK8 {AffixedRibbon: (int) RibbonIndex.MarkCurry} => EncounterMatchRating.Deferred,
-                    _ => EncounterMatchRating.Match
+                    _ => EncounterMatchRating.Match,
                 };
             }
 
             if (pkm is IRibbonSetMark8 m && (m.RibbonMarkCurry || m.RibbonMarkFishing || m.HasWeatherMark()))
-                return EncounterMatchRating.Deferred;
+                return EncounterMatchRating.DeferredErrors;
 
             return EncounterMatchRating.Match;
         }

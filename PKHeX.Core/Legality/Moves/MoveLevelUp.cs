@@ -43,7 +43,7 @@ namespace PKHeX.Core
                 6 => GetIsLevelUp6(species, form, move, maxLevel, version),
                 7 => GetIsLevelUp7(species, form, move,           version), // move reminder can give any move 1-100
                 8 => GetIsLevelUp8(species, form, move, maxLevel, version),
-                _ => LearnNONE
+                _ => LearnNONE,
             };
         }
 
@@ -94,7 +94,7 @@ namespace PKHeX.Core
         private static LearnVersion GetIsLevelUp3(int species, int form, int move, int lvlLevel, GameVersion ver = Any)
         {
             if (species == (int)Species.Deoxys)
-                return GetIsLevelUp3Deoxys(form, move, lvlLevel);
+                return GetIsLevelUp3Deoxys(form, move, lvlLevel, ver);
 
             // Emerald level up tables are equal to R/S level up tables
             switch (ver)
@@ -217,9 +217,9 @@ namespace PKHeX.Core
             return LearnNONE;
         }
 
-        private static LearnVersion GetIsLevelUp3Deoxys(int form, int move, int lvl)
+        private static LearnVersion GetIsLevelUp3Deoxys(int form, int move, int lvl, GameVersion ver = Any)
         {
-            var moveset = GetDeoxysLearn3(form);
+            var moveset = GetDeoxysLearn3(form, ver);
             if (moveset == null)
                 return LearnNONE;
             var lv = moveset.GetLevelLearnMove(move);
@@ -234,28 +234,23 @@ namespace PKHeX.Core
             1 => FR,
             2 => LG,
             3 => E,
-            _ => Invalid
+            _ => Invalid,
         };
 
         private static Learnset? GetDeoxysLearn3(int form, GameVersion ver = Any)
         {
             const int index = (int)Species.Deoxys;
-            if (ver == Any)
-            {
-                return form switch
-                {
-                    0 => LevelUpRS[index], // Normal
-                    1 => LevelUpFR[index], // Attack
-                    2 => LevelUpLG[index], // Defense
-                    3 => LevelUpE[index], // Speed
-                    _ => null,
-                };
-            }
+            if (ver != Any && Gen3.Contains(ver))
+                return GameData.GetLearnsets(ver)[index];
 
-            var gen = ver.GetGeneration();
-            if (gen != 3)
-                return GetDeoxysLearn3(form);
-            return GameData.GetLearnsets(ver)[index];
+            return form switch
+            {
+                0 => LevelUpRS[index], // Normal
+                1 => LevelUpFR[index], // Attack
+                2 => LevelUpLG[index], // Defense
+                3 => LevelUpE[index], // Speed
+                _ => null,
+            };
         }
 
         public static IEnumerable<int> GetMovesLevelUp(PKM pkm, int species, int form, int maxLevel, int minlvlG1, int minlvlG2, GameVersion version, bool MoveReminder, int generation)
@@ -272,7 +267,7 @@ namespace PKHeX.Core
                 6 => GetMovesLevelUp6(species, form, maxLevel, version),
                 7 => GetMovesLevelUp7(species, form, maxLevel, MoveReminder, version),
                 8 => GetMovesLevelUp8(species, form, maxLevel, version),
-                _ => Array.Empty<int>()
+                _ => Array.Empty<int>(),
             };
         }
 

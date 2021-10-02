@@ -354,8 +354,7 @@ namespace PKHeX.Core
             }
         }
 
-        private static IEnumerable<RibbonResult> GetInvalidRibbons8Any(PKM pkm, IRibbonSetCommon8 s8,
-            IEncounterTemplate enc)
+        private static IEnumerable<RibbonResult> GetInvalidRibbons8Any(PKM pkm, IRibbonSetCommon8 s8, IEncounterTemplate enc)
         {
             if (!pkm.InhabitedGeneration(8) || !((PersonalInfoSWSH)PersonalTable.SWSH[pkm.Species]).IsPresentInGame)
             {
@@ -371,7 +370,7 @@ namespace PKHeX.Core
                 const int memChampion = 27;
                 {
                     bool hasChampMemory = (pkm.Format == 8 && pkm is IMemoryHT {HT_Memory: memChampion}) ||
-                                          (pkm.Gen8 && pkm is IMemoryOT {OT_Memory: memChampion});
+                                          (enc.Generation == 8 && pkm is IMemoryOT {OT_Memory: memChampion});
                     if (hasChampMemory && !s8.RibbonChampionGalar)
                         yield return new RibbonResult(nameof(s8.RibbonChampionGalar));
                 }
@@ -391,9 +390,9 @@ namespace PKHeX.Core
                     // If the Tower Master ribbon is not present but a memory hint implies it should...
                     // This memory can also be applied in Gen6/7 via defeating the Chatelaines, where legends are disallowed.
                     const int strongest = 30;
-                    if (pkm is IMemoryOT {OT_Memory: strongest} || pkm is IMemoryHT {HT_Memory: strongest})
+                    if (pkm is IMemoryOT {OT_Memory: strongest} or IMemoryHT {HT_Memory: strongest})
                     {
-                        if (pkm.Gen8 || !IsAllowedBattleFrontier(pkm.Species) || pkm is IRibbonSetCommon6 {RibbonBattlerSkillful: false})
+                        if (enc.Generation == 8 || !IsAllowedBattleFrontier(pkm.Species) || pkm is IRibbonSetCommon6 {RibbonBattlerSkillful: false})
                             yield return new RibbonResult(nameof(s8.RibbonTowerMaster));
                     }
                 }

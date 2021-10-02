@@ -8,6 +8,75 @@
         /// </summary>
         internal static readonly EncounterStatic8ND[] Dist_DLC2 =
         {
+            new(17,01,1) { Species = 722, Ability = A4, Moves = new[]{ 064, 075, 389, 129 }, Index = 87 }, // Rowlet
+            new(17,01,1) { Species = 725, Ability = A4, Moves = new[]{ 052, 006, 044, 421 }, Index = 87 }, // Litten
+            new(17,01,1) { Species = 728, Ability = A4, Moves = new[]{ 574, 001, 453, 196 }, Index = 87 }, // Popplio
+            new(30,03,2) { Species = 722, Ability = A4, Moves = new[]{ 064, 348, 389, 129 }, Index = 87 }, // Rowlet
+            new(30,03,2) { Species = 725, Ability = A4, Moves = new[]{ 053, 006, 044, 421 }, Index = 87 }, // Litten
+            new(30,03,2) { Species = 728, Ability = A4, Moves = new[]{ 574, 061, 453, 196 }, Index = 87 }, // Popplio
+            new(40,05,3) { Species = 722, Ability = A4, Moves = new[]{ 413, 348, 389, 129 }, Index = 87 }, // Rowlet
+            new(40,05,3) { Species = 725, Ability = A4, Moves = new[]{ 394, 006, 044, 421 }, Index = 87 }, // Litten
+            new(40,05,3) { Species = 728, Ability = A4, Moves = new[]{ 585, 056, 453, 196 }, Index = 87 }, // Popplio
+            new(50,08,4) { Species = 722, Ability = A4, Moves = new[]{ 413, 348, 389, 412 }, Index = 87 }, // Rowlet
+            new(50,08,4) { Species = 725, Ability = A4, Moves = new[]{ 394, 006, 279, 421 }, Index = 87 }, // Litten
+            new(50,08,4) { Species = 728, Ability = A4, Moves = new[]{ 585, 056, 453, 059 }, Index = 87 }, // Popplio
+            new(60,10,5) { Species = 722, Ability = A4, Moves = new[]{ 413, 348, 421, 412 }, Index = 87 }, // Rowlet
+            new(60,10,5) { Species = 725, Ability = A4, Moves = new[]{ 394, 006, 279, 242 }, Index = 87 }, // Litten
+            new(60,10,5) { Species = 728, Ability = A4, Moves = new[]{ 585, 056, 453, 058 }, Index = 87 }, // Popplio
+
+            new(17,01,1) { Species = 337, Ability = A4, Moves = new[]{ 585, 033, 093, 088 }, Index = 85 }, // Lunatone
+            new(17,01,1) { Species = 338, Ability = A4, Moves = new[]{ 394, 033, 093, 088 }, Index = 85 }, // Solrock
+            new(30,03,2) { Species = 337, Ability = A4, Moves = new[]{ 585, 129, 094, 088 }, Index = 85 }, // Lunatone
+            new(30,03,2) { Species = 338, Ability = A4, Moves = new[]{ 394, 129, 094, 088 }, Index = 85 }, // Solrock
+            new(40,05,3) { Species = 337, Ability = A4, Moves = new[]{ 585, 129, 094, 157 }, Index = 85 }, // Lunatone
+            new(40,05,3) { Species = 338, Ability = A4, Moves = new[]{ 394, 129, 094, 157 }, Index = 85 }, // Solrock
+            new(50,08,4) { Species = 337, Ability = A4, Moves = new[]{ 585, 058, 094, 157 }, Index = 85 }, // Lunatone
+            new(50,08,4) { Species = 338, Ability = A4, Moves = new[]{ 394, 076, 094, 157 }, Index = 85 }, // Solrock
+            new(60,10,5) { Species = 337, Ability = A4, Moves = new[]{ 585, 058, 094, 444 }, Index = 85, Shiny = Shiny.Always }, // Lunatone
+            new(60,10,5) { Species = 337, Ability = A4, Moves = new[]{ 585, 058, 094, 444 }, Index = 85 }, // Lunatone
+            new(60,10,5) { Species = 338, Ability = A4, Moves = new[]{ 394, 076, 094, 444 }, Index = 85, Shiny = Shiny.Always }, // Solrock
+            new(60,10,5) { Species = 338, Ability = A4, Moves = new[]{ 394, 076, 094, 444 }, Index = 85 }, // Solrock
+
+            new(17,01,1) { Species = 573, Ability = A4, Moves = new[]{ 350, 541, 331, 001 }, Index = 83 }, // Cinccino
+            new(17,01,1) { Species = 333, Ability = A4, Moves = new[]{ 574, 064, 257, 031 }, Index = 83 }, // Swablu
+            new(17,01,1) { Species = 479, Ability = A4, Moves = new[]{ 437, 104, 310, 084 }, Index = 83, Form = 5 }, // Rotom-5
+            new(17,01,1) { Species = 767, Ability = A4, Moves = new[]{ 522, 057, 111, 028 }, Index = 83 }, // Wimpod
+            new(30,03,2) { Species = 573, Ability = A4, Moves = new[]{ 350, 541, 331, 583 }, Index = 83 }, // Cinccino
+            new(30,03,2) { Species = 333, Ability = A4, Moves = new[]{ 583, 225, 257, 058 }, Index = 83 }, // Swablu
+            new(30,03,2) { Species = 479, Ability = A4, Moves = new[]{ 437, 399, 310, 084 }, Index = 83, Form = 5 }, // Rotom-5
+            new(30,03,2) { Species = 767, Ability = A4, Moves = new[]{ 522, 057, 111, 028 }, Index = 83 }, // Wimpod
+            new(40,05,3) { Species = 573, Ability = A4, Moves = new[]{ 350, 541, 331, 441 }, Index = 83 }, // Cinccino
+            new(40,05,3) { Species = 334, Ability = A4, Moves = new[]{ 583, 784, 083, 058 }, Index = 83 }, // Altaria
+            new(40,05,3) { Species = 479, Ability = A4, Moves = new[]{ 437, 399, 506, 351 }, Index = 83, Form = 5 }, // Rotom-5
+            new(40,05,3) { Species = 767, Ability = A4, Moves = new[]{ 522, 057, 372, 028 }, Index = 83 }, // Wimpod
+            new(50,08,4) { Species = 573, Ability = A4, Moves = new[]{ 350, 541, 331, 086 }, Index = 83 }, // Cinccino
+            new(50,08,4) { Species = 334, Ability = A4, Moves = new[]{ 585, 784, 083, 058 }, Index = 83 }, // Altaria
+            new(50,08,4) { Species = 479, Ability = A4, Moves = new[]{ 437, 399, 247, 085 }, Index = 83, Form = 5 }, // Rotom-5
+            new(50,08,4) { Species = 767, Ability = A4, Moves = new[]{ 522, 057, 372, 341 }, Index = 83 }, // Wimpod
+            new(60,10,5) { Species = 573, Ability = A4, Moves = new[]{ 350, 541, 331, 813 }, Index = 83, Shiny = Shiny.Always }, // Cinccino
+            new(60,10,5) { Species = 573, Ability = A4, Moves = new[]{ 350, 541, 331, 813 }, Index = 83 }, // Cinccino
+            new(60,10,5) { Species = 334, Ability = A4, Moves = new[]{ 585, 784, 542, 058 }, Index = 83 }, // Altaria
+            new(60,10,5) { Species = 479, Ability = A4, Moves = new[]{ 437, 399, 261, 085 }, Index = 83, Form = 5 }, // Rotom-5
+            new(60,10,5) { Species = 767, Ability = A4, Moves = new[]{ 806, 057, 372, 341 }, Index = 83 }, // Wimpod
+
+            new(17,01,1) { Species = 092, Ability = A4, Moves = new[]{ 122, 605, 474, 009 }, Index = 81 }, // Gastly
+            new(17,01,1) { Species = 607, Ability = A4, Moves = new[]{ 052, 506, 123, 109 }, Index = 81 }, // Litwick
+            new(17,01,1) { Species = 425, Ability = A4, Moves = new[]{ 310, 016, 107, 506 }, Index = 81 }, // Drifloon
+            new(30,03,2) { Species = 093, Ability = A4, Moves = new[]{ 325, 605, 474, 009 }, Index = 81 }, // Haunter
+            new(30,03,2) { Species = 607, Ability = A4, Moves = new[]{ 083, 506, 123, 261 }, Index = 81 }, // Litwick
+            new(30,03,2) { Species = 426, Ability = A4, Moves = new[]{ 668, 016, 261, 506 }, Index = 81 }, // Drifblim
+            new(40,05,3) { Species = 094, Ability = A4, Moves = new[]{ 325, 605, 474, 087 }, Index = 81 }, // Gengar
+            new(40,05,3) { Species = 607, Ability = A4, Moves = new[]{ 517, 247, 123, 094 }, Index = 81 }, // Litwick
+            new(40,05,3) { Species = 426, Ability = A4, Moves = new[]{ 668, 086, 261, 506 }, Index = 81 }, // Drifblim
+            new(50,08,4) { Species = 094, Ability = A4, Moves = new[]{ 247, 605, 482, 087 }, Index = 81 }, // Gengar
+            new(50,08,4) { Species = 609, Ability = A4, Moves = new[]{ 315, 247, 123, 094 }, Index = 81 }, // Chandelure
+            new(50,08,4) { Species = 426, Ability = A4, Moves = new[]{ 668, 086, 261, 247 }, Index = 81 }, // Drifblim
+            new(60,10,5) { Species = 094, Ability = A4, Moves = new[]{ 247, 605, 482, 261 }, Index = 81, CanGigantamax = true }, // Gengar
+            new(60,10,5) { Species = 094, Ability = A4, Moves = new[]{ 247, 605, 482, 261 }, Index = 81 }, // Gengar
+            new(60,10,5) { Species = 609, Ability = A4, Moves = new[]{ 315, 247, 399, 094 }, Index = 81, Shiny = Shiny.Always }, // Chandelure
+            new(60,10,5) { Species = 609, Ability = A4, Moves = new[]{ 315, 247, 399, 094 }, Index = 81 }, // Chandelure
+            new(60,10,5) { Species = 426, Ability = A4, Moves = new[]{ 668, 371, 261, 247 }, Index = 81 }, // Drifblim
+
             new(17,01,1) { Species = 582, Ability = A4, Moves = new[]{ 419, 106, 263, 310 }, Index = 79 }, // Vanillite
             new(17,01,1) { Species = 118, Ability = A4, Moves = new[]{ 030, 039, 352, 064 }, Index = 79 }, // Goldeen
             new(17,01,1) { Species = 127, Ability = A4, Moves = new[]{ 458, 693, 157, 069 }, Index = 79 }, // Pinsir

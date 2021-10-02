@@ -130,7 +130,7 @@ namespace PKHeX.WinForms
                 DisplayStyle = DataGridViewComboBoxDisplayStyle.Nothing,
                 DisplayIndex = c,
                 Width = 135,
-                FlatStyle = FlatStyle.Flat
+                FlatStyle = FlatStyle.Flat,
             };
         }
 
@@ -155,7 +155,7 @@ namespace PKHeX.WinForms
                 HeaderText = name,
                 DisplayIndex = c,
                 Width = 40,
-                FlatStyle = FlatStyle.Flat
+                FlatStyle = FlatStyle.Flat,
             };
         }
 
@@ -166,7 +166,7 @@ namespace PKHeX.WinForms
                 HeaderText = name,
                 DisplayIndex = c,
                 Width = 40,
-                FlatStyle = FlatStyle.Flat
+                FlatStyle = FlatStyle.Flat,
             };
         }
 
@@ -250,7 +250,7 @@ namespace PKHeX.WinForms
             var pouch = Pouches[index];
             NUD_Count.Maximum = GetMax(SAV, pouch, Main.HaX);
 
-            bool disable = pouch.Type == InventoryType.PCItems || pouch.Type == InventoryType.FreeSpace;
+            bool disable = pouch.Type is InventoryType.PCItems or InventoryType.FreeSpace;
             NUD_Count.Visible = L_Count.Visible = B_GiveAll.Visible = !disable;
             if (disable && !Main.HaX)
             {
@@ -275,7 +275,7 @@ namespace PKHeX.WinForms
                 // Cap at absolute maximum
                 <= 2 => byte.MaxValue,
                 >= 7 => pouch.MaxCount,
-                _ => ushort.MaxValue
+                _ => ushort.MaxValue,
             };
         }
 

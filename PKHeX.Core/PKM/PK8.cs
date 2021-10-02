@@ -19,7 +19,7 @@ namespace PKHeX.Core
             0x9C, 0x9D, 0x9E, 0x9F, 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7,
 
             0xC5,
-            0xCE, 0xCF, 0xD0, 0xD1, 0xD2, 0xD3, 0xD4, 0xD5, 0xD6, 0xD7, 0xD8, 0xD9, 0xDA, 0xDB, 0xDC, 0xDD,
+            0xCE, 0xCF, 0xD0, 0xD1, 0xD2, 0xD3, 0xD4, 0xD5, 0xD6, 0xD7, 0xD8, 0xD9, 0xDA, 0xDB,
             0xE0, 0xE1, // Old Console Region / Region
             0xE9, 0xEA, 0xEB, 0xEC, 0xED, 0xEE, 0xEF, 0xF0, 0xF1, 0xF2, 0xF3, 0xF4, 0xF5, 0xF6, 0xF7,
             0x115, 0x11F, // Alignment
@@ -475,7 +475,7 @@ namespace PKHeX.Core
         public bool GetMoveRecordFlag(int index)
         {
             if ((uint) index > 112) // 14 bytes, 8 bits
-                throw new ArgumentException(nameof(index));
+                throw new ArgumentOutOfRangeException(nameof(index));
             int ofs = index >> 3;
             return FlagUtil.GetFlag(Data, 0x127 + ofs, index & 7);
         }
@@ -483,7 +483,7 @@ namespace PKHeX.Core
         public void SetMoveRecordFlag(int index, bool value)
         {
             if ((uint)index > 112) // 14 bytes, 8 bits
-                throw new ArgumentException(nameof(index));
+                throw new ArgumentOutOfRangeException(nameof(index));
             int ofs = index >> 3;
             FlagUtil.SetFlag(Data, 0x127 + ofs, index & 7, value);
         }
@@ -539,7 +539,7 @@ namespace PKHeX.Core
                 /* OT_Friendship */ OT_TextVar = OT_Memory = OT_Intensity = OT_Feeling = 0;
 
                 // Clear Handler
-                HT_Name = string.Empty.PadRight(11, '\0');
+                HT_Trash.Clear();
                 return;
             }
 
@@ -550,7 +550,7 @@ namespace PKHeX.Core
             if (gen < 6)
                 OT_TextVar = OT_Memory = OT_Intensity = OT_Feeling = 0;
             if (gen != 8) // must be transferred via HOME, and must have memories
-                TradeMemory();
+                this.SetTradeMemoryHT8(); // not faking HOME tracker.
         }
 
         private bool TradeOT(ITrainerInfo tr)
@@ -573,11 +573,7 @@ namespace PKHeX.Core
             CurrentHandler = 1;
             HT_Gender = tr.Gender;
             HT_Language = tr.Language;
-        }
-
-        // Misc Updates
-        public static void TradeMemory()
-        {
+            this.SetTradeMemoryHT8();
         }
 
         // Maximums

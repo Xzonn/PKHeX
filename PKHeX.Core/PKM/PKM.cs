@@ -485,11 +485,6 @@ namespace PKHeX.Core
             }
         }
 
-        // Legality Extensions
-        public TradebackType TradebackStatus { get; set; } = TradebackType.Any;
-        public bool Gen1_NotTradeback => TradebackStatus == TradebackType.Gen1_NotTradeback;
-        public bool Gen2_NotTradeback => TradebackStatus == TradebackType.Gen2_NotTradeback;
-
         // Misc Egg Facts
         public bool WasEgg => IsEgg || Egg_Location != 0;
         public bool WasTradedEgg => Egg_Location == GetTradedEggLocation();
@@ -523,11 +518,11 @@ namespace PKHeX.Core
                 return false;
 
             // Trade generation 1 -> 2
-            if (format == 2 && generation == 1 && !Gen2_NotTradeback)
+            if (format == 2 && generation == 1 && !Korean)
                 return true;
 
             // Trade generation 2 -> 1
-            if (format == 1 && generation == 2 && !Gen1_NotTradeback)
+            if (format == 1 && generation == 2 && ParseSettings.AllowGen1Tradeback)
                 return true;
 
             if (format < generation)
@@ -544,7 +539,7 @@ namespace PKHeX.Core
                 6 => gen is >= 3 and <= 6,
                 7 => gen is >= 3 and <= 7 || VC,
                 8 => gen is >= 3 and <= 8 || VC,
-                _ => false
+                _ => false,
             };
         }
 
@@ -643,7 +638,7 @@ namespace PKHeX.Core
             <=  90 => 0,
             <= 120 => 1,
             <= 150 => 2,
-            _      => 3
+            _      => 3,
         };
 
         /// <summary>
@@ -821,7 +816,7 @@ namespace PKHeX.Core
             {
                 Shiny.AlwaysSquare => 0,
                 Shiny.AlwaysStar => 1,
-                _ => Util.Rand.Next(8)
+                _ => Util.Rand.Next(8),
             };
 
             SID = (int)xor ^ bits;
@@ -900,13 +895,13 @@ namespace PKHeX.Core
             return IVs = ivs;
         }
 
-        public int[] SetRandomIVsGO(int minIV = 0)
+        public int[] SetRandomIVsGO(int minIV = 0, int maxIV = 15)
         {
             int[] ivs = new int[6];
             var rnd = Util.Rand;
-            ivs[0] = (rnd.Next(minIV, 16) << 1) | 1; // hp
-            ivs[1] = ivs[4] = (rnd.Next(minIV, 16) << 1) | 1; // attack
-            ivs[2] = ivs[5] = (rnd.Next(minIV, 16) << 1) | 1; // defense
+            ivs[0] = (rnd.Next(minIV, maxIV + 1) << 1) | 1; // hp
+            ivs[1] = ivs[4] = (rnd.Next(minIV, maxIV + 1) << 1) | 1; // attack
+            ivs[2] = ivs[5] = (rnd.Next(minIV, maxIV + 1) << 1) | 1; // defense
             ivs[3] = rnd.Next(MaxIV + 1); // speed
             return IVs = ivs;
         }
@@ -1002,7 +997,7 @@ namespace PKHeX.Core
             1 => Move2 = value,
             2 => Move3 = value,
             3 => Move4 = value,
-            _ => throw new IndexOutOfRangeException(nameof(index))
+            _ => throw new IndexOutOfRangeException(nameof(index)),
         };
 
         /// <summary>
@@ -1044,7 +1039,7 @@ namespace PKHeX.Core
             3 => EV_SPE,
             4 => EV_SPA,
             5 => EV_SPD,
-            _ => throw new ArgumentOutOfRangeException(nameof(index))
+            _ => throw new ArgumentOutOfRangeException(nameof(index)),
         };
 
         /// <summary>
@@ -1059,7 +1054,7 @@ namespace PKHeX.Core
             3 => IV_SPE,
             4 => IV_SPA,
             5 => IV_SPD,
-            _ => throw new ArgumentOutOfRangeException(nameof(index))
+            _ => throw new ArgumentOutOfRangeException(nameof(index)),
         };
     }
 }

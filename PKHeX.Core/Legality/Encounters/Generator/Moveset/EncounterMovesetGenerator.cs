@@ -139,6 +139,8 @@ namespace PKHeX.Core
         /// <returns>A consumable <see cref="IEncounterable"/> list of possible encounters.</returns>
         public static IEnumerable<IEncounterable> GenerateVersionEncounters(PKM pk, IEnumerable<int> moves, GameVersion version)
         {
+            if (pk.Species == 0) // can enter this method after failing to set a species ID that cannot exist in the format
+                return Array.Empty<IEncounterable>();
             pk.Version = (int)version;
             var format = pk.Format;
             if (format is 2 && version is GameVersion.RD or GameVersion.GN or GameVersion.BU or GameVersion.YW)
@@ -211,7 +213,7 @@ namespace PKHeX.Core
                 {
                     3 => moves.Concat(Legal.LevelUpE [(int)Species.Ninjask].GetMoves(100, 20)),
                     4 => moves.Concat(Legal.LevelUpPt[(int)Species.Ninjask].GetMoves(100, 20)),
-                    _ => moves
+                    _ => moves,
                 };
             }
             return moves;
@@ -226,7 +228,7 @@ namespace PKHeX.Core
                 EncounterOrder.Static => GetStatic(pk, needs, chain, version),
                 EncounterOrder.Trade => GetTrades(pk, needs, chain, version),
                 EncounterOrder.Slot => GetSlots(pk, needs, chain, version),
-                _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
+                _ => throw new ArgumentOutOfRangeException(nameof(type), type, null),
             };
         }
 
@@ -259,7 +261,7 @@ namespace PKHeX.Core
                 IEnumerable<int> em = MoveEgg.GetEggMoves(pk.PersonalInfo, egg.Species, egg.Form, egg.Version, egg.Generation);
                 if (egg.Generation <= 2)
                     em = em.Concat(MoveLevelUp.GetEncounterMoves(egg.Species, 0, egg.Level, egg.Version));
-                else if (Legal.LightBall.Contains(egg.Species) && needs.Contains((int)Move.VoltTackle))
+                else if (egg.Species is (int)Species.Pichu && needs.Contains((int)Move.VoltTackle) && (egg.Generation > 3 || version is GameVersion.E))
                     em = em.Concat(new[] { (int)Move.VoltTackle });
 
                 if (!needs.Except(em).Any())
@@ -289,7 +291,7 @@ namespace PKHeX.Core
                     yield return gift;
                     continue;
                 }
-                var em = gift.Moves;
+                var em = gift.Moves.Concat(gift.Relearn);
                 if (!needs.Except(em).Any())
                     yield return gift;
             }
@@ -371,6 +373,8 @@ namespace PKHeX.Core
                 IEnumerable<int> em = trade.Moves;
                 if (trade.Generation <= 2)
                     em = em.Concat(MoveLevelUp.GetEncounterMoves(trade.Species, 0, trade.Level, trade.Version));
+                else if (trade is IRelearn { Relearn: { Count: not 0 } } r)
+                    em = em.Concat(r.Relearn);
                 if (!needs.Except(em).Any())
                     yield return trade;
             }
@@ -419,9 +423,7 @@ namespace PKHeX.Core
                     return true;
                 if (FormInfo.IsFormChangeable(enc.Species, enc.Form, evo.Form, enc.Generation))
                     return true;
-                if (enc is EncounterSlot {IsRandomUnspecificForm: true})
-                    return true;
-                if (enc is EncounterStatic {IsRandomUnspecificForm: true})
+                if (enc is EncounterSlot {IsRandomUnspecificForm: true} or EncounterStatic {IsRandomUnspecificForm: true})
                     return true;
                 if (enc is EncounterStatic7 {IsTotem: true} && evo.Form == 0 && format > 7) // totems get form wiped
                     return true;

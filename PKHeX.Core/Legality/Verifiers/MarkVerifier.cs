@@ -68,10 +68,10 @@ namespace PKHeX.Core
         {
             RibbonIndex.MarkCurry when !IsMarkAllowedCurry(pk, x) => false,
             RibbonIndex.MarkFishing when !IsMarkAllowedFishing(x) => false,
-            RibbonIndex.MarkMisty when pk.Met_Level < EncounterArea8.BoostLevel && EncounterArea8.IsWildArea8(pk.Met_Location) => false,
+            RibbonIndex.MarkMisty when pk.Met_Level < EncounterArea8.BoostLevel && EncounterArea8.IsBoostedArea60Fog(pk.Met_Location) => false,
             RibbonIndex.MarkDestiny => false,
             >= RibbonIndex.MarkCloudy and <= RibbonIndex.MarkMisty => IsWeatherPermitted(mark, x),
-            _ => true
+            _ => true,
         };
 
         private static bool IsWeatherPermitted(RibbonIndex mark, IEncounterTemplate enc)

@@ -38,7 +38,7 @@ namespace PKHeX.Core
             AzureFlute = 10,
             PokétchApp = 11,
             Ribbon = 12,
-            PokéWalkerArea = 14
+            PokéWalkerArea = 14,
         }
 
         public override string CardTitle { get => "Raw Gift (PGT)"; set { } }
@@ -70,7 +70,7 @@ namespace PKHeX.Core
         public override byte[] Write()
         {
             // Ensure PGT content is encrypted
-            var clone = (PGT)Clone();
+            var clone = new PGT((byte[])Data.Clone());
             clone.VerifyPKEncryption();
             return clone.Data;
         }
@@ -103,7 +103,7 @@ namespace PKHeX.Core
         public bool IsManaphyEgg { get => PGTGiftType == GiftType.ManaphyEgg; set { if (value) PGTGiftType = GiftType.ManaphyEgg; } }
         public override bool EggEncounter => IsEgg;
         public override bool IsItem { get => PGTGiftType == GiftType.Item; set { if (value) PGTGiftType = GiftType.Item; } }
-        public override bool IsPokémon { get => PGTGiftType == GiftType.Pokémon || PGTGiftType == GiftType.PokémonEgg || PGTGiftType == GiftType.ManaphyEgg; set { } }
+        public override bool IsPokémon { get => PGTGiftType is GiftType.Pokémon or GiftType.PokémonEgg or GiftType.ManaphyEgg; set { } }
 
         public override int Species { get => IsManaphyEgg ? 490 : PK.Species; set => PK.Species = value; }
         public override IReadOnlyList<int> Moves { get => PK.Moves; set => PK.SetMoves(value); }

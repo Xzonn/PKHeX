@@ -68,6 +68,7 @@ namespace PKHeX.Core
         private int AdventureInfo;
         public abstract int GTS { get; }
         public abstract int Fused { get; }
+        public int PGL => AllBlocks[35].Offset + 8; // Dream World Upload
 
         // Daycare
         public override int DaycareSeedSize => Daycare5.DaycareSeedSize;
@@ -205,6 +206,7 @@ namespace PKHeX.Core
         public abstract BattleSubway5 BattleSubway { get; }
         public abstract Entralink5 Entralink { get; }
         public abstract Musical5 Musical { get; }
+        public abstract Encount5 Encount { get; }
 
         public static int GetMailOffset(int index) => (index * Mail5.SIZE) + 0x1DD00;
         public byte[] GetMailData(int offset) => GetData(offset, Mail5.SIZE);

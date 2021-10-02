@@ -9,7 +9,7 @@ namespace PKHeX.Core
     /// <remarks>
     /// Static Encounters are fixed position encounters with properties that are not subject to Wild Encounter conditions.
     /// </remarks>
-    public abstract record EncounterStatic : IEncounterable, IMoveset, ILocation, IEncounterMatch
+    public abstract record EncounterStatic : IEncounterable, IMoveset, ILocation, IEncounterMatch, IFixedBall, IFixedAbilityNumber
     {
         public int Species { get; init; }
         public int Form { get; init; }
@@ -27,6 +27,8 @@ namespace PKHeX.Core
         public Nature Nature { get; init; } = Nature.Random;
         public bool Gift { get; init; }
         public int Ball { get; init; } = 4; // Only checked when is Gift
+
+        public Ball FixedBall => Gift ? (Ball)Ball : Core.Ball.None;
 
         public IReadOnlyList<int> Moves { get; init; } = Array.Empty<int>();
         public IReadOnlyList<int> IVs { get; init; } = Array.Empty<int>();
@@ -289,15 +291,13 @@ namespace PKHeX.Core
         {
             if (IsMatchPartial(pkm))
                 return EncounterMatchRating.PartialMatch;
-            if (IsMatchDeferred(pkm))
-                return EncounterMatchRating.Deferred;
-            return EncounterMatchRating.Match;
+            return IsMatchDeferred(pkm);
         }
 
         /// <summary>
         /// Checks if the provided <see cref="pkm"/> might not be the best match, or even a bad match due to minor reasons.
         /// </summary>
-        protected virtual bool IsMatchDeferred(PKM pkm) => false;
+        protected virtual EncounterMatchRating IsMatchDeferred(PKM pkm) => EncounterMatchRating.Match;
 
         /// <summary>
         /// Checks if the provided <see cref="pkm"/> is not an exact match due to minor reasons.

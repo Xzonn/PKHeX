@@ -322,7 +322,7 @@ namespace PKHeX.Core
 
         public Span<byte> OT_Trash
         { 
-            get => Data.AsSpan(Offsets.Trainer1 + 2, StringLength); 
+            get => Data.AsSpan(Offsets.Trainer1 + 2, StringLength);
             set { if (value.Length == StringLength) value.CopyTo(Data.AsSpan(Offsets.Trainer1 + 2)); }
         }
 
@@ -454,6 +454,24 @@ namespace PKHeX.Core
             }
         }
 
+        public byte BlueCardPoints
+        {
+            get
+            {
+                int ofs = Offsets.BlueCardPoints;
+                if (ofs == -1)
+                    return 0;
+                return Data[ofs];
+            }
+            set
+            {
+                int ofs = Offsets.BlueCardPoints;
+                if (ofs == -1)
+                    return;
+                Data[ofs] = value;
+            }
+        }
+
         private static ushort[] LegalItems => Legal.Pouch_Items_GSC;
         private ushort[] LegalKeyItems => Version == GameVersion.C? Legal.Pouch_Key_C : Legal.Pouch_Key_GS;
         private static ushort[] LegalBalls => Legal.Pouch_Ball_GSC;
@@ -469,7 +487,7 @@ namespace PKHeX.Core
                     new InventoryPouchGB(InventoryType.Items, LegalItems, 99, Offsets.PouchItem, 20),
                     new InventoryPouchGB(InventoryType.KeyItems, LegalKeyItems, 99, Offsets.PouchKey, 26),
                     new InventoryPouchGB(InventoryType.Balls, LegalBalls, 99, Offsets.PouchBall, 12),
-                    new InventoryPouchGB(InventoryType.PCItems, ArrayUtil.ConcatAll(LegalItems, LegalKeyItems, LegalBalls, LegalTMHMs), 99, Offsets.PouchPC, 50)
+                    new InventoryPouchGB(InventoryType.PCItems, ArrayUtil.ConcatAll(LegalItems, LegalKeyItems, LegalBalls, LegalTMHMs), 99, Offsets.PouchPC, 50),
                 };
                 return pouch.LoadAll(Data);
             }

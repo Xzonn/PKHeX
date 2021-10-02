@@ -126,7 +126,7 @@ namespace PKHeX.Core
                 6 => VerifyAbility6(data, enc),
                 7 => VerifyAbility7(data, enc),
               >=8 => VALID,
-                _ => CheckMatch(data.pkm, abilities, gen, AbilityState.CanMismatch)
+                _ => CheckMatch(data.pkm, abilities, gen, AbilityState.CanMismatch, enc),
             };
         }
 
@@ -151,7 +151,7 @@ namespace PKHeX.Core
             if (gen == 5)
                 return VerifyAbility5(data, enc, abilities);
 
-            return CheckMatch(pkm, abilities, gen, state);
+            return CheckMatch(pkm, abilities, gen, state, enc);
         }
 
         private CheckResult VerifyFixedAbility(LegalityAnalysis data, IReadOnlyList<int> abilities, AbilityState state, int encounterAbility, int abilIndex)
@@ -187,7 +187,7 @@ namespace PKHeX.Core
                     return INVALID;
                 }
 
-                return CheckMatch(pkm, abilities, enc.Generation, AbilityState.MustMatch);
+                return CheckMatch(pkm, abilities, enc.Generation, AbilityState.MustMatch, enc);
             }
 
             if (encounterAbility == 1 << abilIndex)
@@ -197,7 +197,7 @@ namespace PKHeX.Core
                 return VALID;
 
             if (state == AbilityState.CanMismatch || encounterAbility == 0)
-                return CheckMatch(pkm, abilities, enc.Generation, AbilityState.MustMatch);
+                return CheckMatch(pkm, abilities, enc.Generation, AbilityState.MustMatch, enc);
 
             if (IsAbilityCapsuleModified(pkm, abilities, encounterAbility))
                 return GetValid(LAbilityCapsuleUsed);
@@ -318,14 +318,14 @@ namespace PKHeX.Core
                     // Gen3-5 transfer with same ability -> 1st ability that matches
                     if (pkm.AbilityNumber == 1)
                         return VALID;
-                    return CheckMatch(pkm, abilities, 4, AbilityState.MustMatch); // evolved, must match
+                    return CheckMatch(pkm, abilities, 4, AbilityState.MustMatch, pcd); // evolved, must match
                 }
                 if (pkm.AbilityNumber < 4) // Ability Capsule can change between 1/2
                     return GetValid(LAbilityCapsuleUsed);
             }
 
             if (pcd.Species != pkm.Species)
-                return CheckMatch(pkm, abilities, 4, AbilityState.MustMatch); // evolved, must match
+                return CheckMatch(pkm, abilities, 4, AbilityState.MustMatch, pcd); // evolved, must match
 
             // Edge case (PID ability gift mismatch) -- must match gift ability.
             return pkm.Ability == pcd.Gift.PK.Ability ? VALID : INVALID;
@@ -340,7 +340,7 @@ namespace PKHeX.Core
             {
                 EncounterSlot5 w when pkm.AbilityNumber == 4 != w.IsHiddenGrotto => GetInvalid(w.IsHiddenGrotto ? LAbilityMismatchGrotto : LAbilityHiddenFail),
                 EncounterEgg e when pkm.AbilityNumber == 4 && AbilityBreedLegality.BanHidden5.Contains(e.Species) => GetInvalid(LAbilityHiddenUnavailable),
-                _ => CheckMatch(data.pkm, abilities, 5, pkm.Format == 5 ? AbilityState.MustMatch : AbilityState.CanMismatch)
+                _ => CheckMatch(data.pkm, abilities, 5, pkm.Format == 5 ? AbilityState.MustMatch : AbilityState.CanMismatch, enc),
             };
         }
 
@@ -360,7 +360,7 @@ namespace PKHeX.Core
                 EncounterSlot => GetInvalid(LAbilityMismatchHordeSafari),
 
                 EncounterEgg egg when AbilityBreedLegality.BanHidden6.Contains(egg.Species | (egg.Form << 11)) => GetInvalid(LAbilityHiddenUnavailable),
-                _ => VALID
+                _ => VALID,
             };
         }
 
@@ -374,7 +374,7 @@ namespace PKHeX.Core
             {
                 EncounterSlot7 {IsSOS: false} => GetInvalid(LAbilityMismatchSOS),
                 EncounterEgg egg when AbilityBreedLegality.BanHidden7.Contains(egg.Species | (egg.Form << 11)) => GetInvalid(LAbilityHiddenUnavailable),
-                _ => VALID
+                _ => VALID,
             };
         }
 
@@ -385,7 +385,8 @@ namespace PKHeX.Core
         /// <param name="abilities">Current abilities</param>
         /// <param name="gen">Generation</param>
         /// <param name="state">Permissive to allow ability to deviate under special circumstances</param>
-        private CheckResult CheckMatch(PKM pkm, IReadOnlyList<int> abilities, int gen, AbilityState state)
+        /// <param name="enc">Encounter template the <see cref="pkm"/> was matched to.</param>
+        private CheckResult CheckMatch(PKM pkm, IReadOnlyList<int> abilities, int gen, AbilityState state, IEncounterTemplate enc)
         {
             if (gen is (3 or 4) && pkm.AbilityNumber == 4)
                 return GetInvalid(LAbilityHiddenUnavailable);
@@ -398,11 +399,13 @@ namespace PKHeX.Core
             if (pkm is G3PKM g3)
             {
                 var abit = g3.AbilityBit;
-                if (abilities[0] == abilities[1]) // Not a dual ability
+                // We've sanitized our personal data to replace "None" abilities with the first ability.
+                // Granbull, Vibrava, and Flygon have dual abilities being the same.
+                if (abilities[0] == abilities[1] && g3.Species is not ((int)Species.Granbull or (int)Species.Vibrava or (int)Species.Flygon)) // Not a dual ability
                 {
                     // Must not have the Ability bit flag set.
-                    // Some shadow stuff with single-ability might have the flag set anyways?
-                    if (abit && !(pkm is IShadowPKM {ShadowID: not 0}))
+                    // Shadow encounters set a random ability index; don't bother checking if it's a re-battle for ability bit flipping.
+                    if (abit && enc is not EncounterStaticShadow)
                         return GetInvalid(LAbilityMismatchFlag, CheckIdentifier.PID);
                 }
                 else
@@ -446,7 +449,7 @@ namespace PKHeX.Core
             return true;
         }
 
-        private static bool CanAbilityCapsule(int format, IReadOnlyList<int> abilities)
+        public static bool CanAbilityCapsule(int format, IReadOnlyList<int> abilities)
         {
             if (format < 6) // Ability Capsule does not exist
                 return false;
@@ -470,15 +473,14 @@ namespace PKHeX.Core
                 (int)Species.Tornadus => true, // Form-0 is a/a/h
                 (int)Species.Thundurus => true, // Form-0 is a/a/h
                 (int)Species.Landorus => true, // Form-0 is a/a/h
-                _ => false
+                _ => false,
             };
         }
 
         private static int GetEncounterFixedAbilityNumber(IEncounterTemplate enc) => enc switch
         {
-            EncounterStatic s => s.Ability,
-            EncounterTrade t => t.Ability,
-            _ => -1
+            IFixedAbilityNumber s => s.Ability,
+            _ => -1,
         };
     }
 }

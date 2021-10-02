@@ -326,12 +326,7 @@ namespace PKHeX.Core
 
         public override MysteryGiftAlbum GiftAlbum
         {
-            get
-            {
-                var album = new MysteryGiftAlbum(MysteryGiftCards, MysteryGiftReceivedFlags);
-                album.Flags[2047] = false;
-                return album;
-            }
+            get => new(MysteryGiftCards, MysteryGiftReceivedFlags) {Flags = {[2047] = false}};
             set
             {
                 bool available = IsMysteryGiftAvailable(value.Gifts);
@@ -528,7 +523,7 @@ namespace PKHeX.Core
             {
                 GameVersion.DP => (ofs + 0x4BEC),
                 GameVersion.Pt => (ofs + 0x4E80),
-                _ => (ofs + 0x3FA8)
+                _ => (ofs + 0x3FA8),
             };
         }
 
@@ -538,6 +533,20 @@ namespace PKHeX.Core
         {
             int ofs = GetMailOffset(mailIndex);
             return new Mail4(GetMailData(ofs), ofs);
+        }
+
+        public abstract uint SwarmSeed { get; set; }
+        public abstract uint SwarmMaxCountModulo { get; }
+
+        public uint SwarmIndex
+        {
+            get => SwarmSeed % SwarmMaxCountModulo;
+            set
+            {
+                value %= SwarmMaxCountModulo;
+                while (SwarmIndex != value)
+                    ++SwarmSeed;
+            }
         }
     }
 }

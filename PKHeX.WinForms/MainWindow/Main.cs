@@ -190,12 +190,12 @@ namespace PKHeX.WinForms
         private bool LoadAutoDetectedSAV()
         {
             var startup = Settings.Startup;
-            if (startup.AutoLoadSaveOnStartup == AutoLoadSetting.RecentBackup)
-                return LoadMostRecentBackup();
-            if (startup.AutoLoadSaveOnStartup == AutoLoadSetting.LastLoaded)
-                return LoadMostRecentlyLoaded(startup.RecentlyLoaded);
-
-            return false;
+            return startup.AutoLoadSaveOnStartup switch
+            {
+                AutoLoadSetting.RecentBackup => LoadMostRecentBackup(),
+                AutoLoadSetting.LastLoaded => LoadMostRecentlyLoaded(startup.RecentlyLoaded),
+                _ => false,
+            };
         }
 
         private bool LoadMostRecentlyLoaded(IReadOnlyList<string> paths)
@@ -444,7 +444,7 @@ namespace PKHeX.WinForms
             Draw.LoadBrushes();
             PKME_Tabs.Unicode = Unicode = settings.Display.Unicode;
             PKME_Tabs.UpdateUnicode(GenderSymbols);
-            SpriteName.AllowShinySprite = settings.Display.ShinySprites;
+            SpriteName.AllowShinySprite = settings.Sprite.ShinySprites;
             SaveFile.SetUpdateDex = settings.SlotWrite.SetUpdateDex ? PKMImportSetting.Update : PKMImportSetting.Skip;
             SaveFile.SetUpdatePKM = settings.SlotWrite.SetUpdatePKM ? PKMImportSetting.Update : PKMImportSetting.Skip;
             C_SAV.ModifyPKM = PKME_Tabs.ModifyPKM = settings.SlotWrite.SetUpdatePKM;
@@ -452,11 +452,12 @@ namespace PKHeX.WinForms
             CommonEdits.ShowdownSetBehaviorNature = settings.Import.ApplyNature;
             C_SAV.FlagIllegal = settings.Display.FlagIllegal;
             C_SAV.M.Hover.GlowHover = settings.Hover.HoverSlotGlowEdges;
-            SpriteBuilder.ShowEggSpriteAsItem = settings.Display.ShowEggSpriteAsHeldItem;
             ParseSettings.InitFromSettings(settings.Legality);
             PKME_Tabs.HideSecretValues = C_SAV.HideSecretDetails = settings.Privacy.HideSecretDetails;
             PKMConverter.AllowIncompatibleConversion = settings.Advanced.AllowIncompatibleConversion;
             WinFormsUtil.DetectSaveFileOnFileOpen = settings.Startup.TryDetectRecentSave;
+
+            SpriteBuilder.LoadSettings(settings.Sprite);
         }
 
         private void MainMenuBoxLoad(object sender, EventArgs e)

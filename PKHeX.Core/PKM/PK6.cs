@@ -10,7 +10,7 @@ namespace PKHeX.Core
         private static readonly ushort[] Unused =
         {
             0x36, 0x37, // Unused Ribbons
-            0x58, 0x59, 0x73, 0x90, 0x91, 0x9E, 0x9F, 0xA0, 0xA1, 0xA7, 0xAA, 0xAB, 0xAC, 0xAD, 0xC8, 0xC9, 0xD7, 0xE4, 0xE5, 0xE6, 0xE7
+            0x58, 0x59, 0x73, 0x90, 0x91, 0x9E, 0x9F, 0xA0, 0xA1, 0xA7, 0xAA, 0xAB, 0xAC, 0xAD, 0xC8, 0xC9, 0xD7, 0xE4, 0xE5, 0xE6, 0xE7,
         };
 
         public override IReadOnlyList<ushort> ExtraBytes => Unused;
@@ -396,7 +396,7 @@ namespace PKHeX.Core
                 /* OT_Friendship */ OT_Affection = OT_TextVar = OT_Memory = OT_Intensity = OT_Feeling = 0;
 
                 // Clear Handler
-                HT_Name = string.Empty.PadRight(11, '\0');
+                HT_Trash.Clear();
                 return;
             }
 
@@ -443,7 +443,7 @@ namespace PKHeX.Core
 
             // Make a memory if no memory already exists. Pretty terrible way of doing this but I'd rather not overwrite existing memories.
             if (HT_Memory == 0)
-                this.SetTradeMemory(false);
+                this.SetTradeMemoryHT6(false);
         }
 
         // Maximums
@@ -475,7 +475,7 @@ namespace PKHeX.Core
                     break;
             }
 
-            pk7.SetTradeMemory(bank: true); // oh no, memories on gen7 pkm
+            pk7.SetTradeMemoryHT6(true); // oh no, memories on gen7 pkm
             PKMConverter.SetFirstCountryRegion(pk7);
 
             // Bank-accurate data zeroing
