@@ -523,6 +523,7 @@ namespace PKHeX.WinForms.Controls
             {
                 SAV1 s => (Form) new SAV_EventReset1(s),
                 SAV7b s => new SAV_EventWork(s),
+                SAV8BS s => new SAV_FlagWork8b(s),
                 _ => new SAV_EventFlags(SAV),
             };
             form.ShowDialog();
@@ -634,6 +635,7 @@ namespace PKHeX.WinForms.Controls
                 SAV7 s7 => new SAV_PokedexSM(s7),
                 SAV7b b7 => new SAV_PokedexGG(b7),
                 SAV8SWSH swsh => new SAV_PokedexSWSH(swsh),
+                SAV8BS bs => new SAV_PokedexBDSP(bs),
                 _ => (Form?)null,
             };
             form?.ShowDialog();
@@ -1101,7 +1103,7 @@ namespace PKHeX.WinForms.Controls
         {
             // Generational Interface
             ToggleSecrets(sav, HideSecretDetails);
-            B_VerifyCHK.Enabled = SAV.State.Exportable;
+            B_VerifyCHK.Visible = Menu_ExportBAK.Visible = SAV.State.Exportable;
 
             if (sav is SAV4BR br)
             {
@@ -1211,5 +1213,7 @@ namespace PKHeX.WinForms.Controls
                 _ => PKMImportSetting.UseDefault,
             };
         }
+
+        private void Menu_ExportBAK_Click(object sender, EventArgs e) => ExportBackup();
     }
 }

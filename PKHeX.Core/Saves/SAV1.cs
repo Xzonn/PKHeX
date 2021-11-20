@@ -10,9 +10,10 @@ namespace PKHeX.Core
     {
         protected internal override string ShortSummary => $"{OT} ({Version}) - {PlayTimeString}";
         public override string Extension => ".sav";
+        public bool IsVirtualConsole => State.Exportable && Metadata.FileName is { } s && s.StartsWith("sav") && s.Contains(".dat"); // default to GB-Era for non-exportable
 
         public int SaveRevision => Japanese ? 0 : 1;
-        public string SaveRevisionString => Japanese ? "J" : "U";
+        public string SaveRevisionString => (Japanese ? "J" : "U") + (IsVirtualConsole ? "VC" : "GB");
         public bool Japanese { get; }
         public bool Korean => false;
 
@@ -51,7 +52,7 @@ namespace PKHeX.Core
         private void Initialize(GameVersion versionOverride)
         {
             // see if RBY can be differentiated
-            if (Starter != 0 && versionOverride is not GameVersion.RB or GameVersion.YW)
+            if (Starter != 0 && versionOverride is not (GameVersion.RB or GameVersion.YW))
                 Version = Yellow ? GameVersion.YW : GameVersion.RB;
 
             Box = Data.Length;
@@ -254,6 +255,14 @@ namespace PKHeX.Core
         }
 
         public override int SID { get => 0; set { } }
+
+        public string Rival
+        {
+            get => GetString(Offsets.Rival, OTLength);
+            set => SetString(value, OTLength).CopyTo(Data, Offsets.Rival);
+        }
+
+        public Span<byte> Rival_Trash { get => Data.AsSpan(Offsets.Rival, StringLength); set { if (value.Length == StringLength) value.CopyTo(Data.AsSpan(Offsets.Rival)); } }
 
         public bool Yellow => Starter == 0x54; // Pikachu
         public int Starter => Data[Offsets.Starter];

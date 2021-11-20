@@ -18,13 +18,15 @@ namespace PKHeX.Core
         /// <summary>
         /// Creates a new instance of <see cref="SCBlockMetadata"/> by loading properties and constants declared via reflection.
         /// </summary>
-        public SCBlockMetadata(SCBlockAccessor accessor, IEnumerable<string> extraKeyNames)
+        public SCBlockMetadata(SCBlockAccessor accessor, IEnumerable<string> extraKeyNames, params string[] exclusions)
         {
             var aType = accessor.GetType();
 
             BlockList = aType.GetAllPropertiesOfType<SaveBlock>(accessor);
             ValueList = aType.GetAllConstantsOfType<uint>();
             AddExtraKeyNames(ValueList, extraKeyNames);
+            if (exclusions.Length > 0)
+                ValueList = ValueList.Where(z => !exclusions.Any(z.Value.Contains)).ToDictionary(z => z.Key, z => z.Value);
             Accessor = accessor;
         }
 

@@ -8,6 +8,64 @@
         /// </summary>
         internal static readonly EncounterStatic8ND[] Dist_DLC2 =
         {
+            new(17,01,1) { Species = 133, Ability = A4, Moves = new[]{ 033, 098, 039, 608 }, Index = 91 }, // Eevee
+            new(30,03,2) { Species = 133, Ability = A4, Moves = new[]{ 129, 098, 039, 608 }, Index = 91 }, // Eevee
+            new(40,05,3) { Species = 133, Ability = A4, Moves = new[]{ 129, 098, 231, 608 }, Index = 91 }, // Eevee
+            new(40,05,3) { Species = 134, Ability = A4, Moves = new[]{ 352, 058, 330, 304 }, Index = 91 }, // Vaporeon
+            new(40,05,3) { Species = 135, Ability = A4, Moves = new[]{ 422, 086, 247, 129 }, Index = 91 }, // Jolteon
+            new(40,05,3) { Species = 136, Ability = A4, Moves = new[]{ 436, 098, 276, 044 }, Index = 91 }, // Flareon
+            new(40,05,3) { Species = 196, Ability = A4, Moves = new[]{ 060, 605, 231, 098 }, Index = 91 }, // Espeon
+            new(40,05,3) { Species = 197, Ability = A4, Moves = new[]{ 555, 044, 247, 098 }, Index = 91 }, // Umbreon
+            new(40,05,3) { Species = 470, Ability = A4, Moves = new[]{ 202, 098, 073, 231 }, Index = 91 }, // Leafeon
+            new(40,05,3) { Species = 471, Ability = A4, Moves = new[]{ 573, 059, 247, 129 }, Index = 91 }, // Glaceon
+            new(40,05,3) { Species = 700, Ability = A4, Moves = new[]{ 574, 595, 129, 605 }, Index = 91 }, // Sylveon
+            new(50,08,4) { Species = 133, Ability = A4, Moves = new[]{ 129, 500, 231, 204 }, Index = 91 }, // Eevee
+            new(50,08,4) { Species = 134, Ability = A4, Moves = new[]{ 056, 058, 330, 304 }, Index = 91 }, // Vaporeon
+            new(50,08,4) { Species = 135, Ability = A4, Moves = new[]{ 087, 086, 247, 129 }, Index = 91 }, // Jolteon
+            new(50,08,4) { Species = 136, Ability = A4, Moves = new[]{ 394, 098, 276, 044 }, Index = 91 }, // Flareon
+            new(50,08,4) { Species = 196, Ability = A4, Moves = new[]{ 094, 605, 231, 098 }, Index = 91 }, // Espeon
+            new(50,08,4) { Species = 197, Ability = A4, Moves = new[]{ 555, 492, 247, 098 }, Index = 91 }, // Umbreon
+            new(50,08,4) { Species = 470, Ability = A4, Moves = new[]{ 348, 098, 073, 231 }, Index = 91 }, // Leafeon
+            new(50,08,4) { Species = 471, Ability = A4, Moves = new[]{ 573, 059, 247, 311 }, Index = 91 }, // Glaceon
+            new(50,08,4) { Species = 700, Ability = A4, Moves = new[]{ 585, 595, 129, 605 }, Index = 91 }, // Sylveon
+            new(60,10,5) { Species = 133, Ability = A4, Moves = new[]{ 387, 500, 231, 204 }, Index = 91, Shiny = Shiny.Always }, // Eevee
+            new(60,10,5) { Species = 134, Ability = A4, Moves = new[]{ 056, 058, 503, 304 }, Index = 91 }, // Vaporeon
+            new(60,10,5) { Species = 135, Ability = A4, Moves = new[]{ 087, 085, 247, 129 }, Index = 91 }, // Jolteon
+            new(60,10,5) { Species = 136, Ability = A4, Moves = new[]{ 394, 231, 276, 044 }, Index = 91 }, // Flareon
+            new(60,10,5) { Species = 196, Ability = A4, Moves = new[]{ 094, 605, 231, 129 }, Index = 91 }, // Espeon
+            new(60,10,5) { Species = 197, Ability = A4, Moves = new[]{ 555, 492, 247, 304 }, Index = 91 }, // Umbreon
+            new(60,10,5) { Species = 470, Ability = A4, Moves = new[]{ 348, 311, 073, 231 }, Index = 91 }, // Leafeon
+            new(60,10,5) { Species = 471, Ability = A4, Moves = new[]{ 573, 059, 247, 304 }, Index = 91 }, // Glaceon
+            new(60,10,5) { Species = 700, Ability = A4, Moves = new[]{ 585, 595, 304, 605 }, Index = 91 }, // Sylveon
+            new(60,10,5) { Species = 133, Ability = A4, Moves = new[]{ 387, 500, 231, 204 }, Index = 91, CanGigantamax = true }, // Eevee
+
+            new(17,01,1) { Species = 570, Ability = A4, Moves = new[]{ 468, 247, 010, 043 }, Index = 89 }, // Zorua
+            new(17,01,1) { Species = 302, Ability = A4, Moves = new[]{ 252, 010, 425, 555 }, Index = 89 }, // Sableye
+            new(17,01,1) { Species = 355, Ability = A4, Moves = new[]{ 310, 425, 043, 506 }, Index = 89 }, // Duskull
+            new(17,01,1) { Species = 821, Ability = A4, Moves = new[]{ 403, 031, 043, 681 }, Index = 89 }, // Rookidee
+            new(17,01,1) { Species = 827, Ability = A4, Moves = new[]{ 555, 098, 251, 468 }, Index = 89 }, // Nickit
+            new(30,03,2) { Species = 571, Ability = A4, Moves = new[]{ 400, 247, 279, 304 }, Index = 89 }, // Zoroark
+            new(30,03,2) { Species = 302, Ability = A4, Moves = new[]{ 252, 094, 425, 555 }, Index = 89 }, // Sableye
+            new(30,03,2) { Species = 355, Ability = A4, Moves = new[]{ 310, 425, 371, 506 }, Index = 89 }, // Duskull
+            new(30,03,2) { Species = 822, Ability = A4, Moves = new[]{ 403, 263, 279, 681 }, Index = 89 }, // Corvisquire
+            new(30,03,2) { Species = 828, Ability = A4, Moves = new[]{ 555, 098, 251, 583 }, Index = 89 }, // Thievul
+            new(40,05,3) { Species = 571, Ability = A4, Moves = new[]{ 400, 247, 411, 304 }, Index = 89 }, // Zoroark
+            new(40,05,3) { Species = 302, Ability = A4, Moves = new[]{ 252, 261, 247, 555 }, Index = 89 }, // Sableye
+            new(40,05,3) { Species = 477, Ability = A4, Moves = new[]{ 247, 009, 371, 157 }, Index = 89 }, // Dusknoir
+            new(40,05,3) { Species = 823, Ability = A4, Moves = new[]{ 403, 442, 034, 681 }, Index = 89 }, // Corviknight
+            new(40,05,3) { Species = 828, Ability = A4, Moves = new[]{ 555, 098, 094, 583 }, Index = 89 }, // Thievul
+            new(50,08,4) { Species = 571, Ability = A4, Moves = new[]{ 539, 247, 411, 304 }, Index = 89 }, // Zoroark
+            new(50,08,4) { Species = 302, Ability = A4, Moves = new[]{ 605, 261, 247, 555 }, Index = 89 }, // Sableye
+            new(50,08,4) { Species = 477, Ability = A4, Moves = new[]{ 247, 009, 280, 157 }, Index = 89 }, // Dusknoir
+            new(50,08,4) { Species = 823, Ability = A4, Moves = new[]{ 413, 442, 034, 681 }, Index = 89 }, // Corviknight
+            new(50,08,4) { Species = 828, Ability = A4, Moves = new[]{ 555, 341, 094, 583 }, Index = 89 }, // Thievul
+            new(60,10,5) { Species = 571, Ability = A4, Moves = new[]{ 539, 247, 411, 492 }, Index = 89, Shiny = Shiny.Always }, // Zoroark
+            new(60,10,5) { Species = 571, Ability = A4, Moves = new[]{ 539, 247, 411, 492 }, Index = 89 }, // Zoroark
+            new(60,10,5) { Species = 302, Ability = A4, Moves = new[]{ 605, 261, 247, 492 }, Index = 89 }, // Sableye
+            new(60,10,5) { Species = 477, Ability = A4, Moves = new[]{ 247, 009, 280, 089 }, Index = 89 }, // Dusknoir
+            new(60,10,5) { Species = 823, Ability = A4, Moves = new[]{ 413, 442, 776, 372 }, Index = 89 }, // Corviknight
+            new(60,10,5) { Species = 828, Ability = A4, Moves = new[]{ 555, 492, 094, 583 }, Index = 89 }, // Thievul
+
             new(17,01,1) { Species = 722, Ability = A4, Moves = new[]{ 064, 075, 389, 129 }, Index = 87 }, // Rowlet
             new(17,01,1) { Species = 725, Ability = A4, Moves = new[]{ 052, 006, 044, 421 }, Index = 87 }, // Litten
             new(17,01,1) { Species = 728, Ability = A4, Moves = new[]{ 574, 001, 453, 196 }, Index = 87 }, // Popplio

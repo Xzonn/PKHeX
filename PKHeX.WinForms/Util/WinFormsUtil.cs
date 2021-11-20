@@ -275,12 +275,20 @@ namespace PKHeX.WinForms
             };
 
             // Detect main
-            var msg = string.Empty;
             SaveFile? sav = null;
             if (DetectSaveFileOnFileOpen)
-                sav = SaveFinder.FindMostRecentSaveFile(Environment.GetLogicalDrives(), ref msg);
-            if (sav == null && !string.IsNullOrWhiteSpace(msg))
-                Error(msg);
+            {
+                try
+                {
+                    sav = SaveFinder.FindMostRecentSaveFile();
+                }
+#pragma warning disable CA1031 // Do not catch general exception types
+                catch (Exception ex)
+#pragma warning restore CA1031 // Do not catch general exception types
+                {
+                    Error(ex.Message);
+                }
+            }
 
             if (sav != null)
                 ofd.FileName = sav.Metadata.FileName;
@@ -436,7 +444,9 @@ namespace PKHeX.WinForms
             7 => GameVersion.GG.Contains(origin)
                 ? "Beluga Gift Record|*.wr7" + all
                 : "Gen7 Mystery Gift|*.wc7;*.wc7full" + all,
-            8 => "Gen8 Mystery Gift|*.wc8" + all,
+            8 => GameVersion.BDSP.Contains(origin)
+                ? "BD/SP Gift|*.wb8" + all
+                : "Gen8 Mystery Gift|*.wc8" + all,
             _ => string.Empty,
         };
 

@@ -36,6 +36,8 @@ namespace PKHeX.Core
                     return VerifyBallEquals(data, s.Ball);
                 case EncounterSlot8GO: // Already a strict match
                     return GetResult(true);
+                case EncounterSlot8b {IsMarsh: true}:
+                    return VerifyBallEquals(data, (int)Safari);
             }
 
             // Capture / Inherit cases -- can be one of many balls
@@ -73,7 +75,7 @@ namespace PKHeX.Core
         {
             if (s.Location == 75 && s.Generation == 5) // Entree Forest (Dream World)
                 return VerifyBallEquals(data, BallUseLegality.DreamWorldBalls);
-            return VerifyBallEquals(data, BallUseLegality.GetWildBalls(data.Info.Generation, data.Info.Game));
+            return VerifyBallEquals(data, BallUseLegality.GetWildBalls(data.Info.Generation, s.Version));
         }
 
         private CheckResult VerifyBallWild(LegalityAnalysis data, EncounterSlot w)
@@ -82,7 +84,7 @@ namespace PKHeX.Core
             if (req != None)
                 return VerifyBallEquals(data, (int) req);
 
-            return VerifyBallEquals(data, BallUseLegality.GetWildBalls(data.Info.Generation, data.Info.Game));
+            return VerifyBallEquals(data, BallUseLegality.GetWildBalls(data.Info.Generation, w.Version));
         }
 
         private CheckResult VerifyBallEgg(LegalityAnalysis data)
@@ -104,7 +106,7 @@ namespace PKHeX.Core
         {
             6 => VerifyBallEggGen6(data), // Gen6 Inheritance Rules
             7 => VerifyBallEggGen7(data), // Gen7 Inheritance Rules
-            8 => VerifyBallEggGen8(data),
+            8 => data.pkm.BDSP ? VerifyBallEggGen8BDSP(data) : VerifyBallEggGen8(data),
             _ => NONE,
         };
 
@@ -250,6 +252,23 @@ namespace PKHeX.Core
                 return GetInvalid(LBallUnavailable);
 
             return NONE;
+        }
+
+        private CheckResult VerifyBallEggGen8BDSP(LegalityAnalysis data)
+        {
+            int species = data.EncounterMatch.Species;
+            if (species is (int)Species.Phione)
+                return VerifyBallEquals(data, (int)Poke);
+
+            if (data.pkm.Ball == (int)Safari)
+            {
+                if (BallBreedLegality.InheritSafari_BDSP.Contains(species))
+                    return GetValid(LBallSpeciesPass);
+                return GetInvalid(LBallSpecies);
+            }
+
+            var balls = BallUseLegality.GetWildBalls(8, GameVersion.BDSP);
+            return VerifyBallEquals(data, balls);
         }
 
         private CheckResult VerifyBallEggGen8(LegalityAnalysis data)

@@ -10,6 +10,7 @@ namespace PKHeX.Drawing
         public static bool ShowEncounterBall { get; set; } = true;
         public static SpriteBackgroundType ShowEncounterColor { get; set; } = SpriteBackgroundType.FullBackground;
         public static SpriteBackgroundType ShowEncounterColorPKM { get; set; }
+        public static bool ShowExperiencePercent { get; set; }
 
         public static byte ShowEncounterOpacityStripe { get; set; }
         public static byte ShowEncounterOpacityBackground { get; set; }
@@ -149,6 +150,7 @@ namespace PKHeX.Drawing
             Image itemimg = generation switch
             {
                 <= 4 when item is >=  328 and <=  419 => ItemTM, // gen2/3/4 TM
+                   8 when item is >=  328 and <=  427 => ItemTM, // BDSP TMs
                 >= 8 when item is >= 1130 and <= 1229 => ItemTR, // Gen8 TR
                 _ => (Image?)Resources.ResourceManager.GetObject(GetItemResourceName(item)) ?? UnknownItem,
             };
@@ -200,6 +202,7 @@ namespace PKHeX.Drawing
             ShowEncounterThicknessStripe = sprite.ShowEncounterThicknessStripe;
             ShowEncounterOpacityBackground = sprite.ShowEncounterOpacityBackground;
             ShowEncounterOpacityStripe = sprite.ShowEncounterOpacityStripe;
+            ShowExperiencePercent = sprite.ShowExperiencePercent;
         }
     }
 
@@ -220,6 +223,7 @@ namespace PKHeX.Drawing
         int ShowEncounterThicknessStripe { get; set; }
         byte ShowEncounterOpacityBackground { get; set; }
         byte ShowEncounterOpacityStripe { get; set; }
+        bool ShowExperiencePercent { get; set; }
     }
 
     /// <summary>

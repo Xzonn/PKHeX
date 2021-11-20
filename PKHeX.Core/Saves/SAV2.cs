@@ -10,9 +10,10 @@ namespace PKHeX.Core
     {
         protected internal override string ShortSummary => $"{OT} ({Version}) - {PlayTimeString}";
         public override string Extension => ".sav";
+        public bool IsVirtualConsole => State.Exportable && Metadata.FileName is { } s && s.StartsWith("sav") && s.Contains(".dat"); // default to GB-Era for non-exportable
 
         public int SaveRevision => Japanese ? 0 : !Korean ? 1 : 2;
-        public string SaveRevisionString => Japanese ? "J" : !Korean ? "U" : "K";
+        public string SaveRevisionString => (Japanese ? "J" : !Korean ? "U" : "K") + (IsVirtualConsole ? "VC" : "GB");
         public bool Japanese { get; }
         public bool Korean { get; }
 
@@ -324,6 +325,18 @@ namespace PKHeX.Core
         { 
             get => Data.AsSpan(Offsets.Trainer1 + 2, StringLength);
             set { if (value.Length == StringLength) value.CopyTo(Data.AsSpan(Offsets.Trainer1 + 2)); }
+        }
+
+        public string Rival
+        {
+            get => GetString(Offsets.Rival, (Korean ? 2 : 1) * OTLength);
+            set => SetString(value, (Korean ? 2 : 1) * OTLength).CopyTo(Data, Offsets.Rival);
+        }
+
+        public Span<byte> Rival_Trash
+        {
+            get => Data.AsSpan(Offsets.Rival, StringLength);
+            set { if (value.Length == StringLength) value.CopyTo(Data.AsSpan(Offsets.Rival)); }
         }
 
         public override int Gender

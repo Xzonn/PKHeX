@@ -63,8 +63,8 @@ namespace PKHeX.Core
         public static string L_XMatches0_1 { get; set; } = "Matches: {0} {1}";
         public static string L_XWurmpleEvo_0 { get; set; } = "Wurmple Evolution: {0}";
 
-        public static string LAbilityCapsuleUsed { get; set; } = "Ability modified with Ability Capsule.";
-        public static string LAbilityPatchUsed { get; set; } = "Ability modified with Ability Patch.";
+        public static string LAbilityCapsuleUsed { get; set; } = "Ability available with Ability Capsule.";
+        public static string LAbilityPatchUsed { get; set; } = "Ability available with Ability Patch.";
         public static string LAbilityFlag { get; set; } = "Ability matches ability number.";
         public static string LAbilityHiddenFail { get; set; } = "Hidden Ability mismatch for encounter type.";
         public static string LAbilityHiddenUnavailable { get; set; } = "Hidden Ability not available.";
@@ -354,6 +354,7 @@ namespace PKHeX.Core
         public static string LMoveSourceSharedF { get; set; } = "Shared Non-Relearn Move in Generation {0}.";
 
         public static string LMoveRelearnDexNav { get; set; } = "Not an expected DexNav move.";
+        public static string LMoveRelearnUnderground { get; set; } = "Not an expected Underground egg move.";
         public static string LMoveRelearnEgg { get; set; } = "Base Egg move.";
         public static string LMoveRelearnEggMissing { get; set; } = "Base Egg move missing.";
         public static string LMoveRelearnFExpect_0 { get; set; } = "Expected the following Relearn Moves: {0} ({1}";

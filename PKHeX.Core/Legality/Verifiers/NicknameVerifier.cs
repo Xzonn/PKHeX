@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using static PKHeX.Core.LegalityCheckStrings;
 using static PKHeX.Core.LanguageID;
 
@@ -33,6 +34,8 @@ namespace PKHeX.Core
             if (enc is ILangNicknamedTemplate n)
             {
                 VerifyFixedNicknameEncounter(data, n, enc, pkm, nickname);
+                if (pkm.IsEgg)
+                    VerifyNicknameEgg(data);
                 return;
             }
 
@@ -84,6 +87,15 @@ namespace PKHeX.Core
 
                 if (n.CanHandleOT(pkm.Language))
                     return;
+
+                if (n is WC3 && pkm.Format != 3)
+                {
+                    // Gen3 gifts transferred to Generation 4 from another language can set the nickname flag.
+                    var evos = data.Info.EvoChainsAllGens[3];
+                    bool matchAny = evos.Any(evo => !SpeciesName.IsNicknamedAnyLanguage(evo.Species, nickname, 3));
+                    if (matchAny)
+                        return;
+                }
 
                 if (pkm.IsNicknamed)
                     data.AddLine(Get(LEncGiftNicknamed, Severity.Invalid));
@@ -234,8 +246,8 @@ namespace PKHeX.Core
                         data.AddLine(GetInvalid(pkm.IsNicknamed ? LNickFlagEggNo : LNickFlagEggYes, CheckIdentifier.Egg));
                     break;
                 default:
-                    if (!pkm.IsNicknamed)
-                        data.AddLine(GetInvalid(LNickFlagEggYes, CheckIdentifier.Egg));
+                    if (pkm.IsNicknamed == Info.EncounterMatch is (EncounterStatic8b or WB8)) // bdsp doesn't use for ingame gifts
+                        data.AddLine(GetInvalid(pkm.IsNicknamed ? LNickFlagEggNo : LNickFlagEggYes, CheckIdentifier.Egg));
                     break;
             }
 
@@ -259,6 +271,7 @@ namespace PKHeX.Core
                 case 5: VerifyTrade5(data, t); return;
                 case 6:
                 case 7:
+                case 8 when t is EncounterTrade8b: VerifyTrade8b(data, t); return;
                 case 8:
                     VerifyTrade(data, t, data.pkm.Language); return;
             }
@@ -344,6 +357,15 @@ namespace PKHeX.Core
                     }
                     break;
             }
+            VerifyTrade(data, t, lang);
+        }
+
+        private static void VerifyTrade8b(LegalityAnalysis data, EncounterTrade t)
+        {
+            var pkm = data.pkm;
+            int lang = pkm.Language;
+            if (t.Species == (int)Species.Magikarp)
+                lang = DetectTradeLanguageG4MeisterMagikarp(pkm, t, lang);
             VerifyTrade(data, t, lang);
         }
 

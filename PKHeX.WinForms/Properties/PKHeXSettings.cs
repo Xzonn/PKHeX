@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using Newtonsoft.Json;
 using PKHeX.Core;
 using PKHeX.Drawing;
@@ -30,6 +31,7 @@ namespace PKHeX.WinForms
         // GUI Specific
         public DrawConfig Draw { get; set; } = new();
         public AdvancedSettings Advanced { get; set; } = new();
+        public EntityEditorSettings EntityEditor { get; set; } = new();
         public EntityDatabaseSettings EntityDb { get; set; } = new();
         public EncounterDatabaseSettings EncounterDb { get; set; } = new();
         public MysteryGiftDatabaseSettings MysteryDb { get; set; } = new();
@@ -108,7 +110,7 @@ namespace PKHeX.WinForms
     }
 
     [Serializable]
-    public sealed class StartupSettings
+    public sealed class StartupSettings : IStartupSettings
     {
         [Browsable(false)]
         [LocalizedDescription("Last version that the program was run with.")]
@@ -126,13 +128,14 @@ namespace PKHeX.WinForms
         [LocalizedDescription("Show the changelog when a new version of the program is run for the first time.")]
         public bool ShowChangelogOnUpdate { get; set; } = true;
 
-        [LocalizedDescription("Loads plugins from the plugins folder, assuming the folder exists.")]
-        public bool LoadPlugins { get; set; } = true;
+        [LocalizedDescription("Loads plugins from the plugins folder, assuming the folder exists. Try LoadFile to mitigate intermittent load failures.")]
+        public PluginLoadSetting PluginLoadMethod { get; set; } = PluginLoadSetting.LoadFrom;
 
-        public List<string> RecentlyLoaded = new(MaxRecentCount);
+        [Browsable(false)]
+        public List<string> RecentlyLoaded { get; set; } = new(MaxRecentCount);
 
         // Don't let invalid values slip into the startup version.
-        private GameVersion _defaultSaveVersion = GameVersion.SW;
+        private GameVersion _defaultSaveVersion = GameVersion.BD;
         private string _language = GameLanguage.DefaultLanguage;
 
         [Browsable(false)]
@@ -171,11 +174,15 @@ namespace PKHeX.WinForms
         }
     }
 
-    public enum AutoLoadSetting
+    public enum PluginLoadSetting
     {
-        Disabled,
-        RecentBackup,
-        LastLoaded,
+        DontLoad,
+        LoadFrom,
+        LoadFile,
+        UnsafeLoadFrom,
+        LoadFromMerged,
+        LoadFileMerged,
+        UnsafeMerged,
     }
 
     [Serializable]
@@ -217,6 +224,15 @@ namespace PKHeX.WinForms
 
         [LocalizedDescription("Path to a dump of block hash-names. If file does not exist, only names defined within the program's code will be loaded.")]
         public string PathBlockKeyListSWSH { get; set; } = "SCBlocks.txt";
+
+        [LocalizedDescription("Hide event variables below this event type value. Removes event values from the GUI that the user doesn't care to view.")]
+        public NamedEventType HideEventTypeBelow { get; set; }
+
+        [LocalizedDescription("Hide event variable names for that contain any of the comma-separated substrings below. Removes event values from the GUI that the user doesn't care to view.")]
+        public string HideEvent8Contains { get; set; } = string.Empty;
+
+        [Browsable(false)]
+        public string[] GetExclusionList8() => HideEvent8Contains.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).Select(z => z.Trim()).ToArray();
     }
 
     [Serializable]
@@ -243,6 +259,13 @@ namespace PKHeX.WinForms
         None,
         SpeciesForm,
         SlotIdentity,
+    }
+
+    [Serializable]
+    public class EntityEditorSettings
+    {
+        [LocalizedDescription("When changing the Hidden Power type, automatically maximize the IVs to ensure the highest Base Power result. Otherwise, keep the IVs as close as possible to the original.")]
+        public bool HiddenPowerOnChangeMaxPower { get; set; } = true;
     }
 
     [Serializable]
@@ -348,6 +371,9 @@ namespace PKHeX.WinForms
 
         [LocalizedDescription("Opacity for the Encounter Type stripe layer.")]
         public byte ShowEncounterOpacityStripe { get; set; } = 0x5F; // 0xFF opaque
+
+        [LocalizedDescription("Show a thin stripe to indicate the percent of level-up progress")]
+        public bool ShowExperiencePercent { get; set; }
 
         [LocalizedDescription("Amount of pixels thick to show when displaying the encounter type color stripe.")]
         public int ShowEncounterThicknessStripe { get; set; } = 4; // pixels
