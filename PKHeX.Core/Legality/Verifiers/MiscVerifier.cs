@@ -262,10 +262,7 @@ namespace PKHeX.Core
                 data.AddLine(GetInvalid(LEggPP, Egg));
 
             var enc = data.EncounterMatch;
-            var HatchCycles = enc is EncounterStatic s ? s.EggCycles : 0;
-            if (HatchCycles == 0) // no value set
-                HatchCycles = pkm.PersonalInfo.HatchCycles;
-            if (pkm.OT_Friendship > HatchCycles)
+            if (!EggStateLegality.GetIsEggHatchCyclesValid(pkm, enc))
                 data.AddLine(GetInvalid(LEggHatchCycles, Egg));
 
             if (pkm.Format >= 6 && enc is EncounterEgg && !MovesMatchRelearn(pkm))
@@ -517,6 +514,10 @@ namespace PKHeX.Core
         {
             if (pb8.Favorite)
                 data.AddLine(GetInvalid(LFavoriteMarkingUnavailable, Encounter));
+
+            var affix = pb8.AffixedRibbon;
+            if (affix != -1) // None
+                data.AddLine(GetInvalid(string.Format(LRibbonMarkingAffixedF_0, affix)));
 
             var social = pb8.Sociability;
             if (social != 0)

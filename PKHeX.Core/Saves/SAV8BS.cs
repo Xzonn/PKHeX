@@ -2,14 +2,12 @@
 using System.Collections.Generic;
 using System.Security.Cryptography;
 
-#nullable disable
-
 namespace PKHeX.Core
 {
-    public class SAV8BS : SaveFile, ISaveFileRevision
+    public class SAV8BS : SaveFile, ISaveFileRevision, ITrainerStatRecord
     {
         // Save Data Attributes
-        protected internal override string ShortSummary => $"{OT} ({Version})";
+        protected internal override string ShortSummary => $"{OT} ({Version}) - {System.LastSavedTime}";
         public override string Extension => string.Empty;
 
         public override IReadOnlyList<string> PKMExtensions => Array.FindAll(PKM.Extensions, f =>
@@ -22,13 +20,58 @@ namespace PKHeX.Core
         {
             Work = new FlagWork8b(this, 0x00004);
             Items = new MyItem8b(this, 0x0563C);
+            Underground = new UndergroundItemList8b(this, 0x111BC);
+            // saveItemShortcut
             PartyInfo = new Party8b(this, 0x14098);
             BoxLayout = new BoxLayout8b(this, 0x148AA);
+            // Box[]
+
+            // PLAYER_DATA:
             Config = new ConfigSave8b(this, 0x79B74); // size: 0x40
             MyStatus = new MyStatus8b(this, 0x79BB4); // size: 0x50
             Played = new PlayTime8b(this, 0x79C04); // size: 0x04
             Contest = new Contest8b(this, 0x79C08); // size: 0x720
-            Zukan = new Zukan8b(this, 0x7A328);
+
+            Zukan = new Zukan8b(this, 0x7A328); // size: 0x30B8
+            // 0x7D3E0 - Trainer Battle Data (bool,bool)[707]
+            // 0x7E9F8 - Menu selections (TopMenuItemTypeInt32, bool IsNew)[8], TopMenuItemTypeInt32 LastSelected
+            // 0x7EA3C - _FIELDOBJ_SAVE Objects[1000] (sizeof (0x44, 17 int fields), total size 0x109A0
+            Records = new Record8b(this, 0x8F3DC); // size: 0x78
+            // 0x8F454 - ENC_SV_DATA
+            // PLAYER_SAVE_DATA
+            // SaveBallDecoData
+            // SaveSealData[]
+            // _RANDOM_GROUP
+            // KinomiGrowSaveData -- berry trees
+            // PoffinSaveData -- poffins
+            // BTLTOWER_SAVEWORK -- BP counts and battle tower stats
+            System = new SystemData8b(this, 0x95DAC);
+            Poketch = new Poketch8b(this, 0); // todo
+            Daycare = new Daycare8b(this, 0x96080); // 0x2C0
+            // 0x96340 - _DENDOU_SAVEDATA
+            // BadgeSaveData
+            // BoukenNote
+            // TV_DATA
+            // UgSaveData
+            // GMS_DATA
+            // PLAYER_NETWORK_DATA
+            // UnionSaveData
+            // CON_PHOTO_LANG_DATA -- contest photo language data
+            // ZUKAN_PERSONAL_RND_DATA
+            // CON_PHOTO_EXT_DATA[]
+            // GMS_POINT_HISTORY_EXT_DATA[]
+            // UgCountRecord
+            // ReBuffnameData
+            // 0xE9818 -- 0x10 byte[] MD5 hash of all savedata;
+
+            // v1.1 additions
+            // 0xE9828 -- RECORD_ADD_DATA: 0x30-sized[12] (0x120 bytes)
+            // MysteryGiftSaveData
+            // ZUKAN_PERSONAL_RND_DATA -- Spinda PID storage (17 * 2)
+            // POKETCH_POKETORE_COUNT_ARRAY -- (u16 species, u16 unused, i32 count, i32 reserved, i32 reserved) = 0x10bytes
+            // PLAYREPORT_DATA -- reporting player progress online?
+            // MT_DATA mtData; -- 0x400 bytes
+            // DENDOU_SAVE_ADD -- language tracking of members (hall of fame?)
 
             Initialize();
         }
@@ -41,6 +84,7 @@ namespace PKHeX.Core
             Party = PartyInfo.Offset;
             PokeDex = Zukan.PokeDex;
             BoxLayout.LoadBattleTeams();
+            DaycareOffset = Daycare.Offset;
         }
 
         public override bool HasEvents => true;
@@ -134,6 +178,7 @@ namespace PKHeX.Core
         // public Box8 BoxInfo { get; }
         public FlagWork8b Work { get; }
         public MyItem8b Items { get; }
+        public UndergroundItemList8b Underground { get; }
         public Party8b PartyInfo { get; }
         // public MyItem Items { get; }
         public BoxLayout8b BoxLayout { get; }
@@ -143,6 +188,10 @@ namespace PKHeX.Core
         public Contest8b Contest { get; }
         // public Misc8 Misc { get; }
         public Zukan8b Zukan { get; }
+        public Record8b Records { get; }
+        public SystemData8b System { get; }
+        public Poketch8b Poketch { get; }
+        public Daycare8b Daycare { get; }
         #endregion
 
         public override GameVersion Version => Game switch
@@ -198,7 +247,11 @@ namespace PKHeX.Core
             set => SetString(value, OTLength).CopyTo(Data, 0x55F4);
         }
 
-        // zoneID
+        public short ZoneID // map
+        {
+            get => BitConverter.ToInt16(Data, 0x5634);
+            set => BitConverter.GetBytes(value).CopyTo(Data, 0x5634);
+        }
 
         public float TimeScale
         {
@@ -214,7 +267,13 @@ namespace PKHeX.Core
             pk.Trade(this, Date.Day, Date.Month, Date.Year);
 
             pkm.RefreshChecksum();
-          //AddCountAcquired(pkm);
+            AddCountAcquired(pkm);
+        }
+
+        private void AddCountAcquired(PKM pkm)
+        {
+            // There aren't many records, and they only track Capture/Fish/Hatch/Defeat.
+            Records.AddRecord(pkm.WasEgg ? 004 : 002); // egg, capture
         }
 
         protected override void SetDex(PKM pkm) => Zukan.SetDex(pkm);
@@ -229,5 +288,42 @@ namespace PKHeX.Core
 
         public override PKM GetDecryptedPKM(byte[] data) => GetPKM(DecryptPKM(data));
         public override PKM GetBoxSlot(int offset) => GetDecryptedPKM(GetData(Data, offset, SIZE_PARTY)); // party format in boxes!
+
+        public enum TopMenuItemType
+        {
+            Zukan = 0,
+            Pokemon = 1,
+            Bag = 2,
+            Card = 3,
+            Map = 4,
+            Seal = 5,
+            Setting = 6,
+            Gift = 7,
+        }
+
+        public int RecordCount => Record8b.RecordCount;
+        public int GetRecord(int recordID) => Records.GetRecord(recordID);
+        public int GetRecordOffset(int recordID) => Records.GetRecordOffset(recordID);
+        public int GetRecordMax(int recordID) => Record8b.RecordMaxValue;
+        public void SetRecord(int recordID, int value) => Records.SetRecord(recordID, value);
+
+        #region Daycare
+        public override int DaycareSeedSize => 16; // 8byte
+        public override int GetDaycareSlotOffset(int loc, int slot) => Daycare.GetParentSlotOffset(slot);
+        public override uint? GetDaycareEXP(int loc, int slot) => (uint)Daycare.EggStepCount;
+        public override bool? IsDaycareOccupied(int loc, int slot) => Daycare.GetDaycareSlotOccupied(slot);
+        public override bool? IsDaycareHasEgg(int loc) => Daycare.IsEggAvailable;
+        public override void SetDaycareEXP(int loc, int slot, uint EXP) => Daycare.EggStepCount = (int)EXP;
+        public override void SetDaycareOccupied(int loc, int slot, bool occupied) { }
+        public override void SetDaycareHasEgg(int loc, bool hasEgg) => Daycare.IsEggAvailable = hasEgg;
+
+        public override string GetDaycareRNGSeed(int loc)
+        {
+            var data = BitConverter.GetBytes(Daycare.DaycareSeed);
+            Array.Reverse(data);
+            return BitConverter.ToString(data).Replace("-", string.Empty);
+        }
+        public override void SetDaycareRNGSeed(int loc, string seed) => Daycare.DaycareSeed = BitConverter.ToUInt64(Util.GetBytesFromHexString(seed), 0);
+        #endregion
     }
 }

@@ -572,10 +572,10 @@ namespace PKHeX.WinForms.Controls
         // Prompted Updates of PKM //
         private void ClickFriendship(object sender, EventArgs e)
         {
-            if (ModifierKeys == Keys.Control) // clear
-                TB_Friendship.Text = "0";
+            if (ModifierKeys == Keys.Control ^ CHK_IsEgg.Checked) // clear
+                TB_Friendship.Text = CHK_IsEgg.Checked ? EggStateLegality.GetMinimumEggHatchCycles(Entity).ToString() : "0";
             else
-                TB_Friendship.Text = TB_Friendship.Text == "255" ? Entity.PersonalInfo.BaseFriendship.ToString() : "255";
+                TB_Friendship.Text = CHK_IsEgg.Checked ? EggStateLegality.GetMaximumEggHatchCycles(Entity).ToString() : TB_Friendship.Text == "255" ? Entity.PersonalInfo.BaseFriendship.ToString() : "255";
         }
 
         private void ClickLevel(object sender, EventArgs e)
@@ -706,7 +706,7 @@ namespace PKHeX.WinForms.Controls
                 Entity.CurrentHandler = 1;
             UpadteHandlingTrainerBackground(Entity.CurrentHandler);
 
-            TB_Friendship.Text = Entity.CurrentFriendship.ToString();
+            ReloadToFriendshipTextBox(Entity);
         }
 
         private void ClickNature(object sender, EventArgs e)
@@ -972,7 +972,7 @@ namespace PKHeX.WinForms.Controls
                 tb.Text = "255";
             if (sender == TB_Friendship && int.TryParse(TB_Friendship.Text, out var val))
             {
-                Entity.CurrentFriendship = val;
+                UpdateFromFriendshipTextBox(Entity, val);
                 UpdateStats();
             }
         }
@@ -1214,7 +1214,7 @@ namespace PKHeX.WinForms.Controls
                 bool g4 = Entity.Gen4;
                 CB_GroundTile.Visible = Label_GroundTile.Visible = g4 && Entity.Format < 7;
                 if (!g4)
-                    CB_GroundTile.SelectedValue = 0;
+                    CB_GroundTile.SelectedValue = (int)GroundTileType.None;
             }
 
             if (!FieldsLoaded)
@@ -1383,7 +1383,7 @@ namespace PKHeX.WinForms.Controls
             {
                 ClickGT(GB_OT, EventArgs.Empty); // Switch CT over to OT.
                 Label_CTGender.Text = string.Empty;
-                TB_Friendship.Text = Entity.CurrentFriendship.ToString();
+                ReloadToFriendshipTextBox(Entity);
             }
             else if (string.IsNullOrWhiteSpace(Label_CTGender.Text))
             {
@@ -1419,7 +1419,7 @@ namespace PKHeX.WinForms.Controls
                 {
                     var sav = SaveFileRequested.Invoke(this, e);
                     bool isTraded = sav.OT != TB_OT.Text || sav.TID != Entity.TID || sav.SID != Entity.SID;
-                    var loc = isTraded ? Locations.TradedEggLocation(sav.Generation, (GameVersion)sav.Version) : 0;
+                    var loc = isTraded ? Locations.TradedEggLocation(sav.Generation, sav.Version) : Locations.GetNoneLocation(sav.Version);
                     CB_MetLocation.SelectedValue = loc;
                 }
                 else if (Entity.Format == 3)
@@ -1470,13 +1470,15 @@ namespace PKHeX.WinForms.Controls
                     return;
 
                 CAL_EggDate.Value = DateTime.Now;
-                CB_EggLocation.SelectedIndex = 1;
+
+                bool isTradedEgg = Entity.IsEgg && Entity.Version != (int)RequestSaveFile.Version;
+                CB_EggLocation.SelectedValue = EncounterSuggestion.GetSuggestedEncounterEggLocationEgg(Entity, isTradedEgg);
                 return;
             }
             // Remove egg met data
             CHK_IsEgg.Checked = false;
             CAL_EggDate.Value = new DateTime(2000, 01, 01);
-            CB_EggLocation.SelectedValue = 0;
+            CB_EggLocation.SelectedValue = Locations.GetNoneLocation((GameVersion)Entity.Version);
 
             UpdateLegality();
         }
@@ -1764,10 +1766,10 @@ namespace PKHeX.WinForms.Controls
             Entity.HT_Name = TB_OTt2.Text;
             Entity.OT_Name = TB_OT.Text;
             Entity.IsEgg = CHK_IsEgg.Checked;
-            Entity.CurrentFriendship = Util.ToInt32(TB_Friendship.Text);
+            UpdateFromFriendshipTextBox(Entity, Util.ToInt32(TB_Friendship.Text));
             using var form = new MemoryAmie(Entity);
             form.ShowDialog();
-            TB_Friendship.Text = Entity.CurrentFriendship.ToString();
+            ReloadToFriendshipTextBox(Entity);
         }
 
         private void B_Records_Click(object sender, EventArgs e)
