@@ -23,7 +23,7 @@ namespace PKHeX.Core
         private static readonly EvolutionTree Evolves7 = new(Unpack("uu"), Gen7, PersonalTable.USUM, MaxSpeciesID_7_USUM);
         private static readonly EvolutionTree Evolves7b = new(Unpack("gg"), Gen7, PersonalTable.GG, MaxSpeciesID_7b);
         private static readonly EvolutionTree Evolves8 = new(Unpack("ss"), Gen8, PersonalTable.SWSH, MaxSpeciesID_8);
-        internal static readonly EvolutionTree Evolves8b = new(Unpack("bs"), Gen8, PersonalTable.BDSP, MaxSpeciesID_8b);
+        private static readonly EvolutionTree Evolves8b = new(Unpack("bs"), Gen8, PersonalTable.BDSP, MaxSpeciesID_8b);
 
         private static byte[] Get(string resource) => Util.GetBinaryResource($"evos_{resource}.pkl");
         private static byte[][] Unpack(string resource) => BinLinker.Unpack(Get(resource), resource);
@@ -176,8 +176,8 @@ namespace PKHeX.Core
 
         private void FixEvoTreeBS()
         {
-            // Eevee is programmed to evolve into Glaceon via Ice Stone or level up at the Ice Rock, but Ice Stone is unreleased.
-            BanEvo((int)Species.Glaceon, 0, pkm => pkm.CurrentLevel == pkm.Met_Level);
+            BanEvo((int)Species.Glaceon, 0, pkm => pkm.CurrentLevel == pkm.Met_Level); // Ice Stone is unreleased, requires Route 217 Ice Rock Level Up instead
+            BanEvo((int)Species.Milotic, 0, pkm => pkm is IContestStats { CNT_Beauty: < 170 } || pkm.CurrentLevel == pkm.Met_Level); // Prism Scale is unreleased, requires 170 Beauty Level Up instead
         }
 
         private void BanEvo(int species, int form, Func<PKM, bool> func)

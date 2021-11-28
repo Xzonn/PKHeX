@@ -507,7 +507,8 @@ namespace PKHeX.Core
                 data.AddLine(GetInvalid(string.Format(LMoveSourceTR, ParseSettings.MoveStrings[Legal.TMHM_SWSH[i + PersonalInfoSWSH.CountTM]])));
             }
 
-            // weight/height scalars can be legally 0 so don't bother checking
+            if (CheckHeightWeightOdds(data.EncounterMatch) && pk8.HeightScalar == 0 && pk8.WeightScalar == 0 && ParseSettings.ZeroHeightWeight != Severity.Valid)
+                data.AddLine(Get(LStatInvalidHeightWeight, ParseSettings.ZeroHeightWeight, Encounter));
         }
 
         private void VerifyBDSPStats(LegalityAnalysis data, PB8 pb8)
@@ -538,7 +539,23 @@ namespace PKHeX.Core
             if (pb8.HasAnyMoveRecordFlag() && !pb8.IsEgg) // already checked for eggs
                 data.AddLine(GetInvalid(LEggRelearnFlags));
 
-            // weight/height scalars can be legally 0 so don't bother checking
+            if (CheckHeightWeightOdds(data.EncounterMatch) && pb8.HeightScalar == 0 && pb8.WeightScalar == 0 && ParseSettings.ZeroHeightWeight != Severity.Valid)
+                data.AddLine(Get(LStatInvalidHeightWeight, ParseSettings.ZeroHeightWeight, Encounter));
+        }
+
+        private static bool CheckHeightWeightOdds(IEncounterTemplate enc)
+        {
+            if (enc.Generation < 8)
+                return false;
+
+            if (GameVersion.BDSP.Contains(enc.Version))
+                return true;
+
+            if (enc is WC8 { IsHOMEGift: true })
+                return false;
+            if (GameVersion.SWSH.Contains(enc.Version))
+                return true;
+            return false;
         }
 
         private void VerifyStatNature(LegalityAnalysis data, PKM pk)

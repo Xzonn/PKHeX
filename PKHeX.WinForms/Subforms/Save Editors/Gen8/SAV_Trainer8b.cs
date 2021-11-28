@@ -49,7 +49,7 @@ namespace PKHeX.WinForms
             CB_Game.SelectedIndex = Math.Max(0, Math.Min(1, SAV.Game - (int)GameVersion.BD));
             CB_Gender.SelectedIndex = SAV.Gender;
 
-            L_BP.Visible = NUD_BP.Visible = false;
+            NUD_BP.Value = SAV.BattleTower.BP;
 
             // Display Data
             TB_OTName.Text = SAV.OT;
@@ -93,6 +93,12 @@ namespace PKHeX.WinForms
         private void Save()
         {
             SaveTrainerInfo();
+            if (SAV.TID == 0 && SAV.SID == 0)
+                SAV.SID = 1; // Cannot have an all-zero ID.
+
+            // Trickle down the changes to the extra record block.
+            if (SAV.HasFirstSaveFileExpansion && (SAV.OT != Origin.OT || SAV.TID != Origin.TID || SAV.SID != Origin.SID))
+                SAV.RecordAdd.ReplaceOT(Origin, SAV);
         }
 
         private void SaveTrainerInfo()
@@ -104,6 +110,7 @@ namespace PKHeX.WinForms
             SAV.Language = WinFormsUtil.GetIndex(CB_Language);
             SAV.OT = TB_OTName.Text;
             SAV.Rival = TB_Rival.Text;
+            SAV.BattleTower.BP = (uint) NUD_BP.Value;
 
             // Copy Position
             if (GB_Map.Enabled && MapUpdated)

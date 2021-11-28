@@ -81,14 +81,14 @@ namespace PKHeX.Core
             620, 621, 622, 623, 624, 625, 626,
 
             // Skip the secret base met location IDs because no Pokémon can be obtained in them.
-            
+
             // Ramanas Park rooms with lights out
             648, 649, 650, 651, 652, 653, 654, 655, 656, 657,
         };
 
         internal static readonly int[] Met_BS_3 =
         {
-            30001, 30003, 30004, 30005, 30006, 30007, 30009, 30010, 30011, 30012, 30013, 30014, 30015, 30016, 30017, 30018, 30019, 30020, 30021
+            30001, 30003, 30004, 30005, 30006, 30007, 30009, 30010, 30011, 30012, 30013, 30014, 30015, 30016, 30017, 30018, 30019, 30020, 30022,
         };
 
         internal static readonly int[] Met_BS_4 =
@@ -261,6 +261,13 @@ namespace PKHeX.Core
         #region Unreleased Items
         internal static readonly bool[] ReleasedHeldItems_8b = GetPermitList(MaxItemID_8b, HeldItems_BS, new ushort[]
         {
+            537, // Prism Scale
+            565, // Health Feather
+            566, // Muscle Feather
+            567, // Resist Feather
+            568, // Genius Feather
+            569, // Clever Feather
+            570, // Swift Feather
             849, // Ice Stone
 
             005, // Safari Ball
@@ -269,6 +276,7 @@ namespace PKHeX.Core
             576, // Dream Ball
             851, // Beast Ball
 
+            // new BDSP items, but they can't be held
             1808, // Mysterious Shard S
             1809, // Mysterious Shard L
             1810, // Digger Drill

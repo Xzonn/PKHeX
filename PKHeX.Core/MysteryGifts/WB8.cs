@@ -434,7 +434,7 @@ namespace PKHeX.Core
             {
                 // give random valid game
                 var rnd = Util.Rand;
-                do { pk.Version = (int)GameVersion.SW + rnd.Next(2); }
+                do { pk.Version = (int)GameVersion.BD + rnd.Next(2); }
                 while (!CanBeReceivedByVersion(pk.Version));
             }
 
@@ -477,7 +477,7 @@ namespace PKHeX.Core
             pk.IsEgg = true;
             pk.EggMetDate = DateTime.Now;
             pk.Nickname = SpeciesName.GetSpeciesNameGeneration(0, pk.Language, Generation);
-            pk.IsNicknamed = true;
+            pk.IsNicknamed = false;
         }
 
         private void SetPINGA(PKM pk, EncounterCriteria criteria)

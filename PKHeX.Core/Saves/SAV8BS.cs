@@ -21,10 +21,10 @@ namespace PKHeX.Core
             Work = new FlagWork8b(this, 0x00004);
             Items = new MyItem8b(this, 0x0563C);
             Underground = new UndergroundItemList8b(this, 0x111BC);
-            // saveItemShortcut
+            // saveItemShortcut; ushort[4]
             PartyInfo = new Party8b(this, 0x14098);
             BoxLayout = new BoxLayout8b(this, 0x148AA);
-            // Box[]
+            // Box[40]
 
             // PLAYER_DATA:
             Config = new ConfigSave8b(this, 0x79B74); // size: 0x40
@@ -33,45 +33,45 @@ namespace PKHeX.Core
             Contest = new Contest8b(this, 0x79C08); // size: 0x720
 
             Zukan = new Zukan8b(this, 0x7A328); // size: 0x30B8
-            // 0x7D3E0 - Trainer Battle Data (bool,bool)[707]
+            BattleTrainer = new BattleTrainerStatus8b(this, 0x7D3E0); // size: 0x1618
             // 0x7E9F8 - Menu selections (TopMenuItemTypeInt32, bool IsNew)[8], TopMenuItemTypeInt32 LastSelected
             // 0x7EA3C - _FIELDOBJ_SAVE Objects[1000] (sizeof (0x44, 17 int fields), total size 0x109A0
-            Records = new Record8b(this, 0x8F3DC); // size: 0x78
-            // 0x8F454 - ENC_SV_DATA
-            // PLAYER_SAVE_DATA
-            // SaveBallDecoData
-            // SaveSealData[]
+            Records = new Record8b(this, 0x8F3DC); // size: 0x78 * 12
+            Encounter = new EncounterSave8b(this, 0x8F97C); // size: 0x188
+            Player = new PlayerData8b(this, 0x8FB04); // 0x80
+            SealDeco = new SealBallDecoData8b(this, 0x8FB84); // size: 0x4288
+            SealList = new SealList8b(this, 0x93E0C); // size: 0x960 SaveSealData[200]
             // _RANDOM_GROUP
-            // KinomiGrowSaveData -- berry trees
-            // PoffinSaveData -- poffins
-            // BTLTOWER_SAVEWORK -- BP counts and battle tower stats
-            System = new SystemData8b(this, 0x95DAC);
-            Poketch = new Poketch8b(this, 0); // todo
+            // FieldGimmickSaveData; int[3] gearRotate
+            BerryTrees = new BerryTreeGrowSave8b(this, 0x94DA8); // size: 0x808
+            Poffins = new PoffinSaveData8b(this, 0x955B0); // size: 0x644
+            BattleTower = new BattleTowerWork8b(this, 0x95BF4); // size: 0x1B8
+            System = new SystemData8b(this, 0x95DAC); // size: 0x138
+            Poketch = new Poketch8b(this, 0x95EE4); // todo
             Daycare = new Daycare8b(this, 0x96080); // 0x2C0
-            // 0x96340 - _DENDOU_SAVEDATA
-            // BadgeSaveData
-            // BoukenNote
-            // TV_DATA
-            // UgSaveData
-            // GMS_DATA
-            // PLAYER_NETWORK_DATA
-            // UnionSaveData
-            // CON_PHOTO_LANG_DATA -- contest photo language data
-            // ZUKAN_PERSONAL_RND_DATA
-            // CON_PHOTO_EXT_DATA[]
-            // GMS_POINT_HISTORY_EXT_DATA[]
-            // UgCountRecord
-            // ReBuffnameData
+            // 0x96340 - _DENDOU_SAVEDATA; DENDOU_RECORD[30], POKEMON_DATA_INSIDE[6], ushort[4] ?
+            // BadgeSaveData; byte[8]
+            // BoukenNote; byte[24]
+            // TV_DATA (int[48], TV_STR_DATA[42]), (int[37], bool[37])*2, (int[8], int[8]), TV_STR_DATA[10]; 144 128bit zeroed (900 bytes?)? 
+            UgSaveData = new UgSaveData8b(this, 0x9A89C); // size: 0x27A0
+            // 0x9D03C - GMS_DATA // size: 0x31304, (GMS_POINT_DATA[650], ushort, ushort, byte)?; substructure GMS_POINT_HISTORY_DATA[5]
+            // 0xCE340 - PLAYER_NETWORK_DATA; bcatFlagArray byte[1300]
+            // 0xCEA10(?) - UnionSaveData
+            // 0xCEA1C(?) - CON_PHOTO_LANG_DATA -- contest photo language data; photo_data[5], photo_fx[5]
+            // ZUKAN_PERSONAL_RND_DATA -- Spinda PID storage; uint[4] see, uint[4] get, uint[17] reserve
+            // CON_PHOTO_EXT_DATA[5]
+            // GMS_POINT_HISTORY_EXT_DATA[3250]
+            UgCount = new UgCountRecord8b(this, 0xE8178); // size: 0x20
+            // 0xE8198 - ReBuffnameData; RE_DENDOU_RECORD[30], RE_DENDOU_POKEMON_DATA_INSIDE[6] (0x20) = 0x1680
             // 0xE9818 -- 0x10 byte[] MD5 hash of all savedata;
 
             // v1.1 additions
-            // 0xE9828 -- RECORD_ADD_DATA: 0x30-sized[12] (0x120 bytes)
-            // MysteryGiftSaveData
-            // ZUKAN_PERSONAL_RND_DATA -- Spinda PID storage (17 * 2)
-            // POKETCH_POKETORE_COUNT_ARRAY -- (u16 species, u16 unused, i32 count, i32 reserved, i32 reserved) = 0x10bytes
-            // PLAYREPORT_DATA -- reporting player progress online?
+            RecordAdd = new RecordAddData8b(this, 0xE9828); // size: 0x3C0
+            MysteryRecords = new MysteryBlock8b(this, 0xE9BE8); // size: ???
+            // POKETCH_POKETORE_COUNT_ARRAY -- (u16 species, u16 unused, i32 count, i32 reserved, i32 reserved)[3] = 0x10bytes
+            // PLAYREPORT_DATA -- reporting player progress online? 248 bytes?
             // MT_DATA mtData; -- 0x400 bytes
-            // DENDOU_SAVE_ADD -- language tracking of members (hall of fame?)
+            // DENDOU_SAVE_ADD -- language tracking of members (hall of fame?); ADD_POKE_MEMBER[30], ADD_POKE[6]
 
             Initialize();
         }
@@ -83,8 +83,10 @@ namespace PKHeX.Core
             Box = 0x14EF4;
             Party = PartyInfo.Offset;
             PokeDex = Zukan.PokeDex;
-            BoxLayout.LoadBattleTeams();
             DaycareOffset = Daycare.Offset;
+
+            ReloadBattleTeams();
+            TeamSlots = BoxLayout.TeamSlots;
         }
 
         public override bool HasEvents => true;
@@ -110,6 +112,8 @@ namespace PKHeX.Core
         public override int MaxBallID => Legal.MaxBallID_8b;
         public override int MaxGameID => Legal.MaxGameID_8b;
         public override int MaxAbilityID => Legal.MaxAbilityID_8b;
+
+        public bool HasFirstSaveFileExpansion => (Gem8Version)SaveRevision >= Gem8Version.V1_1;
 
         public int SaveRevision
         {
@@ -139,6 +143,19 @@ namespace PKHeX.Core
                 BoxLayout.ClearBattleTeams();
             else // Valid slot locking info present
                 BoxLayout.LoadBattleTeams();
+        }
+
+        public override StorageSlotFlag GetSlotFlags(int index)
+        {
+            int team = Array.IndexOf(TeamSlots, index);
+            if (team < 0)
+                return StorageSlotFlag.None;
+
+            team /= 6;
+            var val = (StorageSlotFlag)((int)StorageSlotFlag.BattleTeam1 << team);
+            if (BoxLayout.GetIsTeamLocked(team))
+                val |= StorageSlotFlag.Locked;
+            return val;
         }
 
         #region Checksums
@@ -188,10 +205,24 @@ namespace PKHeX.Core
         public Contest8b Contest { get; }
         // public Misc8 Misc { get; }
         public Zukan8b Zukan { get; }
+        public BattleTrainerStatus8b BattleTrainer { get; }
         public Record8b Records { get; }
+        public EncounterSave8b Encounter { get; }
+        public PlayerData8b Player { get; }
+        public SealBallDecoData8b SealDeco { get; }
+        public SealList8b SealList { get; }
+        public BerryTreeGrowSave8b BerryTrees { get; }
+        public PoffinSaveData8b Poffins { get; }
+        public BattleTowerWork8b BattleTower { get; }
         public SystemData8b System { get; }
         public Poketch8b Poketch { get; }
         public Daycare8b Daycare { get; }
+        public UgSaveData8b UgSaveData { get; }
+        public UgCountRecord8b UgCount { get; }
+
+        // First Savedata Expansion!
+        public RecordAddData8b RecordAdd { get; }
+        public MysteryBlock8b MysteryRecords { get; }
         #endregion
 
         public override GameVersion Version => Game switch
@@ -253,10 +284,16 @@ namespace PKHeX.Core
             set => BitConverter.GetBytes(value).CopyTo(Data, 0x5634);
         }
 
-        public float TimeScale
+        public float TimeScale // default 1440.0f
         {
             get => BitConverter.ToSingle(Data, 0x5638);
             set => BitConverter.GetBytes(value).CopyTo(Data, 0x5638);
+        }
+
+        public uint UnionRoomPenaltyTime // move this into the UnionSaveData block once reversed.
+        {
+            get => BitConverter.ToUInt32(Data, 0xCEA14);
+            set => BitConverter.GetBytes(value).CopyTo(Data, 0xCEA14);
         }
 
         protected override void SetPKM(PKM pkm, bool isParty = false)
@@ -304,7 +341,7 @@ namespace PKHeX.Core
         public int RecordCount => Record8b.RecordCount;
         public int GetRecord(int recordID) => Records.GetRecord(recordID);
         public int GetRecordOffset(int recordID) => Records.GetRecordOffset(recordID);
-        public int GetRecordMax(int recordID) => Record8b.RecordMaxValue;
+        public int GetRecordMax(int recordID) => Record8b.GetMax(recordID);
         public void SetRecord(int recordID, int value) => Records.SetRecord(recordID, value);
 
         #region Daycare

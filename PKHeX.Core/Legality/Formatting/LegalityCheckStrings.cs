@@ -399,6 +399,7 @@ namespace PKHeX.Core
         public static string LOT_SID0 { get; set; } = "SID is zero.";
         public static string LOT_SID0Invalid { get; set; } = "SID should be 0.";
         public static string LOT_TID0 { get; set; } = "TID is zero.";
+        public static string LOT_IDInvalid { get; set; } = "TID and SID combination is not possible.";
 
         public static string LPIDEncryptWurmple { get; set; } = "Wurmple evolution Encryption Constant mismatch.";
         public static string LPIDEncryptZero { get; set; } = "Encryption Constant is not set.";
@@ -420,6 +421,7 @@ namespace PKHeX.Core
         public static string LStatDynamaxInvalid { get; set; } = "Dynamax Level is not within the expected range.";
         public static string LStatIncorrectHeight { get; set; } = "Calculated Height does not match stored value.";
         public static string LStatIncorrectWeight { get; set; } = "Calculated Weight does not match stored value.";
+        public static string LStatInvalidHeightWeight { get; set; } = "Height / Weight values are statistically improbable.";
         public static string LStatIncorrectCP { get; set; } = "Calculated CP does not match stored value.";
         public static string LStatGigantamaxInvalid { get; set; } = "Gigantamax Flag mismatch.";
         public static string LStatGigantamaxValid { get; set; } = "Gigantamax Flag was changed via Max Soup.";

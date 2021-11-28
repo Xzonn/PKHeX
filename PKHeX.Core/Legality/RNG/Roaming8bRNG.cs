@@ -24,6 +24,8 @@
             do
             {
                 var seed = Util.Rand32(rnd);
+                if (seed == int.MaxValue)
+                    continue; // Unity's Rand is [int.MinValue, int.MaxValue)
                 if (TryApplyFromSeed(pk, criteria, shiny, flawless, seed))
                     return;
             } while (++ctr != maxAttempts);
@@ -36,10 +38,11 @@
 
             // Encryption Constant
             pk.EncryptionConstant = seed;
-            var _ = xoro.NextUInt(); // fakeTID
 
             // PID
+            var fakeTID = xoro.NextUInt(); // fakeTID
             var pid = xoro.NextUInt();
+            pid = GetRevisedPID(fakeTID, pid, pk);
             if (shiny == Shiny.Never)
             {
                 if (GetIsShiny(pk.TID, pk.SID, pid))
@@ -100,11 +103,14 @@
         public static bool ValidateRoamingEncounter(PKM pk, Shiny shiny = Shiny.Random, int flawless = 0)
         {
             var seed = pk.EncryptionConstant;
+            if (seed == int.MaxValue)
+                return false; // Unity's Rand is [int.MinValue, int.MaxValue)
             var xoro = new Xoroshiro128Plus8b(seed);
 
             // Check PID
-            var _ = xoro.NextUInt(); // fakeTID
+            var fakeTID = xoro.NextUInt(); // fakeTID
             var pid = xoro.NextUInt();
+            pid = GetRevisedPID(fakeTID, pid, pk);
             if (pk.PID != pid)
                 return false;
 
@@ -226,10 +232,36 @@
             return s.HeightScalar == height && s.WeightScalar == weight;
         }
 
+        private static uint GetRevisedPID(uint fakeTID, uint pid, ITrainerID tr)
+        {
+            var xor = GetShinyXor(pid, fakeTID);
+            var newXor = GetShinyXor(pid, (uint)(tr.TID | (tr.SID << 16)));
+
+            var fakeRare = GetRareType(xor);
+            var newRare = GetRareType(newXor);
+
+            if (fakeRare == newRare)
+                return pid;
+
+            var isShiny = xor < 16;
+            if (isShiny)
+                return (((uint)(tr.TID ^ tr.SID) ^ (pid & 0xFFFF) ^ (xor == 0 ? 0u : 1u)) << 16) | (pid & 0xFFFF); // force same shiny star type
+            return pid ^ 0x1000_0000;
+        }
+
+        private static Shiny GetRareType(uint xor) => xor switch
+        {
+            0 => Shiny.AlwaysSquare,
+         < 16 => Shiny.AlwaysStar,
+            _ => Shiny.Never,
+        };
+
         private static bool GetIsShiny(int tid, int sid, uint pid)
         {
-            return GetShinyXor(pid, (uint)((sid << 16) | tid)) < 16;
+            return GetIsShiny(pid, (uint)((sid << 16) | tid));
         }
+
+        private static bool GetIsShiny(uint pid, uint oid) => GetShinyXor(pid, oid) < 16;
 
         private static uint GetShinyXor(uint pid, uint oid)
         {

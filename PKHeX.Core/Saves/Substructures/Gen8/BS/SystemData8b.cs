@@ -4,9 +4,9 @@ using System.ComponentModel;
 namespace PKHeX.Core
 {
     /// <summary>
-    /// Details about the Poketch corner app.
+    /// Details about the Console and specific timestamps.
     /// </summary>
-    /// <remarks>size: ???</remarks>
+    /// <remarks>size: 0x138</remarks>
     [TypeConverter(typeof(ExpandableObjectConverter))]
     public sealed class SystemData8b : SaveBlock
     {
@@ -15,12 +15,18 @@ namespace PKHeX.Core
         // (u32 count, u64 FILETIME) Latest Save Time
         // (u32 count, u64 FILETIME) Penalty Timeout Time
         // (u32 count, u64 FILETIME) Last Daily Event Time
-        // byte[???] Snapshot
+        // byte[208] ClockSnapshot (char[0x24])
         // u32 "fd_bgmEvnet"
         // s64[6] reserved
         private const int SIZE_GMTIME = 12;
+        private const int SIZE_SNAPSHOT = 0xD0;
 
-        public SystemData8b(SaveFile sav, int offset) : base(sav) => Offset = offset;
+        private const int OFS_SNAPSHOT = 4 + (3 * SIZE_GMTIME) + SIZE_GMTIME; // 0x34
+        private const int OFS_FDBGM = OFS_SNAPSHOT + SIZE_SNAPSHOT;
+        private const int OFS_RESERVED = OFS_FDBGM + 4;
+        private const int SIZE_TOTAL = OFS_RESERVED + (6 * 8); // 0x138
+
+        public SystemData8b(SAV8BS sav, int offset) : base(sav) => Offset = offset;
 
         public uint CountStart   { get => BitConverter.ToUInt32(Data, Offset + 0 + (0 * SIZE_GMTIME)); set => BitConverter.GetBytes(value).CopyTo(Data, Offset + 0 + (0 * SIZE_GMTIME)); }
         public long TicksStart   { get => BitConverter. ToInt64(Data, Offset + 4 + (0 * SIZE_GMTIME)); set => BitConverter.GetBytes(value).CopyTo(Data, Offset + 4 + (0 * SIZE_GMTIME)); }

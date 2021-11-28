@@ -572,10 +572,13 @@ namespace PKHeX.WinForms.Controls
         // Prompted Updates of PKM //
         private void ClickFriendship(object sender, EventArgs e)
         {
-            if (ModifierKeys == Keys.Control ^ CHK_IsEgg.Checked) // clear
-                TB_Friendship.Text = CHK_IsEgg.Checked ? EggStateLegality.GetMinimumEggHatchCycles(Entity).ToString() : "0";
-            else
-                TB_Friendship.Text = CHK_IsEgg.Checked ? EggStateLegality.GetMaximumEggHatchCycles(Entity).ToString() : TB_Friendship.Text == "255" ? Entity.PersonalInfo.BaseFriendship.ToString() : "255";
+            var pk = Entity;
+            bool worst = ModifierKeys == Keys.Control ^ pk.IsEgg;
+            var current = int.Parse(TB_Friendship.Text);
+            var value = worst
+                ? pk.IsEgg ? EggStateLegality.GetMinimumEggHatchCycles(pk) : 0
+                : pk.IsEgg ? EggStateLegality.GetMaximumEggHatchCycles(pk) : current == 255 ? pk.PersonalInfo.BaseFriendship : 255;
+            TB_Friendship.Text = value.ToString();
         }
 
         private void ClickLevel(object sender, EventArgs e)
@@ -1239,16 +1242,26 @@ namespace PKHeX.WinForms.Controls
         {
             var metList = GameInfo.GetLocationList(version, format, egg: false);
             CB_MetLocation.DataSource = new BindingSource(metList, null);
+            CB_MetLocation.DropDownWidth = GetWidth(metList, CB_MetLocation.Font);
 
             var eggList = GameInfo.GetLocationList(version, format, egg: true);
             CB_EggLocation.DataSource = new BindingSource(eggList, null);
+            CB_EggLocation.DropDownWidth = GetWidth(eggList, CB_EggLocation.Font);
+
+            static int GetWidth(IEnumerable<ComboItem> items, Font f) =>
+                items.Max(z => TextRenderer.MeasureText(z.Text, f).Width) +
+                SystemInformation.VerticalScrollBarWidth;
 
             if (FieldsLoaded)
             {
                 SetMarkings(); // Set/Remove the Nativity marking when gamegroup changes too
                 int metLoc = EncounterSuggestion.GetSuggestedTransferLocation(Entity);
+                int eggLoc = CHK_AsEgg.Checked
+                    ? EncounterSuggestion.GetSuggestedEncounterEggLocationEgg(format, version)
+                    : Locations.GetNoneLocation(version);
+
                 CB_MetLocation.SelectedValue = Math.Max(0, metLoc);
-                CB_EggLocation.SelectedIndex = CHK_AsEgg.Checked ? 1 : 0; // daycare : none
+                CB_EggLocation.SelectedValue = eggLoc;
             }
             else
             {
@@ -1406,7 +1419,7 @@ namespace PKHeX.WinForms.Controls
             Entity.IsEgg = CHK_IsEgg.Checked;
             if (CHK_IsEgg.Checked)
             {
-                TB_Friendship.Text = "1";
+                TB_Friendship.Text = EggStateLegality.GetMinimumEggHatchCycles(Entity).ToString();
 
                 // If we are an egg, it won't have a met location.
                 CHK_AsEgg.Checked = true;
@@ -1428,12 +1441,8 @@ namespace PKHeX.WinForms.Controls
                     TB_OT.Text = Entity.OT_Name;
                 }
 
-                if (!CHK_Nicknamed.Checked)
-                {
-                    TB_Nickname.Text = SpeciesName.GetSpeciesNameGeneration(0, WinFormsUtil.GetIndex(CB_Language), Entity.Format);
-                    if (Entity.Format != 4) // eggs in gen4 do not have nickname flag
-                        CHK_Nicknamed.Checked = true;
-                }
+                CHK_Nicknamed.Checked = EggStateLegality.IsNicknameFlagSet(Entity);
+                TB_Nickname.Text = SpeciesName.GetSpeciesNameGeneration(0, WinFormsUtil.GetIndex(CB_Language), Entity.Format);
 
                 // Wipe egg memories
                 if (Entity.Format >= 6 && ModifyPKM)
