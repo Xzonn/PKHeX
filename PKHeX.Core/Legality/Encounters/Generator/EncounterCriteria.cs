@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using static PKHeX.Core.AbilityPermission;
 
 namespace PKHeX.Core
@@ -47,7 +48,7 @@ namespace PKHeX.Core
         /// <param name="encounterIVs">Encounter template's IV restrictions. Speed is not last.</param>
         /// <param name="generation">Destination generation</param>
         /// <returns>True if compatible, false if incompatible.</returns>
-        public bool IsIVsCompatible(int[] encounterIVs, int generation)
+        public bool IsIVsCompatible(Span<int> encounterIVs, int generation)
         {
             var IVs = encounterIVs;
             if (!ivCanMatch(IV_HP , IVs[0])) return false;
@@ -86,25 +87,21 @@ namespace PKHeX.Core
         /// <param name="s">Template data (end result).</param>
         /// <param name="pi">Personal info the end result will exist with.</param>
         /// <returns>Initialized criteria data to be passed to generators.</returns>
-        public static EncounterCriteria GetCriteria(IBattleTemplate s, PersonalInfo pi)
+        public static EncounterCriteria GetCriteria(IBattleTemplate s, PersonalInfo pi) => new()
         {
-            int gender = s.Gender;
-            return new EncounterCriteria
-            {
-                Gender = gender,
-                IV_HP = s.IVs[0],
-                IV_ATK = s.IVs[1],
-                IV_DEF = s.IVs[2],
-                IV_SPE = s.IVs[3],
-                IV_SPA = s.IVs[4],
-                IV_SPD = s.IVs[5],
-                HPType = s.HiddenPowerType,
+            Gender = s.Gender,
+            IV_HP = s.IVs[0],
+            IV_ATK = s.IVs[1],
+            IV_DEF = s.IVs[2],
+            IV_SPE = s.IVs[3],
+            IV_SPA = s.IVs[4],
+            IV_SPD = s.IVs[5],
+            HPType = s.HiddenPowerType,
 
-                AbilityNumber = GetAbilityNumber(s.Ability, pi),
-                Nature = NatureUtil.GetNature(s.Nature),
-                Shiny = s.Shiny ? Shiny.Always : Shiny.Never,
-            };
-        }
+            AbilityNumber = GetAbilityNumber(s.Ability, pi),
+            Nature = NatureUtil.GetNature(s.Nature),
+            Shiny = s.Shiny ? Shiny.Always : Shiny.Never,
+        };
 
         private static AbilityPermission GetAbilityNumber(int ability, PersonalInfo pi)
         {
@@ -155,25 +152,12 @@ namespace PKHeX.Core
         /// <summary>
         /// Gets a random ability index (0/1/2) to generate, based off an encounter's <see cref="num"/>.
         /// </summary>
-        public int GetAbilityFromNumber(int num)
+        public int GetAbilityFromNumber(AbilityPermission num)
         {
-            if (num > 0) // fixed number
-                return num >> 1;
+            if (num.IsSingleValue(out int index)) // fixed number
+                return index;
 
-            bool canBeHidden = num == -1;
-            return GetAbilityIndexPreference(canBeHidden);
-        }
-
-        /// <summary>
-        /// Gets a random ability index (0/1/2) to generate, based off an encounter's <see cref="type"/>.
-        /// </summary>
-        /// <remarks>This is used for the Mystery Gift ability type arguments.</remarks>
-        public int GetAbilityFromType(int type)
-        {
-            if ((uint)type < 3)
-                return type;
-
-            bool canBeHidden = type == 4;
+            bool canBeHidden = num.CanBeHidden();
             return GetAbilityIndexPreference(canBeHidden);
         }
 
@@ -198,14 +182,5 @@ namespace PKHeX.Core
             pk.IV_SPD = IV_SPD != RandomIV ? IV_SPD : Util.Rand.Next(32);
             pk.IV_SPE = IV_SPE != RandomIV ? IV_SPE : Util.Rand.Next(32);
         }
-    }
-
-    public enum AbilityPermission : sbyte
-    {
-        Any12H = -1,
-        Any12 = 0,
-        OnlyFirst = 1,
-        OnlySecond = 2,
-        OnlyHidden = 4,
     }
 }

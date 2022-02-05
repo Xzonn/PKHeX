@@ -1,13 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using static System.Buffers.Binary.BinaryPrimitives;
 
 namespace PKHeX.Core
 {
     /// <summary>
     /// Go Park Entity transferred from <see cref="GameVersion.GO"/> to <see cref="GameVersion.GG"/>.
     /// </summary>
-    public sealed class GP1 : IEncounterInfo
+    public sealed class GP1 : IEncounterInfo, IFixedAbilityNumber
     {
         public const int SIZE = 0x1B0;
         public readonly byte[] Data;
@@ -17,6 +18,7 @@ namespace PKHeX.Core
         public int LevelMin => Level;
         public int LevelMax => Level;
         public int Generation => 7;
+        public AbilityPermission Ability => AbilityPermission.Any12;
         public PKM ConvertToPKM(ITrainerInfo sav) => ConvertToPB7(sav);
         public PKM ConvertToPKM(ITrainerInfo sav, EncounterCriteria criteria) => ConvertToPB7(sav, criteria);
 
@@ -26,8 +28,14 @@ namespace PKHeX.Core
 
         public static GP1 FromData(byte[] data, int offset)
         {
+            var span = data.AsSpan(offset);
+            return FromData(span);
+        }
+
+        private static GP1 FromData(ReadOnlySpan<byte> span)
+        {
             var gpkm = new GP1();
-            Array.Copy(data, offset, gpkm.Data, 0, SIZE);
+            span[..SIZE].CopyTo(gpkm.Data);
             return gpkm;
         }
 
@@ -54,14 +62,14 @@ namespace PKHeX.Core
         public string Username1 => Util.TrimFromZero(Encoding.ASCII.GetString(Data, 0x00, 0x10));
         public string Username2 => Util.TrimFromZero(Encoding.ASCII.GetString(Data, 0x10, 0x20));
 
-        public int Species => BitConverter.ToInt32(Data, 0x28);
-        public int CP => BitConverter.ToInt32(Data, 0x2C);
-        public float LevelF => BitConverter.ToSingle(Data, 0x30);
+        public int Species => ReadInt32LittleEndian(Data.AsSpan(0x28));
+        public int CP => ReadInt32LittleEndian(Data.AsSpan(0x2C));
+        public float LevelF => ReadSingleLittleEndian(Data.AsSpan(0x30));
         public int Level => Math.Max(1, (int)Math.Round(LevelF));
-        public int Stat_HP => BitConverter.ToInt32(Data, 0x34);
+        public int Stat_HP => ReadInt32LittleEndian(Data.AsSpan(0x34));
         // geolocation data 0x38-0x47?
-        public float HeightF => BitConverter.ToSingle(Data, 0x48);
-        public float WeightF => BitConverter.ToSingle(Data, 0x4C);
+        public float HeightF => ReadSingleLittleEndian(Data.AsSpan(0x48));
+        public float WeightF => ReadSingleLittleEndian(Data.AsSpan(0x4C));
 
         public byte HeightScalar
         {
@@ -87,10 +95,10 @@ namespace PKHeX.Core
             }
         }
 
-        public int IV_HP => BitConverter.ToInt32(Data, 0x50);
-        public int IV_ATK => BitConverter.ToInt32(Data, 0x54);
-        public int IV_DEF => BitConverter.ToInt32(Data, 0x58);
-        public int Date => BitConverter.ToInt32(Data, 0x5C); // ####.##.## YYYY.MM.DD
+        public int IV_HP => ReadInt32LittleEndian(Data.AsSpan(0x50));
+        public int IV_ATK => ReadInt32LittleEndian(Data.AsSpan(0x54));
+        public int IV_DEF => ReadInt32LittleEndian(Data.AsSpan(0x58));
+        public int Date => ReadInt32LittleEndian(Data.AsSpan(0x5C)); // ####.##.## YYYY.MM.DD
         public int Year => Date / 1_00_00;
         public int Month => (Date / 1_00) % 1_00;
         public int Day => Date % 1_00;
@@ -101,8 +109,8 @@ namespace PKHeX.Core
         public bool IsShiny => Data[0x73] == 1;
 
         // https://bulbapedia.bulbagarden.net/wiki/List_of_moves_in_Pok%C3%A9mon_GO
-        public int Move1 => BitConverter.ToInt32(Data, 0x74); // uses Go Indexes
-        public int Move2 => BitConverter.ToInt32(Data, 0x78); // uses Go Indexes
+        public int Move1 => ReadInt32LittleEndian(Data.AsSpan(0x74)); // uses Go Indexes
+        public int Move2 => ReadInt32LittleEndian(Data.AsSpan(0x78)); // uses Go Indexes
 
         public string GeoCityName => Util.TrimFromZero(Encoding.ASCII.GetString(Data, 0x7C, 0x60)); // dunno length
 
@@ -169,10 +177,9 @@ namespace PKHeX.Core
             pk.IV_SPE = Util.Rand.Next(32);
 
             var pi = pk.PersonalInfo;
-            const int av = 3;
             pk.Gender = criteria.GetGender(Gender, pi);
             pk.Nature = (int)criteria.GetNature(Nature.Random);
-            pk.RefreshAbility(criteria.GetAbilityFromType(av));
+            pk.RefreshAbility(criteria.GetAbilityFromNumber(Ability));
 
             bool isShiny = pk.IsShiny;
             if (IsShiny && !isShiny) // Force Square

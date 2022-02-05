@@ -13,6 +13,8 @@ using System.Windows.Forms;
 
 using PKHeX.Core;
 using PKHeX.Drawing;
+using PKHeX.Drawing.Misc;
+using PKHeX.Drawing.PokeSprite;
 using PKHeX.WinForms.Controls;
 using static PKHeX.Core.MessageStrings;
 
@@ -101,6 +103,7 @@ namespace PKHeX.WinForms
         public static readonly string BackupPath = Path.Combine(WorkingDirectory, "bak");
         public static readonly string CryPath = Path.Combine(WorkingDirectory, "sounds");
         private static readonly string TemplatePath = Path.Combine(WorkingDirectory, "template");
+        private static readonly string TrainerPath = Path.Combine(WorkingDirectory, "trainers");
         private static readonly string PluginPath = Path.Combine(WorkingDirectory, "plugins");
         private const string ThreadPath = "https://xzonn.top/PokemonChineseTranslationRevise/PKHeX.html";
 
@@ -182,9 +185,7 @@ namespace PKHeX.WinForms
                 Version? latestVersion;
                 // User might not be connected to the internet or with a flaky connection.
                 try { latestVersion = UpdateUtil.GetLatestPKHeXVersion(); }
-#pragma warning disable CA1031 // Do not catch general exception types
                 catch (Exception ex)
-#pragma warning restore CA1031 // Do not catch general exception types
                 {
                     Debug.WriteLine($"Exception while checking for latest version: {ex}");
                     return;
@@ -325,8 +326,22 @@ namespace PKHeX.WinForms
 
         private void Menu_EncDatabase_Click(object sender, EventArgs e)
         {
-            if (!this.OpenWindowExists<SAV_Encounters>())
-                new SAV_Encounters(PKME_Tabs).Show();
+            if (this.OpenWindowExists<SAV_Encounters>())
+                return;
+
+            var db = new TrainerDatabase();
+            var sav = C_SAV.SAV;
+            Task.Run(() =>
+            {
+                var dir = TrainerPath;
+                if (!Directory.Exists(dir))
+                    return;
+                var files = Directory.EnumerateFiles(TrainerPath, "*.*", SearchOption.AllDirectories);
+                var pkm = BoxUtil.GetPKMsFromPaths(files, sav.Generation);
+                foreach (var f in pkm)
+                    db.RegisterCopy(f);
+            });
+            new SAV_Encounters(PKME_Tabs, db).Show();
         }
 
         private void MainMenuMysteryDB(object sender, EventArgs e)
@@ -517,18 +532,14 @@ namespace PKHeX.WinForms
                 return;
             }
             byte[] input; try { input = File.ReadAllBytes(path); }
-#pragma warning disable CA1031 // Do not catch general exception types
             catch (Exception e) { WinFormsUtil.Error(MsgFileInUse + path, e); return; }
-#pragma warning restore CA1031 // Do not catch general exception types
 
             string ext = fi.Extension;
             #if DEBUG
             OpenFile(input, path, ext);
             #else
             try { OpenFile(input, path, ext); }
-#pragma warning disable CA1031 // Do not catch general exception types
             catch (Exception e) { WinFormsUtil.Error(MsgFileLoadFail + "\nPath: " + path, e); }
-#pragma warning restore CA1031 // Do not catch general exception types
             #endif
         }
 
@@ -1060,18 +1071,19 @@ namespace PKHeX.WinForms
         private PKM PreparePKM(bool click = true) => PKME_Tabs.PreparePKM(click);
 
         // Drag & Drop Events
-        private static void Main_DragEnter(object sender, DragEventArgs e)
+        private static void Main_DragEnter(object? sender, DragEventArgs? e)
         {
+            if (e is null)
+                return;
             if (e.AllowedEffect == (DragDropEffects.Copy | DragDropEffects.Link)) // external file
                 e.Effect = DragDropEffects.Copy;
             else if (e.Data != null) // within
                 e.Effect = DragDropEffects.Move;
         }
 
-        private void Main_DragDrop(object sender, DragEventArgs e)
+        private void Main_DragDrop(object? sender, DragEventArgs? e)
         {
-            var files = (string[]?)e.Data.GetData(DataFormats.FileDrop);
-            if (files == null || files.Length == 0)
+            if (e?.Data?.GetData(DataFormats.FileDrop) is not string[] { Length: not 0 } files)
                 return;
             OpenQuick(files[0]);
             e.Effect = DragDropEffects.Copy;
@@ -1106,10 +1118,8 @@ namespace PKHeX.WinForms
                     C_SAV.M.Drag.Info.Cursor = Cursor = new Cursor(((Bitmap)pb.Image).GetHicon());
                 DoDragDrop(new DataObject(DataFormats.FileDrop, new[] { newfile }), DragDropEffects.Move);
             }
-#pragma warning disable CA1031 // Do not catch general exception types
             // Tons of things can happen with drag & drop; don't try to handle things, just indicate failure.
             catch (Exception x)
-#pragma warning restore CA1031 // Do not catch general exception types
             { WinFormsUtil.Error("Drag && Drop Error", x); }
             C_SAV.M.Drag.ResetCursor(this);
             File.Delete(newfile);
@@ -1130,9 +1140,10 @@ namespace PKHeX.WinForms
                 Cursor = Cursors.Default;
         }
 
-        private void DragoutDrop(object sender, DragEventArgs e)
+        private void DragoutDrop(object? sender, DragEventArgs? e)
         {
-            string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
+            if (e?.Data?.GetData(DataFormats.FileDrop) is not string[] { Length: not 0 } files)
+                return;
             OpenQuick(files[0]);
             e.Effect = DragDropEffects.Copy;
 
@@ -1175,12 +1186,12 @@ namespace PKHeX.WinForms
                     return;
 
                 var path = sav.Metadata.FilePath!;
-                if (WinFormsUtil.Prompt(MessageBoxButtons.YesNo, MsgFileLoadSaveDetectReload, path) == DialogResult.Yes)
+                var time = new FileInfo(path).CreationTime;
+                var timeStamp = time.ToString(CultureInfo.CurrentCulture);
+                if (WinFormsUtil.Prompt(MessageBoxButtons.YesNo, MsgFileLoadSaveDetectReload, path, timeStamp) == DialogResult.Yes)
                     LoadFile(sav, path); // load save
             }
-#pragma warning disable CA1031 // Do not catch general exception types
             catch (Exception ex)
-#pragma warning restore CA1031 // Do not catch general exception types
             {
                 WinFormsUtil.Error(ex.Message); // `path` contains the error message
             }
@@ -1196,10 +1207,8 @@ namespace PKHeX.WinForms
                 Directory.CreateDirectory(BackupPath);
                 WinFormsUtil.Alert(MsgBackupSuccess, string.Format(MsgBackupDelete, BackupPath));
             }
-#pragma warning disable CA1031 // Do not catch general exception types
             catch (Exception ex)
             // Maybe they put their exe in a folder that we can't create files/folders to.
-#pragma warning restore CA1031 // Do not catch general exception types
             { WinFormsUtil.Error($"{MsgBackupUnable} @ {BackupPath}", ex); }
         }
 

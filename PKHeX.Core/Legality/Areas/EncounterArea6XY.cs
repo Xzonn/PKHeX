@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using static System.Buffers.Binary.BinaryPrimitives;
 
 namespace PKHeX.Core
 {
@@ -13,10 +14,11 @@ namespace PKHeX.Core
 
         protected override IReadOnlyList<EncounterSlot> Raw => Slots;
 
-        public static EncounterArea6XY[] GetAreas(byte[][] input, GameVersion game, EncounterArea6XY safari)
+        public static EncounterArea6XY[] GetAreas(BinLinkerAccessor input, GameVersion game, EncounterArea6XY safari)
         {
-            var result = new EncounterArea6XY[input.Length + 1];
-            for (int i = 0; i < input.Length; i++)
+            int count = input.Length;
+            var result = new EncounterArea6XY[count + 1];
+            for (int i = 0; i < count; i++)
                 result[i] = new EncounterArea6XY(input[i], game);
             result[^1] = safari;
             return result;
@@ -30,7 +32,7 @@ namespace PKHeX.Core
             Slots = LoadSafariSlots();
         }
 
-        private EncounterArea6XY(byte[] data, GameVersion game) : base(game)
+        private EncounterArea6XY(ReadOnlySpan<byte> data, GameVersion game) : base(game)
         {
             Location = data[0] | (data[1] << 8);
             Type = (SlotType)data[2];
@@ -78,11 +80,11 @@ namespace PKHeX.Core
             slots[i++] = new EncounterSlot6XY(this, (int)Species.Floette, 3, 30, 30);
 
             // Region Random Vivillon
-            slots[i] = new EncounterSlot6XY(this, (int)Species.Vivillon, 30, 30, 30);
+            slots[i] = new EncounterSlot6XY(this, (int)Species.Vivillon, EncounterSlot.FormVivillon, 30, 30);
             return slots;
         }
 
-        private EncounterSlot6XY[] ReadSlots(byte[] data)
+        private EncounterSlot6XY[] ReadSlots(ReadOnlySpan<byte> data)
         {
             const int size = 4;
             int count = (data.Length - 4) / size;
@@ -90,11 +92,12 @@ namespace PKHeX.Core
             for (int i = 0; i < slots.Length; i++)
             {
                 int offset = 4 + (size * i);
-                ushort SpecForm = BitConverter.ToUInt16(data, offset);
+                var entry = data.Slice(offset, size);
+                ushort SpecForm = ReadUInt16LittleEndian(entry);
                 int species = SpecForm & 0x3FF;
                 int form = SpecForm >> 11;
-                int min = data[offset + 2];
-                int max = data[offset + 3];
+                int min = entry[2];
+                int max = entry[3];
                 slots[i] = new EncounterSlot6XY(this, species, form, min, max);
             }
 

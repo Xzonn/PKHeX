@@ -6,17 +6,16 @@ namespace PKHeX.Core
     /// Generation 5 Static Encounter
     /// </summary>
     /// <inheritdoc cref="EncounterStatic"/>
-    public record EncounterStatic5 : EncounterStatic
+    public record EncounterStatic5(GameVersion Version) : EncounterStatic(Version)
     {
         public sealed override int Generation => 5;
         public bool Roaming { get; init; }
         public bool IsWildCorrelationPID => !Roaming && Shiny == Shiny.Random && Species != (int)Core.Species.Crustle;
 
-        public EncounterStatic5(GameVersion game) : base(game) { }
-
         protected sealed override bool IsMatchPartial(PKM pkm)
         {
-            if (Ability == 4 && pkm.AbilityNumber != 4 && pkm.Format <= 7) // BW/2 Jellicent collision with wild surf slot, resolved by duplicating the encounter with any abil
+            // BW/2 Jellicent collision with wild surf slot, resolved by duplicating the encounter with any abil
+            if (Ability == AbilityPermission.OnlyHidden && pkm.AbilityNumber != 4 && pkm.Format <= 7)
                 return true;
             return base.IsMatchPartial(pkm);
         }

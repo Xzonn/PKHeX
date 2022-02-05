@@ -4,6 +4,8 @@ using System.ComponentModel;
 using System.Windows.Forms;
 using PKHeX.Core;
 using PKHeX.Drawing;
+using PKHeX.Drawing.Misc;
+using PKHeX.Drawing.PokeSprite;
 
 namespace PKHeX.WinForms
 {
@@ -49,26 +51,26 @@ namespace PKHeX.WinForms
             row.CreateCells(DGV);
 
             int r = 0;
-            row.Cells[r++].Value = s.ToString("000") + (f > 0 ? "-"+f.ToString("00") :"");
+            row.Cells[r++].Value = s.ToString("000") + (f > 0 ? $"-{f:00}" : "");
             row.Cells[r++].Value = SpriteUtil.GetSprite(s, f, 0, 0, 0, false, false, SAV.Generation);
             row.Cells[r++].Value = species[index];
             row.Cells[r++].Value = GetIsNative(p, s);
-            row.Cells[r].Style.BackColor = ImageUtil.ColorBaseStatTotal(p.BST);
+            row.Cells[r].Style.BackColor = ColorUtil.ColorBaseStatTotal(p.BST);
             row.Cells[r++].Value = p.BST.ToString("000");
             row.Cells[r++].Value = p.CatchRate.ToString("000");
-            row.Cells[r++].Value = SpriteUtil.GetTypeSprite(p.Type1, SAV.Generation);
-            row.Cells[r++].Value = p.Type1 == p.Type2 ? SpriteUtil.Spriter.Transparent : SpriteUtil.GetTypeSprite(p.Type2, SAV.Generation);
-            row.Cells[r].Style.BackColor = ImageUtil.ColorBaseStat(p.HP);
+            row.Cells[r++].Value = TypeSpriteUtil.GetTypeSprite(p.Type1, SAV.Generation);
+            row.Cells[r++].Value = p.Type1 == p.Type2 ? SpriteUtil.Spriter.Transparent : TypeSpriteUtil.GetTypeSprite(p.Type2, SAV.Generation);
+            row.Cells[r].Style.BackColor = ColorUtil.ColorBaseStat(p.HP);
             row.Cells[r++].Value = p.HP.ToString("000");
-            row.Cells[r].Style.BackColor = ImageUtil.ColorBaseStat(p.ATK);
+            row.Cells[r].Style.BackColor = ColorUtil.ColorBaseStat(p.ATK);
             row.Cells[r++].Value = p.ATK.ToString("000");
-            row.Cells[r].Style.BackColor = ImageUtil.ColorBaseStat(p.DEF);
+            row.Cells[r].Style.BackColor = ColorUtil.ColorBaseStat(p.DEF);
             row.Cells[r++].Value = p.DEF.ToString("000");
-            row.Cells[r].Style.BackColor = ImageUtil.ColorBaseStat(p.SPA);
+            row.Cells[r].Style.BackColor = ColorUtil.ColorBaseStat(p.SPA);
             row.Cells[r++].Value = p.SPA.ToString("000");
-            row.Cells[r].Style.BackColor = ImageUtil.ColorBaseStat(p.SPD);
+            row.Cells[r].Style.BackColor = ColorUtil.ColorBaseStat(p.SPD);
             row.Cells[r++].Value = p.SPD.ToString("000");
-            row.Cells[r].Style.BackColor = ImageUtil.ColorBaseStat(p.SPE);
+            row.Cells[r].Style.BackColor = ColorUtil.ColorBaseStat(p.SPE);
             row.Cells[r++].Value = p.SPE.ToString("000");
             var abils = p.Abilities;
             row.Cells[r++].Value = GetAbility(abils, 0);
@@ -89,6 +91,7 @@ namespace PKHeX.WinForms
         {
             PersonalInfoSM => s > 721 || Legal.PastGenAlolanNatives.Contains(s),
             PersonalInfoSWSH ss => ss.IsInDex,
+            PersonalInfoBDSP bs => bs.IsInDex,
             _ => true,
         };
     }

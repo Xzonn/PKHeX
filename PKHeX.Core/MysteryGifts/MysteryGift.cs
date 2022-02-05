@@ -1,13 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using static System.Buffers.Binary.BinaryPrimitives;
 
 namespace PKHeX.Core
 {
     /// <summary>
     /// Mystery Gift Template File
     /// </summary>
-    public abstract class MysteryGift : IEncounterable, IMoveset, IRelearn, ILocation, IFixedBall
+    public abstract class MysteryGift : IEncounterable, IMoveset, IRelearn
     {
         /// <summary>
         /// Determines whether or not the given length of bytes is valid for a mystery gift.
@@ -16,7 +17,7 @@ namespace PKHeX.Core
         /// <returns>A boolean indicating whether or not the given length is valid for a mystery gift.</returns>
         public static bool IsMysteryGift(long len) => Sizes.Contains((int)len);
 
-        private static readonly HashSet<int> Sizes = new() { WB8.Size, WC8.Size, WC6Full.Size, WC6.Size, PGF.Size, PGT.Size, PCD.Size };
+        private static readonly HashSet<int> Sizes = new() { WA8.Size, WB8.Size, WC8.Size, WC6Full.Size, WC6.Size, PGF.Size, PGT.Size, PCD.Size };
 
         /// <summary>
         /// Converts the given data to a <see cref="MysteryGift"/>.
@@ -36,6 +37,7 @@ namespace PKHeX.Core
             WR7.Size when ext == ".wr7" => new WR7(data),
             WC8.Size when ext is ".wc8" or ".wc8full" => new WC8(data),
             WB8.Size when ext is ".wb8" => new WB8(data),
+            WA8.Size when ext is ".wa8" => new WA8(data),
 
             WB7.SizeFull when ext == ".wb7full" => new WB7(data),
             WC6Full.Size when ext == ".wc6full" => new WC6Full(data).Gift,
@@ -56,9 +58,10 @@ namespace PKHeX.Core
             WR7.Size => new WR7(data),
             WC8.Size => new WC8(data),
             WB8.Size => new WB8(data),
+            WA8.Size => new WA8(data),
 
             // WC6/WC7: Check year
-            WC6.Size => BitConverter.ToUInt32(data, 0x4C) / 10000 < 2000 ? new WC7(data) : new WC6(data),
+            WC6.Size => ReadUInt32LittleEndian(data.AsSpan(0x4C)) / 10000 < 2000 ? new WC7(data) : new WC6(data),
             // WC6Full/WC7Full: 0x205 has 3 * 0x46 for gen6, now only 2.
             WC6Full.Size => data[0x205] == 0 ? new WC7Full(data).Gift : new WC6Full(data).Gift,
             _ => null,
@@ -113,6 +116,7 @@ namespace PKHeX.Core
 
         // Properties
         public virtual int Species { get => -1; set { } }
+        public abstract AbilityPermission Ability { get; }
         public abstract bool GiftUsed { get; set; }
         public abstract string CardTitle { get; set; }
         public abstract int CardID { get; set; }
@@ -131,6 +135,13 @@ namespace PKHeX.Core
         public virtual IReadOnlyList<int> Relearn { get => Array.Empty<int>(); set { } }
         public virtual int[] IVs { get => Array.Empty<int>(); set { } }
         public virtual bool IsShiny => false;
+
+        public virtual Shiny Shiny
+        {
+            get => Shiny.Never;
+            init => throw new InvalidOperationException();
+        }
+
         public virtual bool IsEgg { get => false; set { } }
         public virtual int HeldItem { get => -1; set { } }
         public virtual int AbilityType { get => -1; set { } }

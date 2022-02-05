@@ -18,7 +18,7 @@ namespace PKHeX.Core
     {
         public static readonly Type[] Types =
         {
-            typeof (PK8), typeof (PB8),
+            typeof (PK8), typeof (PA8), typeof (PB8),
             typeof (PB7),
             typeof (PK7), typeof (PK6), typeof (PK5), typeof (PK4), typeof(BK4),
             typeof (PK3), typeof (XK3), typeof (CK3),
@@ -63,7 +63,7 @@ namespace PKHeX.Core
 
         internal const string CONST_RAND = "$rand";
         internal const string CONST_SHINY = "$shiny";
-        private const string CONST_SUGGEST = "$suggest";
+        internal const string CONST_SUGGEST = "$suggest";
         private const string CONST_BYTES = "$[]";
 
         internal const string PROP_LEGAL = "Legal";
@@ -260,10 +260,8 @@ namespace PKHeX.Core
                     if (pi.IsValueEqual(obj, cmd.PropertyValue) == cmd.Evaluator)
                         continue;
                 }
-#pragma warning disable CA1031 // Do not catch general exception types
                 // User provided inputs can mismatch the type's required value format, and fail to be compared.
                 catch (Exception e)
-#pragma warning restore CA1031 // Do not catch general exception types
                 {
                     Debug.WriteLine($"Unable to compare {cmd.PropertyName} to {cmd.PropertyValue}.");
                     Debug.WriteLine(e.Message);
@@ -307,10 +305,8 @@ namespace PKHeX.Core
                     if (!IsFilterMatch(cmd, info, pi))
                         return ModifyResult.Filtered;
                 }
-#pragma warning disable CA1031 // Do not catch general exception types
                 // Swallow any error because this can be malformed user input.
                 catch (Exception ex)
-#pragma warning restore CA1031 // Do not catch general exception types
                 {
                     Debug.WriteLine(MsgBEModifyFailCompare + " " + ex.Message, cmd.PropertyName, cmd.PropertyValue);
                     return ModifyResult.Error;
@@ -326,10 +322,8 @@ namespace PKHeX.Core
                     if (tmp != ModifyResult.Modified)
                         result = tmp;
                 }
-#pragma warning disable CA1031 // Do not catch general exception types
                 // Swallow any error because this can be malformed user input.
                 catch (Exception ex)
-#pragma warning restore CA1031 // Do not catch general exception types
                 {
                     Debug.WriteLine(MsgBEModifyFail + " " + ex.Message, cmd.PropertyName, cmd.PropertyValue);
                 }
@@ -438,12 +432,9 @@ namespace PKHeX.Core
         {
             switch (cmd.PropertyName)
             {
-                case nameof(PKM.Nickname_Trash):
-                    pk.Nickname_Trash = ConvertToBytes(cmd.PropertyValue);
-                    return ModifyResult.Modified;
-                case nameof(PKM.OT_Trash):
-                    pk.OT_Trash = ConvertToBytes(cmd.PropertyValue);
-                    return ModifyResult.Modified;
+                case nameof(PKM.Nickname_Trash): ConvertToBytes(cmd.PropertyValue).CopyTo(pk.Nickname_Trash); return ModifyResult.Modified;
+                case nameof(PKM.OT_Trash):       ConvertToBytes(cmd.PropertyValue).CopyTo(pk.OT_Trash);       return ModifyResult.Modified;
+                case nameof(PKM.HT_Trash):       ConvertToBytes(cmd.PropertyValue).CopyTo(pk.HT_Trash);       return ModifyResult.Modified;
                 default:
                     return ModifyResult.Error;
             }

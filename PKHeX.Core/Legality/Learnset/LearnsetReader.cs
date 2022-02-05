@@ -1,4 +1,5 @@
 using System;
+using static System.Buffers.Binary.BinaryPrimitives;
 
 namespace PKHeX.Core
 {
@@ -14,7 +15,7 @@ namespace PKHeX.Core
         /// </summary>
         /// <param name="input">Raw ROM data containing the contiguous moves</param>
         /// <param name="maxSpecies">Highest species ID for the input game.</param>
-        public static Learnset[] GetArray(byte[] input, int maxSpecies)
+        public static Learnset[] GetArray(ReadOnlySpan<byte> input, int maxSpecies)
         {
             var data = new Learnset[maxSpecies + 1];
 
@@ -29,7 +30,7 @@ namespace PKHeX.Core
         /// Loads a learnset by reading 16-bit move,level pairs.
         /// </summary>
         /// <param name="entries">Entry data</param>
-        public static Learnset[] GetArray(byte[][] entries)
+        public static Learnset[] GetArray(BinLinkerAccessor entries)
         {
             Learnset[] data = new Learnset[entries.Length];
             for (int i = 0; i < data.Length; i++)
@@ -41,7 +42,7 @@ namespace PKHeX.Core
         /// Reads a Level up move pool definition from a contiguous chunk of GB era ROM data.
         /// </summary>
         /// <remarks>Moves and Levels are 8-bit</remarks>
-        private static Learnset ReadLearnset8(byte[] data, ref int offset)
+        private static Learnset ReadLearnset8(ReadOnlySpan<byte> data, ref int offset)
         {
             int end = offset; // scan for count
             if (data[end] == 0)
@@ -67,7 +68,7 @@ namespace PKHeX.Core
         /// Reads a Level up move pool definition from a single move pool definition.
         /// </summary>
         /// <remarks>Count of moves, followed by Moves and Levels which are 16-bit</remarks>
-        private static Learnset ReadLearnset16(byte[] data)
+        private static Learnset ReadLearnset16(ReadOnlySpan<byte> data)
         {
             if (data.Length == 0)
                 return EMPTY;
@@ -76,9 +77,9 @@ namespace PKHeX.Core
             var Levels = new int[Count];
             for (int i = 0; i < Count; i++)
             {
-                int ofs = i * 4;
-                Moves[i] = BitConverter.ToInt16(data, ofs);
-                Levels[i] = BitConverter.ToInt16(data, ofs + 2);
+                var move = data.Slice(i * 4, 4);
+                Moves[i] = ReadInt16LittleEndian(move);
+                Levels[i] = ReadInt16LittleEndian(move[2..]);
             }
             return new Learnset(Moves, Levels);
         }

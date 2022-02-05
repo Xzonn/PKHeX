@@ -9,7 +9,7 @@ namespace PKHeX.Core
     /// <remarks>
     /// Static Encounters are fixed position encounters with properties that are not subject to Wild Encounter conditions.
     /// </remarks>
-    public abstract record EncounterStatic : IEncounterable, IMoveset, ILocation, IEncounterMatch, IFixedBall, IFixedAbilityNumber
+    public abstract record EncounterStatic(GameVersion Version) : IEncounterable, IMoveset, IEncounterMatch
     {
         public int Species { get; init; }
         public int Form { get; init; }
@@ -17,10 +17,9 @@ namespace PKHeX.Core
         public virtual int LevelMin => Level;
         public virtual int LevelMax => Level;
         public abstract int Generation { get; }
-        public GameVersion Version { get; }
 
         public virtual int Location { get; init; }
-        public int Ability { get; init; }
+        public AbilityPermission Ability { get; init; }
         public Shiny Shiny { get; init; } = Shiny.Random;
         public int Gender { get; init; } = -1;
         public int EggLocation { get; init; }
@@ -50,8 +49,6 @@ namespace PKHeX.Core
         internal const int FormVivillon = 30;
       //protected const int FormRandom = 31;
 
-        protected EncounterStatic(GameVersion game) => Version = game;
-
         protected virtual PKM GetBlank(ITrainerInfo tr) => PKMConverter.GetBlank(Generation, Version);
 
         public PKM ConvertToPKM(ITrainerInfo sav) => ConvertToPKM(sav, EncounterCriteria.Unrestricted);
@@ -80,7 +77,7 @@ namespace PKHeX.Core
             pk.Nickname = SpeciesName.GetSpeciesNameGeneration(Species, lang, Generation);
 
             pk.CurrentLevel = level;
-            pk.Ball = Ball;
+            ApplyDetailsBall(pk);
             pk.HeldItem = HeldItem;
             pk.OT_Friendship = pk.PersonalInfo.BaseFriendship;
 
@@ -113,6 +110,8 @@ namespace PKHeX.Core
             if (this is IDynamaxLevel d && pk is IDynamaxLevel pd)
                 pd.DynamaxLevel = d.DynamaxLevel;
         }
+
+        protected virtual void ApplyDetailsBall(PKM pk) => pk.Ball = Ball;
 
         protected virtual int GetMinimalLevel() => LevelMin;
 

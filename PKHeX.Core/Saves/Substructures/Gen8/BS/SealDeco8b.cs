@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using static System.Buffers.Binary.BinaryPrimitives;
 
 namespace PKHeX.Core
 {
@@ -21,13 +22,11 @@ namespace PKHeX.Core
 
         public byte CapsuleCount { get => Data[Offset]; set => Data[Offset] = value; }
 
-#pragma warning disable CA1819 // Properties should not return arrays
         public SealCapsule8b[] Capsules
         {
             get => GetCapsules();
             set => SetCapsules(value);
         }
-#pragma warning restore CA1819 // Properties should not return arrays
 
         private SealCapsule8b[] GetCapsules()
         {
@@ -61,17 +60,15 @@ namespace PKHeX.Core
             Data = data;
             Offset = offset;
         }
-        public uint Species            { get => BitConverter.ToUInt32(Data, Offset + 0); set => BitConverter.GetBytes(value).CopyTo(Data, Offset + 0); }
-        public uint EncryptionConstant { get => BitConverter.ToUInt32(Data, Offset + 4); set => BitConverter.GetBytes(value).CopyTo(Data, Offset + 4); }
-        public uint Unknown            { get => BitConverter.ToUInt32(Data, Offset + 8); set => BitConverter.GetBytes(value).CopyTo(Data, Offset + 8); }
+        public uint Species            { get => ReadUInt32LittleEndian(Data.AsSpan(Offset + 0)); set => WriteUInt32LittleEndian(Data.AsSpan(Offset + 0), value); }
+        public uint EncryptionConstant { get => ReadUInt32LittleEndian(Data.AsSpan(Offset + 4)); set => WriteUInt32LittleEndian(Data.AsSpan(Offset + 4), value); }
+        public uint Unknown            { get => ReadUInt32LittleEndian(Data.AsSpan(Offset + 8)); set => WriteUInt32LittleEndian(Data.AsSpan(Offset + 8), value); }
 
-#pragma warning disable CA1819 // Properties should not return arrays
         public AffixSealData8b[] Seals
         {
             get => GetSeals();
             set => SetSeals(value);
         }
-#pragma warning restore CA1819 // Properties should not return arrays
 
         private AffixSealData8b[] GetSeals()
         {
@@ -90,7 +87,7 @@ namespace PKHeX.Core
     }
 
     [TypeConverter(typeof(ExpandableObjectConverter))]
-    public class AffixSealData8b
+    public sealed class AffixSealData8b
     {
         public const int SIZE = 8; // u16 id, s16 x,y,z
 
@@ -105,9 +102,9 @@ namespace PKHeX.Core
             Offset = offset;
         }
 
-        public ushort SealID { get => BitConverter.ToUInt16(Data, Offset + 0); set => BitConverter.GetBytes(value).CopyTo(Data, Offset + 0); }
-        public short X { get => BitConverter.ToInt16(Data, Offset + 2); set => BitConverter.GetBytes(value).CopyTo(Data, Offset + 2); }
-        public short Y { get => BitConverter.ToInt16(Data, Offset + 4); set => BitConverter.GetBytes(value).CopyTo(Data, Offset + 4); }
-        public short Z { get => BitConverter.ToInt16(Data, Offset + 6); set => BitConverter.GetBytes(value).CopyTo(Data, Offset + 6); }
+        public ushort SealID { get => ReadUInt16LittleEndian(Data.AsSpan(Offset + 0)); set => WriteUInt16LittleEndian(Data.AsSpan(Offset + 0), value); }
+        public short X { get => ReadInt16LittleEndian(Data.AsSpan(Offset + 2)); set => WriteInt16LittleEndian(Data.AsSpan(Offset + 2), value); }
+        public short Y { get => ReadInt16LittleEndian(Data.AsSpan(Offset + 4)); set => WriteInt16LittleEndian(Data.AsSpan(Offset + 4), value); }
+        public short Z { get => ReadInt16LittleEndian(Data.AsSpan(Offset + 6)); set => WriteInt16LittleEndian(Data.AsSpan(Offset + 6), value); }
     }
 }

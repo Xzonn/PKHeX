@@ -1,45 +1,58 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 
 namespace PKHeX.Core
 {
     public sealed class InventoryPouch8b : InventoryPouch
     {
-        private const int SIZE_ITEM = 0x10;
+        public bool SetNew { get; set; }
 
-        private InventoryItem[] OriginalItems = Array.Empty<InventoryItem>();
-        public bool SetNew { get; set; } = false;
+        public InventoryPouch8b(InventoryType type, ushort[] legal, int maxCount, int offset,
+            Func<ushort, bool>? isLegal)
+            : base(type, legal, maxCount, offset, isLegal: isLegal) { }
 
-        public InventoryPouch8b(InventoryType type, ushort[] legal, int maxCount, int offset) : base(type, legal, maxCount, offset) { }
+        public override InventoryItem GetEmpty(int itemID = 0, int count = 0) => new InventoryItem8b { Index = itemID, Count = count, IsNew = true };
 
-        public override void GetPouch(byte[] data)
+        public override void GetPouch(ReadOnlySpan<byte> data)
         {
-            Items = new InventoryItem[LegalItems.Length];
+            var items = new InventoryItem8b[LegalItems.Length];
+
             int ctr = 0;
             foreach (var index in LegalItems)
             {
-                var ofs = GetItemOffset(index, Offset);
-                var item = ReadItem(index, data, ofs);
-                if (item.Count == 0)
+                var item = GetItem(data, index);
+                if (!item.IsValidSaveSortNumberCount)
                     continue;
-                Items[ctr++] = item;
+                items[ctr++] = item;
             }
-
             while (ctr != LegalItems.Length)
-                Items[ctr++] = new InventoryItem();
-            OriginalItems = Items.Select(i => i.Clone()).ToArray();
+                items[ctr++] = new InventoryItem8b();
+
+            Items = items;
+            SortBy<InventoryItem8b, ushort>(z => !z.IsValidSaveSortNumberCount ? (ushort)0xFFFF : z.SortOrder);
         }
 
-        public override void SetPouch(byte[] data)
+        public InventoryItem8b GetItem(ReadOnlySpan<byte> data, ushort itemID)
+        {
+            var ofs = GetItemOffset(itemID, Offset);
+            return InventoryItem8b.Read(itemID, data[ofs..]);
+        }
+
+        public override void SetPouch(Span<byte> data)
         {
             HashSet<ushort> processed = new();
 
             // Write all the item slots still present in the pouch. Keep track of the item IDs processed.
-            foreach (var item in Items)
+            var items = (InventoryItem8b[])Items;
+            for (int i = 0; i < items.Length; i++)
+                items[i].SortOrder = (ushort)(i + 1);
+
+            foreach (var item in items)
             {
                 var index = (ushort)item.Index;
+                if (index == 0)
+                    continue;
                 var isInLegal = Array.IndexOf(LegalItems, index);
                 if (isInLegal == -1)
                 {
@@ -48,10 +61,13 @@ namespace PKHeX.Core
                 }
 
                 if (SetNew && item.Index != 0)
-                    item.New |= OriginalItems.All(z => z.Index != item.Index);
+                {
+                    var original = GetItem(data, (ushort)item.Index);
+                    item.IsNew |= !original.IsValidSaveSortNumberCount;
+                }
 
                 var ofs = GetItemOffset(index, Offset);
-                WriteItem(item, data, ofs);
+                item.Write(data[ofs..]);
 
                 if (!processed.Contains(index)) // we will allow duplicate item definitions, but they'll overwrite instead of sum/separate.
                     processed.Add(index);
@@ -62,29 +78,12 @@ namespace PKHeX.Core
             {
                 if (processed.Contains(index))
                     continue;
-                var ofs = GetItemOffset(index, Offset);
-                WriteItem(new InventoryItem(), data, ofs);
+                ClearItem(data, index);
             }
         }
 
-        public static int GetItemOffset(ushort index, int baseOffset) => baseOffset + (SIZE_ITEM * index);
+        public static int GetItemOffset(ushort index, int baseOffset) => baseOffset + (InventoryItem8b.SIZE * index);
 
-        public static InventoryItem ReadItem(ushort index, byte[] data, int ofs)
-        {
-            var count = BitConverter.ToInt32(data, ofs);
-            bool isNew = BitConverter.ToInt32(data, ofs + 4) == 0;
-            bool isFavorite = BitConverter.ToInt32(data, ofs + 0x8) == 1;
-            // ushort sortOrder = BitConverter.ToUInt16(data, ofs + 0xE);
-            return new InventoryItem { Index = index, Count = count, New = isNew, FreeSpace = isFavorite };
-        }
-
-        public static void WriteItem(InventoryItem item, byte[] data, int ofs)
-        {
-            BitConverter.GetBytes((uint)item.Count).CopyTo(data, ofs);
-            BitConverter.GetBytes(item.New ? 0u : 1u).CopyTo(data, ofs + 4);
-            BitConverter.GetBytes(item.FreeSpace ? 1u : 0u).CopyTo(data, ofs + 8);
-            if (item.Count == 0)
-                BitConverter.GetBytes((ushort)0xFFFF).CopyTo(data, ofs + 0xE);
-        }
+        public void ClearItem(Span<byte> data, ushort index) => InventoryItem8b.Clear(data, GetItemOffset(index, Offset));
     }
 }

@@ -70,7 +70,7 @@ namespace PKHeX.WinForms.Controls
             Enabled = true;
         }
 
-        private void TimerElapsed(object sender, ElapsedEventArgs elapsedEventArgs)
+        private void TimerElapsed(object? sender, ElapsedEventArgs? elapsedEventArgs)
         {
             if (!Enabled)
                 return; // timer canceled, was waiting to proceed
@@ -114,6 +114,6 @@ namespace PKHeX.WinForms.Controls
             return cache[frameIndex] = frame;
         }
 
-        private Color GetFrameColor(double elapsedFraction) => ImageUtil.Blend(GlowToColor, GlowFromColor, elapsedFraction);
+        private Color GetFrameColor(double elapsedFraction) => ColorUtil.Blend(GlowToColor, GlowFromColor, elapsedFraction);
     }
 }

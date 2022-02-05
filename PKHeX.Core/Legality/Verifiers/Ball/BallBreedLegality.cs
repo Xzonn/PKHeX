@@ -1013,6 +1013,16 @@ namespace PKHeX.Core
             (int)Yanma,
         };
 
+        internal static readonly HashSet<int> BanInheritedExceptSafari_BDSP = new()
+        {
+            (int)Exeggcute,
+            (int)Kangaskhan,
+            (int)Yanma,
+            (int)Shroomish,
+            (int)Gulpin,
+            (int)Carnivine,
+        };
+
         internal static readonly HashSet<int> BanInheritedBall_BDSP = new()
         {
             // Gen1 Fossils
@@ -1022,7 +1032,28 @@ namespace PKHeX.Core
             // Gen4 Fossils
             (int)Cranidos, (int)Shieldon,
 
+            // Riolu Egg from Riley
+            (int)Riolu,
+
             (int)Phione,
         };
+
+        /// <summary>
+        /// Gets a legal <see cref="Ball"/> value for a bred egg encounter.
+        /// </summary>
+        /// <param name="version">Version the egg was created on.</param>
+        /// <param name="species">Species the egg contained.</param>
+        /// <returns>Valid ball to hatch with.</returns>
+        /// <remarks>Not all things can hatch with a Poké Ball!</remarks>
+        public static Ball GetDefaultBall(GameVersion version, int species)
+        {
+            if (version is GameVersion.BD or GameVersion.SP)
+            {
+                if (BanInheritedExceptSafari_BDSP.Contains(species))
+                    return Ball.Safari;
+            }
+
+            return Ball.None;
+        }
     }
 }

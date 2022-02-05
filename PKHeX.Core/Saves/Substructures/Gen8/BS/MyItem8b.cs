@@ -14,19 +14,50 @@ namespace PKHeX.Core
 
         public MyItem8b(SAV8BS sav, int offset) : base(sav) => Offset = offset;
 
-        public int GetItemQuantity(ushort item)
+        public int GetItemQuantity(ushort itemIndex)
         {
-            var ofs = InventoryPouch8b.GetItemOffset(item, Offset);
-            var data = InventoryPouch8b.ReadItem(item, Data, ofs);
-            return data.Count;
+            var ofs = InventoryPouch8b.GetItemOffset(itemIndex, Offset);
+            var span = Data.AsSpan(ofs, InventoryItem8b.SIZE);
+            var item = InventoryItem8b.Read(itemIndex, span);
+            return item.Count;
         }
 
-        public void SetItemQuantity(ushort item, int quantity)
+        public void SetItemQuantity(ushort itemIndex, int quantity)
         {
-            var ofs = InventoryPouch8b.GetItemOffset(item, Offset);
-            var data = InventoryPouch8b.ReadItem(item, Data, ofs);
-            data.Count = quantity;
-            InventoryPouch8b.WriteItem(data, Data, ofs);
+            var ofs = InventoryPouch8b.GetItemOffset(itemIndex, Offset);
+            var span = Data.AsSpan(ofs, InventoryItem8b.SIZE);
+            var item = InventoryItem8b.Read(itemIndex, span);
+            item.Count = quantity;
+            if (!item.IsValidSaveSortNumberCount) // not yet obtained
+            {
+                var type = GetType(itemIndex);
+                item.SortOrder = GetNextSortIndex(type);
+            }
+            item.Write(span);
+        }
+
+        public static InventoryType GetType(ushort itemIndex)
+        {
+            var types = new[]
+            {
+                InventoryType.Items, InventoryType.KeyItems, InventoryType.TMHMs, InventoryType.Medicine,
+                InventoryType.Berries, InventoryType.Balls, InventoryType.BattleItems, InventoryType.Treasure,
+            };
+            return Array.Find(types, z => GetLegal(z).Contains(itemIndex));
+        }
+
+        public ushort GetNextSortIndex(InventoryType type)
+        {
+            ushort max = 0;
+            foreach (var itemID in GetLegal(type))
+            {
+                var ofs = InventoryPouch8b.GetItemOffset(itemID, Offset);
+                var span = Data.AsSpan(ofs, InventoryItem8b.SIZE);
+                var item = InventoryItem8b.Read(itemID, span);
+                if (item.SortOrder > max)
+                    max = item.SortOrder;
+            }
+            return ++max;
         }
 
         public override IReadOnlyList<InventoryPouch> Inventory { get => ConvertToPouches(); set => LoadFromPouches(value); }
@@ -35,14 +66,14 @@ namespace PKHeX.Core
         {
             var pouches = new[]
             {
-                MakePouch(InventoryType.Items),
+                MakePouch(InventoryType.Items, IsHeldItemLegal),
                 MakePouch(InventoryType.KeyItems),
-                MakePouch(InventoryType.TMHMs),
-                MakePouch(InventoryType.Medicine),
-                MakePouch(InventoryType.Berries),
-                MakePouch(InventoryType.Balls),
-                MakePouch(InventoryType.BattleItems),
-                MakePouch(InventoryType.Treasure),
+                MakePouch(InventoryType.TMHMs, IsHeldItemLegal),
+                MakePouch(InventoryType.Medicine, IsHeldItemLegal),
+                MakePouch(InventoryType.Berries, IsHeldItemLegal),
+                MakePouch(InventoryType.Balls, IsHeldItemLegal),
+                MakePouch(InventoryType.BattleItems, IsHeldItemLegal),
+                MakePouch(InventoryType.Treasure, IsHeldItemLegal),
             };
             return pouches.LoadAll(Data);
         }
@@ -68,20 +99,21 @@ namespace PKHeX.Core
             }.SelectMany(z => z).Distinct();
 
             var hashSet = new HashSet<ushort>(all);
-            var empty = new InventoryItem();
             for (ushort i = 0; i < (ushort)SAV.MaxItemID; i++) // even though there are 3000, just overwrite the ones that people will mess up.
             {
                 if (!hashSet.Contains(i))
-                    InventoryPouch8b.WriteItem(empty, Data, InventoryPouch8b.GetItemOffset(i, Offset));
+                    InventoryItem8b.Clear(Data, InventoryPouch8b.GetItemOffset(i, Offset));
             }
         }
 
-        private InventoryPouch8b MakePouch(InventoryType type)
+        private InventoryPouch8b MakePouch(InventoryType type, Func<ushort, bool>? isLegal = null)
         {
             ushort[] legal = GetLegal(type);
             var max = GetMax(type);
-            return new InventoryPouch8b(type, legal, max, Offset);
+            return new InventoryPouch8b(type, legal, max, Offset, isLegal);
         }
+
+        public static bool IsHeldItemLegal(ushort item) => !Legal.HeldItems_BS.Contains(item) || Legal.ReleasedHeldItems_8b[item];
 
         private static int GetMax(InventoryType type) => type switch
         {
@@ -93,7 +125,7 @@ namespace PKHeX.Core
             InventoryType.Balls => 999,
             InventoryType.BattleItems => 999,
             InventoryType.Treasure => 999,
-            _ => throw new ArgumentOutOfRangeException(nameof(type))
+            _ => throw new ArgumentOutOfRangeException(nameof(type)),
         };
 
         private static ushort[] GetLegal(InventoryType type) => type switch
@@ -106,7 +138,7 @@ namespace PKHeX.Core
             InventoryType.Balls => Legal.Pouch_Ball_BS,
             InventoryType.BattleItems => Legal.Pouch_Battle_BS,
             InventoryType.Treasure => Legal.Pouch_Treasure_BS,
-            _ => throw new ArgumentOutOfRangeException(nameof(type))
+            _ => throw new ArgumentOutOfRangeException(nameof(type)),
         };
     }
 }

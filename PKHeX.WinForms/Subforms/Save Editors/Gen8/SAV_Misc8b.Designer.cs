@@ -32,6 +32,11 @@ namespace PKHeX.WinForms
             this.B_Save = new System.Windows.Forms.Button();
             this.TC_Misc = new System.Windows.Forms.TabControl();
             this.TAB_Main = new System.Windows.Forms.TabPage();
+            this.B_Zones = new System.Windows.Forms.Button();
+            this.B_RebattleEyecatch = new System.Windows.Forms.Button();
+            this.B_DefeatEyecatch = new System.Windows.Forms.Button();
+            this.B_Roamer = new System.Windows.Forms.Button();
+            this.B_DialgaPalkia = new System.Windows.Forms.Button();
             this.B_Darkrai = new System.Windows.Forms.Button();
             this.B_Shaymin = new System.Windows.Forms.Button();
             this.B_Spiritomb = new System.Windows.Forms.Button();
@@ -76,6 +81,11 @@ namespace PKHeX.WinForms
             // 
             // TAB_Main
             // 
+            this.TAB_Main.Controls.Add(this.B_Zones);
+            this.TAB_Main.Controls.Add(this.B_RebattleEyecatch);
+            this.TAB_Main.Controls.Add(this.B_DefeatEyecatch);
+            this.TAB_Main.Controls.Add(this.B_Roamer);
+            this.TAB_Main.Controls.Add(this.B_DialgaPalkia);
             this.TAB_Main.Controls.Add(this.B_Darkrai);
             this.TAB_Main.Controls.Add(this.B_Shaymin);
             this.TAB_Main.Controls.Add(this.B_Spiritomb);
@@ -86,6 +96,56 @@ namespace PKHeX.WinForms
             this.TAB_Main.TabIndex = 0;
             this.TAB_Main.Text = "Main";
             this.TAB_Main.UseVisualStyleBackColor = true;
+            // 
+            // B_Zones
+            // 
+            this.B_Zones.Location = new System.Drawing.Point(6, 198);
+            this.B_Zones.Name = "B_Zones";
+            this.B_Zones.Size = new System.Drawing.Size(124, 58);
+            this.B_Zones.TabIndex = 7;
+            this.B_Zones.Text = "Unlock All Zones";
+            this.B_Zones.UseVisualStyleBackColor = true;
+            this.B_Zones.Click += new System.EventHandler(this.B_Zones_Click);
+            // 
+            // B_RebattleEyecatch
+            // 
+            this.B_RebattleEyecatch.Location = new System.Drawing.Point(136, 198);
+            this.B_RebattleEyecatch.Name = "B_RebattleEyecatch";
+            this.B_RebattleEyecatch.Size = new System.Drawing.Size(124, 58);
+            this.B_RebattleEyecatch.TabIndex = 6;
+            this.B_RebattleEyecatch.Text = "Rebattle all Eyecatch Trainers";
+            this.B_RebattleEyecatch.UseVisualStyleBackColor = true;
+            this.B_RebattleEyecatch.Click += new System.EventHandler(this.B_RebattleEyecatch_Click);
+            // 
+            // B_DefeatEyecatch
+            // 
+            this.B_DefeatEyecatch.Location = new System.Drawing.Point(136, 134);
+            this.B_DefeatEyecatch.Name = "B_DefeatEyecatch";
+            this.B_DefeatEyecatch.Size = new System.Drawing.Size(124, 58);
+            this.B_DefeatEyecatch.TabIndex = 5;
+            this.B_DefeatEyecatch.Text = "Defeat all Eyecatch Trainers";
+            this.B_DefeatEyecatch.UseVisualStyleBackColor = true;
+            this.B_DefeatEyecatch.Click += new System.EventHandler(this.B_DefeatEyecatch_Click);
+            // 
+            // B_Roamer
+            // 
+            this.B_Roamer.Location = new System.Drawing.Point(136, 70);
+            this.B_Roamer.Name = "B_Roamer";
+            this.B_Roamer.Size = new System.Drawing.Size(124, 58);
+            this.B_Roamer.TabIndex = 4;
+            this.B_Roamer.Text = "Reset Roamers";
+            this.B_Roamer.UseVisualStyleBackColor = true;
+            this.B_Roamer.Click += new System.EventHandler(this.B_Roamer_Click);
+            // 
+            // B_DialgaPalkia
+            // 
+            this.B_DialgaPalkia.Location = new System.Drawing.Point(136, 6);
+            this.B_DialgaPalkia.Name = "B_DialgaPalkia";
+            this.B_DialgaPalkia.Size = new System.Drawing.Size(124, 58);
+            this.B_DialgaPalkia.TabIndex = 3;
+            this.B_DialgaPalkia.Text = "Reset Dialga/Palkia Encounter";
+            this.B_DialgaPalkia.UseVisualStyleBackColor = true;
+            this.B_DialgaPalkia.Click += new System.EventHandler(this.B_DialgaPalkia_Click);
             // 
             // B_Darkrai
             // 
@@ -145,5 +205,10 @@ namespace PKHeX.WinForms
         private System.Windows.Forms.Button B_Darkrai;
         private System.Windows.Forms.Button B_Shaymin;
         private System.Windows.Forms.Button B_Spiritomb;
+        private System.Windows.Forms.Button B_DialgaPalkia;
+        private System.Windows.Forms.Button B_Roamer;
+        private System.Windows.Forms.Button B_DefeatEyecatch;
+        private System.Windows.Forms.Button B_RebattleEyecatch;
+        private System.Windows.Forms.Button B_Zones;
     }
 }

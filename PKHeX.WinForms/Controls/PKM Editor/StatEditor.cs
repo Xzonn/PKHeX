@@ -15,6 +15,7 @@ namespace PKHeX.WinForms.Controls
             MT_IVs   = new[] {TB_IVHP, TB_IVATK, TB_IVDEF, TB_IVSPE, TB_IVSPA, TB_IVSPD};
             MT_EVs   = new[] {TB_EVHP, TB_EVATK, TB_EVDEF, TB_EVSPE, TB_EVSPA, TB_EVSPD};
             MT_AVs   = new[] {TB_AVHP, TB_AVATK, TB_AVDEF, TB_AVSPE, TB_AVSPA, TB_AVSPD};
+            MT_GVs   = new[] {TB_GVHP, TB_GVATK, TB_GVDEF, TB_GVSPE, TB_GVSPA, TB_GVSPD};
             MT_Stats = new[] {Stat_HP, Stat_ATK, Stat_DEF, Stat_SPE, Stat_SPA, Stat_SPD};
             L_Stats  = new[] {Label_HP, Label_ATK, Label_DEF, Label_SPE, Label_SPA, Label_SPD};
             MT_Base  = new[] {TB_BaseHP, TB_BaseATK, TB_BaseDEF, TB_BaseSPE, TB_BaseSPA, TB_BaseSPD};
@@ -49,7 +50,7 @@ namespace PKHeX.WinForms.Controls
         }
 
         private readonly Label[] L_Stats;
-        private readonly MaskedTextBox[] MT_EVs, MT_IVs, MT_AVs, MT_Stats, MT_Base;
+        private readonly MaskedTextBox[] MT_EVs, MT_IVs, MT_AVs, MT_GVs, MT_Stats, MT_Base;
         private PKM Entity => MainEditor.Entity;
 
         private bool ChangingFields
@@ -119,6 +120,22 @@ namespace PKHeX.WinForms.Controls
                 t.Text = 0.ToString();
             }
         }
+        private void ClickGV(object sender, EventArgs e)
+        {
+            if (sender is not MaskedTextBox t || Entity is not IGanbaru g)
+                return;
+
+            if ((ModifierKeys & Keys.Control) != 0) // Max
+            {
+                int index = Array.IndexOf(MT_GVs, t);
+                var max = g.GetMax(Entity, index).ToString();
+                t.Text = t.Text == max ? 0.ToString() : max;
+            }
+            else if ((ModifierKeys & Keys.Alt) != 0) // Min
+            {
+                t.Text = 0.ToString();
+            }
+        }
 
         public void UpdateIVs(object sender, EventArgs e)
         {
@@ -133,6 +150,8 @@ namespace PKHeX.WinForms.Controls
 
                 int index = Array.IndexOf(MT_IVs, m);
                 Entity.SetIV(index, value);
+                if (Entity is IGanbaru g)
+                    RefreshGanbaru(Entity, g, index);
             }
             RefreshDerivedValues(e);
             UpdateStats();
@@ -211,6 +230,27 @@ namespace PKHeX.WinForms.Controls
             UpdateStats();
         }
 
+        private void UpdateGVs(object sender, EventArgs e)
+        {
+            if (Entity is not IGanbaru g)
+                return;
+            if (sender is MaskedTextBox m)
+            {
+                int value = Util.ToInt32(m.Text);
+                if (value > GanbaruExtensions.TrueMax)
+                {
+                    m.Text = GanbaruExtensions.TrueMax.ToString();
+                    return; // recursive on text set
+                }
+
+                int index = Array.IndexOf(MT_GVs, m);
+                g.SetGV(index, value);
+                RefreshGanbaru(Entity, g, index);
+            }
+
+            UpdateStats();
+        }
+
         private void UpdateRandomEVs(object sender, EventArgs e)
         {
             var evs = ModifierKeys switch
@@ -284,29 +324,30 @@ namespace PKHeX.WinForms.Controls
 
         private void ClickStatLabel(object sender, MouseEventArgs e)
         {
-            if (sender == Label_SPC)
-                sender = Label_SPA;
+            if (ModifierKeys == Keys.None)
+                return;
 
-            int index = Array.IndexOf(L_Stats, sender as Label);
-            if ((ModifierKeys & Keys.Alt) != 0) // EV
+            int index = Array.IndexOf(L_Stats, sender as Label) - 1;
+            if (index < 0)
+                return;
+
+            if (Entity.Format < 3)
+                return;
+
+            var current = Entity.StatNature;
+            var up = current / 5;
+            var dn = current % 5;
+            switch (ModifierKeys)
             {
-                bool min = e.Button != MouseButtons.Left;
-                if (Entity is IAwakened)
-                {
-                    var value = min ? 0 : 200;
-                    MT_AVs[index].Text = value.ToString();
-                }
-                else
-                {
-                    var value = min ? 0 : Entity.GetMaximumEV(index);
-                    MT_EVs[index].Text = value.ToString();
-                }
+                case Keys.Shift when up != index: up = index; break;
+                case Keys.Alt when dn != index: dn = index; break;
+                case Keys.Control when up != index && dn != index: up = dn = index; break;
+                default:
+                    return;
             }
-            else if ((ModifierKeys & Keys.Control) != 0) // IV
-            {
-                var value = e.Button != MouseButtons.Left ? 0 : Entity.GetMaximumIV(index, true);
-                MT_IVs[index].Text = value.ToString();
-            }
+
+            var newNature = (up * 5) + dn;
+            MainEditor.ChangeNature(newNature);
         }
 
         private void LoadHyperTraining()
@@ -368,11 +409,11 @@ namespace PKHeX.WinForms.Controls
             for (int i = 0; i < stats.Count; i++)
             {
                 MT_Base[i].Text = stats[i].ToString("000");
-                MT_Base[i].BackColor = ImageUtil.ColorBaseStat(stats[i]);
+                MT_Base[i].BackColor = ColorUtil.ColorBaseStat(stats[i]);
             }
             var bst = pi.Stats.Sum();
             TB_BST.Text = bst.ToString("000");
-            TB_BST.BackColor = ImageUtil.ColorBaseStatTotal(bst);
+            TB_BST.BackColor = ColorUtil.ColorBaseStatTotal(bst);
         }
 
         public void UpdateRandomIVs(object sender, EventArgs e)
@@ -384,6 +425,15 @@ namespace PKHeX.WinForms.Controls
                 _ => Entity.SetRandomIVs(),
             };
             LoadIVs(IVs);
+            if (Entity is IGanbaru g)
+            {
+                Entity.SetIVs(IVs);
+                if (ModifierKeys == Keys.Control)
+                    g.SetSuggestedGanbaruValues(Entity);
+                else if (ModifierKeys == Keys.Alt)
+                    g.ClearGanbaruValues();
+                LoadGVs(g);
+            }
         }
 
         private void UpdateRandomAVs(object sender, EventArgs e)
@@ -457,7 +507,7 @@ namespace PKHeX.WinForms.Controls
             pk.Stat_SPD = Util.ToInt32(Stat_SPD.Text);
         }
 
-        public void LoadEVs(int[] EVs)
+        public void LoadEVs(ReadOnlySpan<int> EVs)
         {
             ChangingFields = true;
              TB_EVHP.Text = EVs[0].ToString();
@@ -470,7 +520,7 @@ namespace PKHeX.WinForms.Controls
             UpdateStats();
         }
 
-        public void LoadIVs(int[] IVs)
+        public void LoadIVs(ReadOnlySpan<int> IVs)
         {
             ChangingFields = true;
              TB_IVHP.Text = IVs[0].ToString();
@@ -498,6 +548,33 @@ namespace PKHeX.WinForms.Controls
             UpdateStats();
         }
 
+        public void LoadGVs(IGanbaru a)
+        {
+            ChangingFields = true;
+            TB_GVHP.Text  = a.GV_HP.ToString();
+            TB_GVATK.Text = a.GV_ATK.ToString();
+            TB_GVDEF.Text = a.GV_DEF.ToString();
+            TB_GVSPE.Text = a.GV_SPE.ToString();
+            TB_GVSPA.Text = a.GV_SPA.ToString();
+            TB_GVSPD.Text = a.GV_SPD.ToString();
+            ChangingFields = false;
+            for (int i = 0; i < 6; i++)
+                RefreshGanbaru(Entity, a, i);
+            UpdateStats();
+        }
+
+        private void RefreshGanbaru(PKM entity, IGanbaru ganbaru, int i)
+        {
+            int current = ganbaru.GetGV(i);
+            var max = ganbaru.GetMax(entity, i);
+            if (current > max)
+                MT_GVs[i].BackColor = EVsInvalid;
+            else if (current == max)
+                MT_GVs[i].BackColor = StatHyperTrained;
+            else
+                MT_GVs[i].ResetBackColor();
+        }
+
         public void ToggleInterface(PKM pk, int gen)
         {
             FLP_StatsTotal.Visible = gen >= 3;
@@ -505,6 +582,7 @@ namespace PKHeX.WinForms.Controls
             FLP_HPType.Visible = gen <= 7;
             FLP_HPPower.Visible = gen <= 5;
             FLP_DynamaxLevel.Visible = gen >= 8;
+            FLP_AlphaNoble.Visible = pk is PA8;
 
             switch (gen)
             {
@@ -541,6 +619,11 @@ namespace PKHeX.WinForms.Controls
             foreach (var mtb in MT_EVs)
                 mtb.Visible = !showAV;
 
+            var showGV = pk is IGanbaru;
+            Label_GVs.Visible = showGV;
+            foreach (var mtb in MT_GVs)
+                mtb.Visible = showGV;
+
             void SetEVMaskSize(Size s, string Mask)
             {
                 foreach (var ctrl in MT_EVs)
@@ -560,6 +643,12 @@ namespace PKHeX.WinForms.Controls
         }
 
         private void CHK_Gigantamax_CheckedChanged(object sender, EventArgs e)
+        {
+            if (!ChangingFields)
+                ((PKMEditor) MainEditor).UpdateSprite();
+        }
+
+        private void CHK_IsAlpha_CheckedChanged(object sender, EventArgs e)
         {
             if (!ChangingFields)
                 ((PKMEditor) MainEditor).UpdateSprite();

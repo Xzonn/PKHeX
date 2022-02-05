@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using static System.Buffers.Binary.BinaryPrimitives;
 
 namespace PKHeX.Core
 {
@@ -30,20 +31,17 @@ namespace PKHeX.Core
 
         public override PKM Clone() => new PK4((byte[])Data.Clone());
 
-        private string GetString(int offset, int count) => StringConverter4.GetString4(Data, offset, count);
-        private static byte[] SetString(string value, int maxLength) => StringConverter4.SetString4(value, maxLength);
-
         // Structure
-        public override uint PID { get => BitConverter.ToUInt32(Data, 0x00); set => BitConverter.GetBytes(value).CopyTo(Data, 0x00); }
-        public override ushort Sanity { get => BitConverter.ToUInt16(Data, 0x04); set => BitConverter.GetBytes(value).CopyTo(Data, 0x04); }
-        public override ushort Checksum { get => BitConverter.ToUInt16(Data, 0x06); set => BitConverter.GetBytes(value).CopyTo(Data, 0x06); }
+        public override uint PID { get => ReadUInt32LittleEndian(Data.AsSpan(0x00)); set => WriteUInt32LittleEndian(Data.AsSpan(0x00), value); }
+        public override ushort Sanity { get => ReadUInt16LittleEndian(Data.AsSpan(0x04)); set => WriteUInt16LittleEndian(Data.AsSpan(0x04), value); }
+        public override ushort Checksum { get => ReadUInt16LittleEndian(Data.AsSpan(0x06)); set => WriteUInt16LittleEndian(Data.AsSpan(0x06), value); }
 
         #region Block A
-        public override int Species { get => BitConverter.ToUInt16(Data, 0x08); set => BitConverter.GetBytes((ushort)value).CopyTo(Data, 0x08); }
-        public override int HeldItem { get => BitConverter.ToUInt16(Data, 0x0A); set => BitConverter.GetBytes((ushort)value).CopyTo(Data, 0x0A); }
-        public override int TID { get => BitConverter.ToUInt16(Data, 0x0C); set => BitConverter.GetBytes((ushort)value).CopyTo(Data, 0x0C); }
-        public override int SID { get => BitConverter.ToUInt16(Data, 0x0E); set => BitConverter.GetBytes((ushort)value).CopyTo(Data, 0x0E); }
-        public override uint EXP { get => BitConverter.ToUInt32(Data, 0x10); set => BitConverter.GetBytes(value).CopyTo(Data, 0x10); }
+        public override int Species { get => ReadUInt16LittleEndian(Data.AsSpan(0x08)); set => WriteUInt16LittleEndian(Data.AsSpan(0x08), (ushort)value); }
+        public override int HeldItem { get => ReadUInt16LittleEndian(Data.AsSpan(0x0A)); set => WriteUInt16LittleEndian(Data.AsSpan(0x0A), (ushort)value); }
+        public override int TID { get => ReadUInt16LittleEndian(Data.AsSpan(0x0C)); set => WriteUInt16LittleEndian(Data.AsSpan(0x0C), (ushort)value); }
+        public override int SID { get => ReadUInt16LittleEndian(Data.AsSpan(0x0E)); set => WriteUInt16LittleEndian(Data.AsSpan(0x0E), (ushort)value); }
+        public override uint EXP { get => ReadUInt32LittleEndian(Data.AsSpan(0x10)); set => WriteUInt32LittleEndian(Data.AsSpan(0x10), value); }
         public override int OT_Friendship { get => Data[0x14]; set => Data[0x14] = (byte)value; }
         public override int Ability { get => Data[0x15]; set => Data[0x15] = (byte)value; }
         public override int MarkValue { get => Data[0x16]; protected set => Data[0x16] = (byte)value; }
@@ -100,10 +98,10 @@ namespace PKHeX.Core
         #endregion
 
         #region Block B
-        public override int Move1 { get => BitConverter.ToUInt16(Data, 0x28); set => BitConverter.GetBytes((ushort)value).CopyTo(Data, 0x28); }
-        public override int Move2 { get => BitConverter.ToUInt16(Data, 0x2A); set => BitConverter.GetBytes((ushort)value).CopyTo(Data, 0x2A); }
-        public override int Move3 { get => BitConverter.ToUInt16(Data, 0x2C); set => BitConverter.GetBytes((ushort)value).CopyTo(Data, 0x2C); }
-        public override int Move4 { get => BitConverter.ToUInt16(Data, 0x2E); set => BitConverter.GetBytes((ushort)value).CopyTo(Data, 0x2E); }
+        public override int Move1 { get => ReadUInt16LittleEndian(Data.AsSpan(0x28)); set => WriteUInt16LittleEndian(Data.AsSpan(0x28), (ushort)value); }
+        public override int Move2 { get => ReadUInt16LittleEndian(Data.AsSpan(0x2A)); set => WriteUInt16LittleEndian(Data.AsSpan(0x2A), (ushort)value); }
+        public override int Move3 { get => ReadUInt16LittleEndian(Data.AsSpan(0x2C)); set => WriteUInt16LittleEndian(Data.AsSpan(0x2C), (ushort)value); }
+        public override int Move4 { get => ReadUInt16LittleEndian(Data.AsSpan(0x2E)); set => WriteUInt16LittleEndian(Data.AsSpan(0x2E), (ushort)value); }
         public override int Move1_PP { get => Data[0x30]; set => Data[0x30] = (byte)value; }
         public override int Move2_PP { get => Data[0x31]; set => Data[0x31] = (byte)value; }
         public override int Move3_PP { get => Data[0x32]; set => Data[0x32] = (byte)value; }
@@ -112,7 +110,7 @@ namespace PKHeX.Core
         public override int Move2_PPUps { get => Data[0x35]; set => Data[0x35] = (byte)value; }
         public override int Move3_PPUps { get => Data[0x36]; set => Data[0x36] = (byte)value; }
         public override int Move4_PPUps { get => Data[0x37]; set => Data[0x37] = (byte)value; }
-        public uint IV32 { get => BitConverter.ToUInt32(Data, 0x38); set => BitConverter.GetBytes(value).CopyTo(Data, 0x38); }
+        public uint IV32 { get => ReadUInt32LittleEndian(Data.AsSpan(0x38)); set => WriteUInt32LittleEndian(Data.AsSpan(0x38), value); }
         public override int IV_HP  { get => (int)(IV32 >> 00) & 0x1F; set => IV32 = (IV32 & ~(0x1Fu << 00)) | ((value > 31 ? 31u : (uint)value) << 00); }
         public override int IV_ATK { get => (int)(IV32 >> 05) & 0x1F; set => IV32 = (IV32 & ~(0x1Fu << 05)) | ((value > 31 ? 31u : (uint)value) << 05); }
         public override int IV_DEF { get => (int)(IV32 >> 10) & 0x1F; set => IV32 = (IV32 & ~(0x1Fu << 10)) | ((value > 31 ? 31u : (uint)value) << 10); }
@@ -163,11 +161,28 @@ namespace PKHeX.Core
         public override int Gender { get => (Data[0x40] >> 1) & 0x3; set => Data[0x40] = (byte)((Data[0x40] & ~0x06) | (value << 1)); }
         public override int Form { get => Data[0x40] >> 3; set => Data[0x40] = (byte)((Data[0x40] & 0x07) | (value << 3)); }
         public override int ShinyLeaf { get => Data[0x41]; set => Data[0x41] = (byte) value; }
-        // 0x43-0x47 Unused
+        // 0x42-0x43 Unused
+        public override ushort Egg_LocationExtended
+        {
+            get => ReadUInt16LittleEndian(Data.AsSpan(0x44));
+            set => WriteUInt16LittleEndian(Data.AsSpan(0x44), value);
+        }
+
+        public override ushort Met_LocationExtended
+        {
+            get => ReadUInt16LittleEndian(Data.AsSpan(0x46));
+            set => WriteUInt16LittleEndian(Data.AsSpan(0x46), value);
+        }
+
         #endregion
 
         #region Block C
-        public override string Nickname { get => GetString(0x48, 20); set => SetString(value, 10).CopyTo(Data, 0x48); }
+        public override string Nickname
+        {
+            get => StringConverter4.GetString(Nickname_Trash);
+            set => StringConverter4.SetString(Nickname_Trash, value.AsSpan(), 10, StringConverterOption.None);
+        }
+
         // 0x5E unused
         public override int Version { get => Data[0x5F]; set => Data[0x5F] = (byte)value; }
         private byte RIB8 { get => Data[0x60]; set => Data[0x60] = value; } // Sinnoh 3
@@ -210,7 +225,12 @@ namespace PKHeX.Core
         #endregion
 
         #region Block D
-        public override string OT_Name { get => GetString(0x68, 14); set => SetString(value, 7).CopyTo(Data, 0x68); }
+        public override string OT_Name
+        {
+            get => StringConverter4.GetString(OT_Trash);
+            set => StringConverter4.SetString(OT_Trash, value.AsSpan(), 7, StringConverterOption.None);
+        }
+
         public override int Egg_Year { get => Data[0x78]; set => Data[0x78] = (byte)value; }
         public override int Egg_Month { get => Data[0x79]; set => Data[0x79] = (byte)value; }
         public override int Egg_Day { get => Data[0x7A]; set => Data[0x7A] = (byte)value; }
@@ -218,112 +238,38 @@ namespace PKHeX.Core
         public override int Met_Month { get => Data[0x7C]; set => Data[0x7C] = (byte)value; }
         public override int Met_Day { get => Data[0x7D]; set => Data[0x7D] = (byte)value; }
 
-        public override int Egg_Location
+        public override ushort Egg_LocationDP
         {
-            get
-            {
-                ushort hgssloc = BitConverter.ToUInt16(Data, 0x44);
-                if (hgssloc != 0)
-                    return hgssloc;
-                return BitConverter.ToUInt16(Data, 0x7E);
-            }
-            set
-            {
-                if (value == 0)
-                {
-                    BitConverter.GetBytes((ushort)0).CopyTo(Data, 0x44);
-                    BitConverter.GetBytes((ushort)0).CopyTo(Data, 0x7E);
-                }
-                else if (Locations.IsPtHGSSLocation(value) || Locations.IsPtHGSSLocationEgg(value))
-                {
-                    // Met location not in DP, set to Faraway Place
-                    BitConverter.GetBytes((ushort)value).CopyTo(Data, 0x44);
-                    BitConverter.GetBytes((ushort)0xBBA).CopyTo(Data, 0x7E);
-                }
-                else
-                {
-                    int pthgss = PtHGSS ? value : 0; // only set to PtHGSS loc if encountered in game
-                    BitConverter.GetBytes((ushort)pthgss).CopyTo(Data, 0x44);
-                    BitConverter.GetBytes((ushort)value).CopyTo(Data, 0x7E);
-                }
-            }
+            get => ReadUInt16LittleEndian(Data.AsSpan(0x7E));
+            set => WriteUInt16LittleEndian(Data.AsSpan(0x7E), value);
         }
-
-        public override int Met_Location
+        public override ushort Met_LocationDP
         {
-            get
-            {
-                ushort hgssloc = BitConverter.ToUInt16(Data, 0x46);
-                if (hgssloc != 0)
-                    return hgssloc;
-                return BitConverter.ToUInt16(Data, 0x80);
-            }
-            set
-            {
-                if (value == 0)
-                {
-                    BitConverter.GetBytes((ushort)0).CopyTo(Data, 0x46);
-                    BitConverter.GetBytes((ushort)0).CopyTo(Data, 0x80);
-                }
-                else if (Locations.IsPtHGSSLocation(value) || Locations.IsPtHGSSLocationEgg(value))
-                {
-                    // Met location not in DP, set to Faraway Place
-                    BitConverter.GetBytes((ushort)value).CopyTo(Data, 0x46);
-                    BitConverter.GetBytes((ushort)0xBBA).CopyTo(Data, 0x80);
-                }
-                else
-                {
-                    int pthgss = PtHGSS ? value : 0; // only set to PtHGSS loc if encountered in game
-                    BitConverter.GetBytes((ushort)pthgss).CopyTo(Data, 0x46);
-                    BitConverter.GetBytes((ushort)value).CopyTo(Data, 0x80);
-                }
-            }
+            get => ReadUInt16LittleEndian(Data.AsSpan(0x80));
+            set => WriteUInt16LittleEndian(Data.AsSpan(0x80), value);
         }
 
         private byte PKRS { get => Data[0x82]; set => Data[0x82] = value; }
         public override int PKRS_Days { get => PKRS & 0xF; set => PKRS = (byte)((PKRS & ~0xF) | value); }
         public override int PKRS_Strain { get => PKRS >> 4; set => PKRS = (byte)((PKRS & 0xF) | (value << 4)); }
-
-        public override int Ball
-        {
-            get =>
-                // Pokemon obtained in HGSS have the HGSS ball set (@0x86)
-                // However, this info is not set when receiving a wondercard!
-                // The PGT contains a preformatted PK4 file, which is slightly modified.
-                // No HGSS balls were used, and no HGSS ball info is set.
-
-                // Sneaky way = return the higher of the two values.
-                Math.Max(Data[0x86], Data[0x83]);
-            set
-            {
-                // Ball to display in DPPt
-                Data[0x83] = (byte)(value <= 0x10 ? value : 4); // Cap at Cherish Ball
-
-                // HGSS Exclusive Balls -- If the user wants to screw things up, let them. Any legality checking could catch hax.
-                if (value > 0x10 || (HGSS && !FatefulEncounter))
-                    Data[0x86] = (byte)(value <= 0x18 ? value : 4); // Cap at Comp Ball
-                else
-                    Data[0x86] = 0; // Unused
-            }
-        }
-
+        public override byte BallDPPt { get => Data[0x83]; set => Data[0x83] = value; }
         public override int Met_Level { get => Data[0x84] & ~0x80; set => Data[0x84] = (byte)((Data[0x84] & 0x80) | value); }
         public override int OT_Gender { get => Data[0x84] >> 7; set => Data[0x84] = (byte)((Data[0x84] & ~0x80) | value << 7); }
         public override GroundTileType GroundTile { get => (GroundTileType)Data[0x85]; set => Data[0x85] = (byte)value; }
-        public byte PokéathlonStat { get => Data[0x87]; set => Data[0x87] = value; }
-        // Unused 0x87
+        public override byte BallHGSS { get => Data[0x86]; set => Data[0x86] = value; }
+        public override byte PokéathlonStat { get => Data[0x87]; set => Data[0x87] = value; }
         #endregion
 
         #region Battle Stats
-        public override int Status_Condition { get => BitConverter.ToInt32(Data, 0x88); set => BitConverter.GetBytes(value).CopyTo(Data, 0x88); }
+        public override int Status_Condition { get => ReadInt32LittleEndian(Data.AsSpan(0x88)); set => WriteInt32LittleEndian(Data.AsSpan(0x88), value); }
         public override int Stat_Level { get => Data[0x8C]; set => Data[0x8C] = (byte)value; }
-        public override int Stat_HPCurrent { get => BitConverter.ToUInt16(Data, 0x8E); set => BitConverter.GetBytes((ushort)value).CopyTo(Data, 0x8E); }
-        public override int Stat_HPMax { get => BitConverter.ToUInt16(Data, 0x90); set => BitConverter.GetBytes((ushort)value).CopyTo(Data, 0x90); }
-        public override int Stat_ATK { get => BitConverter.ToUInt16(Data, 0x92); set => BitConverter.GetBytes((ushort)value).CopyTo(Data, 0x92); }
-        public override int Stat_DEF { get => BitConverter.ToUInt16(Data, 0x94); set => BitConverter.GetBytes((ushort)value).CopyTo(Data, 0x94); }
-        public override int Stat_SPE { get => BitConverter.ToUInt16(Data, 0x96); set => BitConverter.GetBytes((ushort)value).CopyTo(Data, 0x96); }
-        public override int Stat_SPA { get => BitConverter.ToUInt16(Data, 0x98); set => BitConverter.GetBytes((ushort)value).CopyTo(Data, 0x98); }
-        public override int Stat_SPD { get => BitConverter.ToUInt16(Data, 0x9A); set => BitConverter.GetBytes((ushort)value).CopyTo(Data, 0x9A); }
+        public override int Stat_HPCurrent { get => ReadUInt16LittleEndian(Data.AsSpan(0x8E)); set => WriteUInt16LittleEndian(Data.AsSpan(0x8E), (ushort)value); }
+        public override int Stat_HPMax { get => ReadUInt16LittleEndian(Data.AsSpan(0x90)); set => WriteUInt16LittleEndian(Data.AsSpan(0x90), (ushort)value); }
+        public override int Stat_ATK { get => ReadUInt16LittleEndian(Data.AsSpan(0x92)); set => WriteUInt16LittleEndian(Data.AsSpan(0x92), (ushort)value); }
+        public override int Stat_DEF { get => ReadUInt16LittleEndian(Data.AsSpan(0x94)); set => WriteUInt16LittleEndian(Data.AsSpan(0x94), (ushort)value); }
+        public override int Stat_SPE { get => ReadUInt16LittleEndian(Data.AsSpan(0x96)); set => WriteUInt16LittleEndian(Data.AsSpan(0x96), (ushort)value); }
+        public override int Stat_SPA { get => ReadUInt16LittleEndian(Data.AsSpan(0x98)); set => WriteUInt16LittleEndian(Data.AsSpan(0x98), (ushort)value); }
+        public override int Stat_SPD { get => ReadUInt16LittleEndian(Data.AsSpan(0x9A)); set => WriteUInt16LittleEndian(Data.AsSpan(0x9A), (ushort)value); }
 
         public byte[] GetHeldMailData() => Data.Slice(0x9C, 0x38);
         public void SetHeldMailData(byte[] value) => value.CopyTo(Data, 0x9C);
@@ -335,18 +281,6 @@ namespace PKHeX.Core
         {
             RefreshChecksum();
             return PokeCrypto.EncryptArray45(Data);
-        }
-
-        // Synthetic Trading Logic
-        public bool Trade(string SAV_Trainer, int SAV_TID, int SAV_SID, int SAV_GENDER, int Day = 1, int Month = 1, int Year = 2009)
-        {
-            // Eggs do not have any modifications done if they are traded
-            if (IsEgg && !(SAV_Trainer == OT_Name && SAV_TID == TID && SAV_SID == SID && SAV_GENDER == OT_Gender))
-            {
-                SetLinkTradeEgg(Day, Month, Year, Locations.LinkTrade4);
-                return true;
-            }
-            return false;
         }
 
         public BK4 ConvertToBK4()
@@ -365,7 +299,7 @@ namespace PKHeX.Core
         public PK5 ConvertToPK5()
         {
             // Double Check Location Data to see if we're already a PK5
-            if (Data[0x5F] < 0x10 && BitConverter.ToUInt16(Data, 0x80) > 0x4000)
+            if (Data[0x5F] < 0x10 && ReadUInt16LittleEndian(Data.AsSpan(0x80)) > 0x4000)
                 return new PK5(Data);
 
             DateTime moment = DateTime.Now;
@@ -395,7 +329,7 @@ namespace PKHeX.Core
             pk5.Nature = Nature;
 
             // Delete Platinum/HGSS Met Location Data
-            BitConverter.GetBytes((uint)0).CopyTo(pk5.Data, 0x44);
+            WriteUInt32LittleEndian(pk5.Data.AsSpan(0x44), 0);
 
             // Met / Crown Data Detection
             pk5.Met_Location = Legal.GetTransfer45MetLocation(pk5);
@@ -404,7 +338,7 @@ namespace PKHeX.Core
             // pk5.Egg_Location = Egg_Location;
 
             // Delete HGSS Data
-            BitConverter.GetBytes((ushort)0).CopyTo(pk5.Data, 0x86);
+            WriteUInt16LittleEndian(pk5.Data.AsSpan(0x86), 0);
             pk5.Ball = Ball;
 
             // Transfer Nickname and OT Name, update encoding
@@ -423,6 +357,10 @@ namespace PKHeX.Core
             if (Array.IndexOf(banned, Move3) != -1) Move3 = 0;
             if (Array.IndexOf(banned, Move4) != -1) Move4 = 0;
             pk5.FixMoves();
+
+            // D/P(not Pt)/HG/SS created Shedinja forget to set Gender to Genderless.
+            if (pk5.Species is (int)Core.Species.Shedinja)
+                pk5.Gender = 2; // Genderless
 
             pk5.RefreshChecksum();
             return pk5;

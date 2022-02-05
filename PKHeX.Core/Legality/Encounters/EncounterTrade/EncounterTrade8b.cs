@@ -18,11 +18,17 @@
         public byte CNT_Sheen => 0;
         public int OT_Friendship => Species == (int)Core.Species.Chatot ? 35 : 50;
         private byte BaseContest => Species == (int)Core.Species.Chatot ? (byte)20 : (byte)0;
+        public uint PID { get; init; }
+        public uint EncryptionConstant { get; init; }
         public int HeightScalar { get; set; }
         public int WeightScalar { get; set; }
 
         public override bool IsMatchExact(PKM pkm, DexLevel evo)
         {
+            if (pkm.EncryptionConstant != EncryptionConstant)
+                return false;
+            if (pkm.PID != PID)
+                return false;
             if (pkm is IContestStats s && s.IsContestBelow(this))
                 return false;
             if (pkm is IScaledSize h && h.HeightScalar != HeightScalar)
@@ -36,13 +42,12 @@
         {
             base.ApplyDetails(sav, criteria, pk);
             var pb8 = (PB8)pk;
+            pb8.EncryptionConstant = EncryptionConstant;
+            pb8.PID = PID;
 
-            // Has German Language ID for all except German origin, which is English
+            // Has German Language ID for all except German origin, which is Japanese
             if (Species == (int)Core.Species.Magikarp)
-                pb8.Language = (int)(pb8.Language == (int)LanguageID.German ? LanguageID.English : LanguageID.German);
-            // All other trades received: English games have a Japanese language ID instead of English.
-            else if (pb8.Language == (int)LanguageID.English)
-                pb8.Language = (int)LanguageID.Japanese;
+                pb8.Language = (int)(pb8.Language == (int)LanguageID.German ? LanguageID.Japanese : LanguageID.German);
 
             this.CopyContestStatsTo(pb8);
             pb8.HT_Language = sav.Language;

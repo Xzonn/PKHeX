@@ -10,14 +10,12 @@ namespace PKHeX.Core
     /// </summary>
     internal static class Encounters2
     {
-        internal static readonly EncounterArea2[] SlotsGD = Get("gold", "g2", GD);
-        internal static readonly EncounterArea2[] SlotsSV = Get("silver", "g2", SV);
-        internal static readonly EncounterArea2[] SlotsC = Get("crystal", "g2", C);
+        internal static readonly EncounterArea2[] SlotsGD = EncounterArea2.GetAreas(Get("gold", "g2"), GD);
+        internal static readonly EncounterArea2[] SlotsSV = EncounterArea2.GetAreas(Get("silver", "g2"), SV);
+        internal static readonly EncounterArea2[] SlotsC = EncounterArea2.GetAreas(Get("crystal", "g2"), C);
 
         internal static readonly EncounterArea2[] SlotsGS = ArrayUtil.ConcatAll(SlotsGD, SlotsSV);
         internal static readonly EncounterArea2[] SlotsGSC = ArrayUtil.ConcatAll(SlotsGS, SlotsC);
-        private static EncounterArea2[] Get(string name, string ident, GameVersion game) =>
-            EncounterArea2.GetAreas(BinLinker.Unpack(Util.GetBinaryResource($"encounter_{name}.pkl"), ident), game);
 
         static Encounters2() => MarkEncounterTradeStrings(TradeGift_GSC, TradeGift_GSC_OTs);
 
@@ -74,15 +72,15 @@ namespace PKHeX.Core
         {
             new(245, 40, C) { Location = 023 }, // Suicune @ Tin Tower
 
-            new EncounterStatic2Odd(172), // Pichu Dizzy Punch
-            new EncounterStatic2Odd(173), // Cleffa Dizzy Punch
-            new EncounterStatic2Odd(174), // Igglybuff Dizzy Punch
-            new EncounterStatic2Odd(236), // Tyrogue Dizzy Punch
-            new EncounterStatic2Odd(238), // Smoochum Dizzy Punch
-            new EncounterStatic2Odd(239), // Elekid Dizzy Punch
-            new EncounterStatic2Odd(240), // Magby Dizzy Punch
+            new EncounterStatic2Odd(172) {Moves = new[] {(int)Move.ThunderShock,(int)Move.Charm, (int)Move.DizzyPunch}}, // Pichu
+            new EncounterStatic2Odd(173) {Moves = new[] {(int)Move.Pound,       (int)Move.Charm, (int)Move.DizzyPunch}}, // Cleffa
+            new EncounterStatic2Odd(174) {Moves = new[] {(int)Move.Sing,        (int)Move.Charm, (int)Move.DizzyPunch}}, // Igglybuff
+            new EncounterStatic2Odd(236) {Moves = new[] {(int)Move.Tackle,                       (int)Move.DizzyPunch}}, // Tyrogue
+            new EncounterStatic2Odd(238) {Moves = new[] {(int)Move.Pound,       (int)Move.Lick,  (int)Move.DizzyPunch}}, // Smoochum
+            new EncounterStatic2Odd(239) {Moves = new[] {(int)Move.QuickAttack, (int)Move.Leer,  (int)Move.DizzyPunch}}, // Elekid
+            new EncounterStatic2Odd(240) {Moves = new[] {(int)Move.Ember,                        (int)Move.DizzyPunch}}, // Magby
 
-            new(147, 15, C) { Location = 042, Moves = new [] {245} }, // Dratini ExtremeSpeed
+            new(147, 15, C) { Location = 042, Moves = new[] {(int)Move.ExtremeSpeed, (int)Move.Wrap, (int)Move.ThunderWave, (int)Move.Twister} }, // Dratini ExtremeSpeed
 
             new(249, 60, C) { Location = 031 }, // Lugia @ Whirl Islands
             new(250, 60, C) { Location = 023 }, // Ho-Oh @ Tin Tower
@@ -362,26 +360,26 @@ namespace PKHeX.Core
             // Gen2 Events
             // Egg Cycles Subject to Change. OTs for Eggs are unknown.
             // Pokémon Center Mystery Egg #1 (December 15, 2001 to January 14, 2002)
-            new(152, 05, GSC) {Moves = new[] {080}, EggLocation = 256, EggCycles = 10,}, // Chikorita Petal Dance
-            new(172, 05, GSC) {Moves = new[] {047}, EggLocation = 256, EggCycles = 10,}, // Pichu Sing
-            new(173, 05, GSC) {Moves = new[] {129}, EggLocation = 256, EggCycles = 10,}, // Cleffa Swift
-            new(194, 05, GSC) {Moves = new[] {187}, EggLocation = 256, EggCycles = 10,}, // Wooper Belly Drum
-            new(231, 05, GSC) {Moves = new[] {227}, EggLocation = 256, EggCycles = 10,}, // Phanpy Encore
-            new(238, 05, GSC) {Moves = new[] {118}, EggLocation = 256, EggCycles = 10,}, // Smoochum Metronome
+            new(152, 05, GSC) {Moves = new[] {080}, EggLocation = 256, EggCycles = 10}, // Chikorita Petal Dance
+            new(172, 05, GSC) {Moves = new[] {047}, EggLocation = 256, EggCycles = 10}, // Pichu Sing
+            new(173, 05, GSC) {Moves = new[] {129}, EggLocation = 256, EggCycles = 10}, // Cleffa Swift
+            new(194, 05, GSC) {Moves = new[] {187}, EggLocation = 256, EggCycles = 10}, // Wooper Belly Drum
+            new(231, 05, GSC) {Moves = new[] {227}, EggLocation = 256, EggCycles = 10}, // Phanpy Encore
+            new(238, 05, GSC) {Moves = new[] {118}, EggLocation = 256, EggCycles = 10}, // Smoochum Metronome
 
             // Pokémon Center Mystery Egg #2 (March 16 to April 7, 2002)
-            new(054, 05, GSC) {Moves = new[] {080}, EggLocation = 256, EggCycles = 10,}, // Psyduck Petal Dance
-            new(152, 05, GSC) {Moves = new[] {080}, EggLocation = 256, EggCycles = 10,}, // Chikorita Petal Dance
-            new(172, 05, GSC) {Moves = new[] {080}, EggLocation = 256, EggCycles = 10,}, // Pichu Petal Dance
-            new(173, 05, GSC) {Moves = new[] {080}, EggLocation = 256, EggCycles = 10,}, // Cleffa Petal Dance
-            new(174, 05, GSC) {Moves = new[] {080}, EggLocation = 256, EggCycles = 10,}, // Igglybuff Petal Dance
-            new(238, 05, GSC) {Moves = new[] {080}, EggLocation = 256, EggCycles = 10,}, // Smoochum Petal Dance
+            new(054, 05, GSC) {Moves = new[] {080}, EggLocation = 256, EggCycles = 10}, // Psyduck Petal Dance
+            new(152, 05, GSC) {Moves = new[] {080}, EggLocation = 256, EggCycles = 10}, // Chikorita Petal Dance
+            new(172, 05, GSC) {Moves = new[] {080}, EggLocation = 256, EggCycles = 10}, // Pichu Petal Dance
+            new(173, 05, GSC) {Moves = new[] {080}, EggLocation = 256, EggCycles = 10}, // Cleffa Petal Dance
+            new(174, 05, GSC) {Moves = new[] {080}, EggLocation = 256, EggCycles = 10}, // Igglybuff Petal Dance
+            new(238, 05, GSC) {Moves = new[] {080}, EggLocation = 256, EggCycles = 10}, // Smoochum Petal Dance
 
             // Pokémon Center Mystery Egg #3 (April 27 to May 12, 2002)
-            new(001, 05, GSC) {Moves = new[] {246}, EggLocation = 256, EggCycles = 10,}, // Bulbasaur Ancientpower
-            new(004, 05, GSC) {Moves = new[] {242}, EggLocation = 256, EggCycles = 10,}, // Charmander Crunch
-            new(158, 05, GSC) {Moves = new[] {066}, EggLocation = 256, EggCycles = 10,}, // Totodile Submission
-            new(163, 05, GSC) {Moves = new[] {101}, EggLocation = 256, EggCycles = 10,}, // Hoot-Hoot Night Shade
+            new(001, 05, GSC) {Moves = new[] {246}, EggLocation = 256, EggCycles = 10}, // Bulbasaur Ancientpower
+            new(004, 05, GSC) {Moves = new[] {242}, EggLocation = 256, EggCycles = 10}, // Charmander Crunch
+            new(158, 05, GSC) {Moves = new[] {066}, EggLocation = 256, EggCycles = 10}, // Totodile Submission
+            new(163, 05, GSC) {Moves = new[] {101}, EggLocation = 256, EggCycles = 10}, // Hoot-Hoot Night Shade
         };
     }
 }

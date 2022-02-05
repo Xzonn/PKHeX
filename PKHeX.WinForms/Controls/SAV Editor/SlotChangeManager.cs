@@ -8,7 +8,7 @@ using System.Media;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using PKHeX.Core;
-using PKHeX.Drawing;
+using PKHeX.Drawing.PokeSprite;
 
 namespace PKHeX.WinForms.Controls
 {
@@ -187,10 +187,8 @@ namespace PKHeX.WinForms.Controls
                 var data = encrypt ? pk.EncryptedPartyData : pk.DecryptedPartyData;
                 external = TryMakeDragDropPKM(pb, data, newfile);
             }
-#pragma warning disable CA1031 // Do not catch general exception types
             // Tons of things can happen with drag & drop; don't try to handle things, just indicate failure.
             catch (Exception x)
-#pragma warning restore CA1031 // Do not catch general exception types
             {
                 WinFormsUtil.Error("Drag && Drop Error", x);
                 external = false;
@@ -229,10 +227,9 @@ namespace PKHeX.WinForms.Controls
             return true;
         }
 
-        private void HandleDropPKM(PictureBox pb, DragEventArgs e, DropModifier mod)
+        private void HandleDropPKM(PictureBox pb, DragEventArgs? e, DropModifier mod)
         {
-            var files = (string[]?)e.Data.GetData(DataFormats.FileDrop);
-            if (files == null)
+            if (e?.Data?.GetData(DataFormats.FileDrop) is not string[] {Length: not 0} files)
             {
                 Drag.Reset();
                 return;

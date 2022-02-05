@@ -7,14 +7,12 @@ namespace PKHeX.Core
     /// Generation 7 Static Encounter
     /// </summary>
     /// <inheritdoc cref="EncounterStatic"/>
-    public sealed record EncounterStatic7 : EncounterStatic, IRelearn
+    public sealed record EncounterStatic7(GameVersion Version) : EncounterStatic(Version), IRelearn
     {
         public override int Generation => 7;
         public IReadOnlyList<int> Relearn { get; init; } = Array.Empty<int>();
 
         public bool IsTotem => FormInfo.IsTotemForm(Species, Form);
-
-        public EncounterStatic7(GameVersion game) : base(game) { }
 
         protected override bool IsMatchLocation(PKM pkm)
         {
@@ -67,7 +65,7 @@ namespace PKHeX.Core
             {
                 Species = species,
                 Gift = true, // Forces Poké Ball
-                Ability = Legal.TransferSpeciesDefaultAbilityGen1(species) ? 1 : 4, // Hidden by default, else first
+                Ability = Legal.TransferSpeciesDefaultAbilityGen1(species) ? AbilityPermission.OnlyFirst : AbilityPermission.OnlyHidden, // Hidden by default, else first
                 Shiny = mew ? Shiny.Never : Shiny.Random,
                 Fateful = mew,
                 Location = Locations.Transfer1,
@@ -84,7 +82,7 @@ namespace PKHeX.Core
             {
                 Species = species,
                 Gift = true, // Forces Poké Ball
-                Ability = Legal.TransferSpeciesDefaultAbilityGen2(species) ? 1 : 4, // Hidden by default, else first
+                Ability = Legal.TransferSpeciesDefaultAbilityGen2(species) ? AbilityPermission.OnlyFirst : AbilityPermission.OnlyHidden, // Hidden by default, else first
                 Shiny = mew ? Shiny.Never : Shiny.Random,
                 Fateful = fateful,
                 Location = Locations.Transfer2,

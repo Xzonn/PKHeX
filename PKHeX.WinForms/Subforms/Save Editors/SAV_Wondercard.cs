@@ -5,7 +5,7 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
-using PKHeX.Drawing;
+using PKHeX.Drawing.Misc;
 using PKHeX.WinForms.Controls;
 using static PKHeX.Core.MessageStrings;
 
@@ -91,9 +91,7 @@ namespace PKHeX.WinForms
                 mg = g;
             }
             // Some user input mystery gifts can have out-of-bounds values. Just swallow any exception.
-#pragma warning disable CA1031 // Do not catch general exception types
             catch (Exception e)
-#pragma warning restore CA1031 // Do not catch general exception types
             {
                 WinFormsUtil.Error(MsgMysteryGiftParseTypeUnknown, e);
                 RTB.Clear();
@@ -167,7 +165,7 @@ namespace PKHeX.WinForms
                 return;
             int index = pba.IndexOf(pb);
 
-            SetBackground(index, Drawing.Properties.Resources.slotView);
+            SetBackground(index, Drawing.PokeSprite.Properties.Resources.slotView);
             ViewGiftData(mga.Gifts[index]);
         }
 
@@ -201,7 +199,7 @@ namespace PKHeX.WinForms
                 WinFormsUtil.Alert(MsgMysteryGiftSlotFail, $"{mg.Type} != {mga.Gifts[index].Type}");
                 return;
             }
-            SetBackground(index, Drawing.Properties.Resources.slotSet);
+            SetBackground(index, Drawing.PokeSprite.Properties.Resources.slotSet);
             mga.Gifts[index] = (DataMysteryGift)mg.Clone();
             SetGiftBoxes();
             SetCardID(mg.CardID);
@@ -234,7 +232,7 @@ namespace PKHeX.WinForms
                 mga.Gifts[i-1] = mg1;
                 mga.Gifts[i] = mg2;
             }
-            SetBackground(i, Drawing.Properties.Resources.slotDel);
+            SetBackground(i, Drawing.PokeSprite.Properties.Resources.slotDel);
             SetGiftBoxes();
         }
 
@@ -288,19 +286,24 @@ namespace PKHeX.WinForms
         }
 
         // Drag & Drop Wonder Cards
-        private static void Main_DragEnter(object sender, DragEventArgs e)
+        private static void Main_DragEnter(object? sender, DragEventArgs? e)
         {
+            if (e?.Data is null)
+                return;
             if (e.Data.GetDataPresent(DataFormats.FileDrop))
                 e.Effect = DragDropEffects.Copy;
         }
 
-        private void Main_DragDrop(object sender, DragEventArgs e)
+        private void Main_DragDrop(object? sender, DragEventArgs? e)
         {
-            string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
+            if (e?.Data?.GetData(DataFormats.FileDrop) is not string[] { Length: not 0 } files)
+                return;
 
+            var first = files[0];
             // Check for multiple wondercards
-            if (Directory.Exists(files[0]))
-                files = Directory.GetFiles(files[0], "*", SearchOption.AllDirectories);
+            if (Directory.Exists(first))
+                files = Directory.GetFiles(first, "*", SearchOption.AllDirectories);
+
             if (files.Length == 1 && !Directory.Exists(files[0]))
             {
                 string path = files[0]; // open first D&D
@@ -417,15 +420,13 @@ namespace PKHeX.WinForms
                 DoDragDrop(new DataObject(DataFormats.FileDrop, new[] { newfile }), DragDropEffects.Move);
             }
             // Sometimes the drag-drop is canceled or ends up at a bad location. Don't bother recovering from an exception; just display a safe error message.
-#pragma warning disable CA1031 // Do not catch general exception types
             catch (Exception x)
-#pragma warning restore CA1031 // Do not catch general exception types
             { WinFormsUtil.Error("Drag & Drop Error", x); }
             File.Delete(newfile);
             wc_slot = -1;
         }
 
-        private void BoxSlot_DragDrop(object sender, DragEventArgs e)
+        private void BoxSlot_DragDrop(object? sender, DragEventArgs? e)
         {
             if (mg == null || sender is not PictureBox pb)
                 return;
@@ -439,8 +440,7 @@ namespace PKHeX.WinForms
 
             if (wc_slot == -1) // dropped
             {
-                var files = (string[]?)e.Data.GetData(DataFormats.FileDrop);
-                if (files == null || files.Length == 0)
+                if (e?.Data?.GetData(DataFormats.FileDrop) is not string[] {Length: not 0} files)
                     return;
 
                 var first = files[0];
@@ -462,7 +462,7 @@ namespace PKHeX.WinForms
                     WinFormsUtil.Alert(MsgMysteryGiftSlotFail, $"{gift.Type} != {mga.Gifts[index].Type}");
                     return;
                 }
-                SetBackground(index, Drawing.Properties.Resources.slotSet);
+                SetBackground(index, Drawing.PokeSprite.Properties.Resources.slotSet);
                 mga.Gifts[index] = (DataMysteryGift)gift.Clone();
 
                 SetCardID(mga.Gifts[index].CardID);
@@ -506,11 +506,11 @@ namespace PKHeX.WinForms
                     index = i-1;
                 }
             }
-            SetBackground(index, Drawing.Properties.Resources.slotView);
+            SetBackground(index, Drawing.PokeSprite.Properties.Resources.slotView);
             SetGiftBoxes();
         }
 
-        private static void BoxSlot_DragEnter(object sender, DragEventArgs e)
+        private static void BoxSlot_DragEnter(object? sender, DragEventArgs e)
         {
             if (e.AllowedEffect == (DragDropEffects.Copy | DragDropEffects.Link)) // external file
                 e.Effect = DragDropEffects.Copy;
@@ -586,42 +586,33 @@ namespace PKHeX.WinForms
             return pb;
         }
 
-        private static FlowLayoutPanel GetFlowLayoutPanel()
+        private static FlowLayoutPanel GetFlowLayoutPanel() => new()
         {
-            return new()
-            {
-                Width = 480,
-                Height = 60,
-                Padding = new Padding(0),
-                Margin = new Padding(0),
-            };
-        }
+            Width = 480,
+            Height = 60,
+            Padding = new Padding(0),
+            Margin = new Padding(0),
+        };
 
-        private static Label GetLabel(string text)
+        private static Label GetLabel(string text) => new()
         {
-            return new()
-            {
-                Size = new Size(40, 60),
-                AutoSize = false,
-                TextAlign = ContentAlignment.MiddleRight,
-                Text = text,
-                Padding = new Padding(0),
-                Margin = new Padding(0),
-            };
-        }
+            Size = new Size(40, 60),
+            AutoSize = false,
+            TextAlign = ContentAlignment.MiddleRight,
+            Text = text,
+            Padding = new Padding(0),
+            Margin = new Padding(0),
+        };
 
-        private static PictureBox GetPictureBox()
+        private static PictureBox GetPictureBox() => new()
         {
-            return new()
-            {
-                Size = new Size(70, 58),
-                SizeMode = PictureBoxSizeMode.CenterImage,
-                BorderStyle = BorderStyle.FixedSingle,
-                BackColor = Color.Transparent,
-                Padding = new Padding(0),
-                Margin = new Padding(1),
-            };
-        }
+            Size = new Size(70, 58),
+            SizeMode = PictureBoxSizeMode.CenterImage,
+            BorderStyle = BorderStyle.FixedSingle,
+            BackColor = Color.Transparent,
+            Padding = new Padding(0),
+            Margin = new Padding(1),
+        };
 
         private void B_ModifyAll_Click(object sender, EventArgs e)
         {

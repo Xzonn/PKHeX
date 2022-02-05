@@ -52,6 +52,9 @@ namespace PKHeX.WinForms
             NUD_System.Text = "0";
             CHK_CustomSystem.Checked = obj.GetSystemFlag(0);
 
+            NUD_Work.Maximum = obj.CountWork - 1;
+            CB_CustomWork.SelectedIndex = 0;
+
             Text = $"{Text} ({sav.Version})";
         }
 
@@ -152,14 +155,14 @@ namespace PKHeX.WinForms
                     Maximum = int.MaxValue,
                     Minimum = int.MinValue,
                     Margin = Padding.Empty,
-                    Width = 50,
+                    Width = 85,
                 };
 
                 var map = entry.PredefinedValues.Select(z => new ComboItem(z.Name, z.Value)).ToList();
                 var cb = new ComboBox
                 {
                     Margin = Padding.Empty,
-                    Width = 150,
+                    Width = 165,
                     DropDownStyle = ComboBoxStyle.DropDownList,
                     BindingContext = BindingContext,
                     DropDownWidth = Width + 100,
@@ -176,7 +179,7 @@ namespace PKHeX.WinForms
                         return;
 
                     updating = true;
-                    var value = (ushort)mtb.Value;
+                    var value = (int)mtb.Value;
                     var (_, valueID) = map.Find(z => z.Value == value) ?? map[0];
                     if (WinFormsUtil.GetIndex(cb) != valueID)
                         cb.SelectedValue = valueID;
@@ -263,15 +266,18 @@ namespace PKHeX.WinForms
             RTB_Diff.Lines = diff.Summarize().ToArray();
         }
 
-        private static void Main_DragEnter(object sender, DragEventArgs e)
+        private static void Main_DragEnter(object? sender, DragEventArgs? e)
         {
+            if (e?.Data is null)
+                return;
             if (e.Data.GetDataPresent(DataFormats.FileDrop))
                 e.Effect = DragDropEffects.Copy;
         }
 
-        private void Main_DragDrop(object sender, DragEventArgs e)
+        private void Main_DragDrop(object? sender, DragEventArgs? e)
         {
-            string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
+            if (e?.Data?.GetData(DataFormats.FileDrop) is not string[] { Length: not 0 } files)
+                return;
             var dr = WinFormsUtil.Prompt(MessageBoxButtons.YesNo, Name, "Yes: Old Save" + Environment.NewLine + "No: New Save");
             var button = dr == DialogResult.Yes ? B_LoadOld : B_LoadNew;
             LoadSAV(button, files[0]);

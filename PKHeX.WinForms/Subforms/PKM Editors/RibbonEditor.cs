@@ -4,7 +4,7 @@ using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 using PKHeX.Core;
-using PKHeX.Drawing;
+using PKHeX.Drawing.Misc;
 
 namespace PKHeX.WinForms
 {
@@ -26,7 +26,7 @@ namespace PKHeX.WinForms
             PopulateRibbons();
             TLP_Ribbons.ResumeLayout();
 
-            if (pk is G8PKM pk8)
+            if (pk is IRibbonSetAffixed affixed)
             {
                 var names = Enum.GetNames(typeof(RibbonIndex));
                 var values = (RibbonIndex[])Enum.GetValues(typeof(RibbonIndex));
@@ -35,7 +35,7 @@ namespace PKHeX.WinForms
                 ds.AddRange(items.ToArray());
                 CB_Affixed.InitializeBinding();
                 CB_Affixed.DataSource = ds;
-                CB_Affixed.SelectedValue = (int)pk8.AffixedRibbon;
+                CB_Affixed.SelectedValue = (int)affixed.AffixedRibbon;
             }
             else
             {
@@ -81,7 +81,7 @@ namespace PKHeX.WinForms
         {
             var name = rib.Name;
             var pb = new PictureBox { AutoSize = false, Size = new Size(40,40), BackgroundImageLayout = ImageLayout.Center, Visible = false, Name = PrefixPB + name };
-            var img = SpriteUtil.GetRibbonSprite(name);
+            var img = RibbonSpriteUtil.GetRibbonSprite(name);
             pb.BackgroundImage = img;
 
             var display = RibbonStrings.GetName(name);
@@ -129,7 +129,7 @@ namespace PKHeX.WinForms
             nud.ValueChanged += (sender, e) =>
             {
                 FLP_Ribbons.Controls[PrefixPB + rib.Name].Visible = (rib.RibbonCount = (int)nud.Value) > 0;
-                FLP_Ribbons.Controls[PrefixPB + rib.Name].BackgroundImage = SpriteUtil.GetRibbonSprite(rib.Name, (int)nud.Maximum, (int)nud.Value);
+                FLP_Ribbons.Controls[PrefixPB + rib.Name].BackgroundImage = RibbonSpriteUtil.GetRibbonSprite(rib.Name, (int)nud.Maximum, (int)nud.Value);
             };
             nud.Value = rib.RibbonCount > nud.Maximum ? nud.Maximum : rib.RibbonCount;
             TLP_Ribbons.Controls.Add(nud, 0, row);
@@ -161,8 +161,8 @@ namespace PKHeX.WinForms
             foreach (var rib in riblist)
                 ReflectUtil.SetValue(pkm, rib.Name, rib.RibbonCount < 0 ? rib.HasRibbon : rib.RibbonCount);
 
-            if (pkm is G8PKM pk8)
-                pk8.AffixedRibbon = (sbyte)WinFormsUtil.GetIndex(CB_Affixed);
+            if (pkm is IRibbonSetAffixed affixed)
+                affixed.AffixedRibbon = (sbyte)WinFormsUtil.GetIndex(CB_Affixed);
         }
 
         private void B_All_Click(object sender, EventArgs e)
@@ -186,8 +186,8 @@ namespace PKHeX.WinForms
             if (ModifierKeys == Keys.Shift)
             {
                 RibbonApplicator.RemoveAllValidRibbons(pkm);
-                if (pkm is G8PKM pk8)
-                    pk8.AffixedRibbon = -1;
+                if (pkm is IRibbonSetAffixed affixed)
+                    affixed.AffixedRibbon = -1;
                 Close();
                 return;
             }

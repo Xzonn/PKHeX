@@ -8,7 +8,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using PKHeX.Drawing;
+using PKHeX.Drawing.PokeSprite;
 using PKHeX.WinForms.Properties;
 using static PKHeX.Core.MessageStrings;
 
@@ -19,12 +19,14 @@ namespace PKHeX.WinForms
         private readonly PKMEditor PKME_Tabs;
         private SaveFile SAV => PKME_Tabs.RequestSaveFile;
         private readonly SummaryPreviewer ShowSet = new();
+        private readonly TrainerDatabase Trainers;
 
-        public SAV_Encounters(PKMEditor f1)
+        public SAV_Encounters(PKMEditor f1, TrainerDatabase db)
         {
             InitializeComponent();
 
             PKME_Tabs = f1;
+            Trainers = db;
 
             var grid = EncounterPokeGrid;
             var smallWidth = grid.Width;
@@ -132,7 +134,8 @@ namespace PKHeX.WinForms
 
             var enc = Results[index];
             var criteria = GetCriteria(enc, Main.Settings.EncounterDb);
-            var pk = enc.ConvertToPKM(SAV, criteria);
+            var trainer = Trainers.GetTrainer(enc.Version, enc.Generation <= 2 ? (LanguageID)SAV.Language : null) ?? SAV;
+            var pk = enc.ConvertToPKM(trainer, criteria);
             pk.RefreshChecksum();
             PKME_Tabs.PopulateFields(pk, false);
             slotSelected = index;
@@ -231,12 +234,14 @@ namespace PKHeX.WinForms
 
             if (Main.Settings.EncounterDb.FilterUnavailableSpecies)
             {
-                static bool IsPresentInGameSWSH(ISpeciesForm pk) => pk is PK8 || ((PersonalInfoSWSH)PersonalTable.SWSH.GetFormEntry(pk.Species, pk.Form)).IsPresentInGame;
-                static bool IsPresentInGameBDSP(ISpeciesForm pk) => pk is PB8 || ((PersonalInfoBDSP)PersonalTable.BDSP.GetFormEntry(pk.Species, pk.Form)).IsPresentInGame;
+                static bool IsPresentInGameSWSH(ISpeciesForm pk) => ((PersonalInfoSWSH)PersonalTable.SWSH.GetFormEntry(pk.Species, pk.Form)).IsPresentInGame;
+                static bool IsPresentInGameBDSP(ISpeciesForm pk) => ((PersonalInfoBDSP)PersonalTable.BDSP.GetFormEntry(pk.Species, pk.Form)).IsPresentInGame;
+                static bool IsPresentInGameLA  (ISpeciesForm pk) => ((PersonalInfoLA)  PersonalTable.LA  .GetFormEntry(pk.Species, pk.Form)).IsPresentInGame;
                 results = SAV switch
                 {
                     SAV8SWSH => results.Where(IsPresentInGameSWSH),
                     SAV8BS => results.Where(IsPresentInGameBDSP),
+                    SAV8LA => results.Where(IsPresentInGameLA),
                     _ => results.Where(z => z.Generation <= 7),
                 };
             }
@@ -265,6 +270,8 @@ namespace PKHeX.WinForms
                 }
                 for (int f = 0; f < fc; f++)
                 {
+                    if (FormInfo.IsBattleOnlyForm(s, f, pk.Format))
+                        continue;
                     var encs = GetEncounters(s, f, moves, pk, versions);
                     foreach (var enc in encs)
                         yield return enc;

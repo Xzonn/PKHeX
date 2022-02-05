@@ -7,12 +7,14 @@ namespace PKHeX.WinForms
     {
         private readonly SAV8BS Origin;
         private readonly SAV8BS SAV;
+        private readonly EventUnlocker8b Unlocker;
 
         public SAV_Misc8b(SAV8BS sav)
         {
             InitializeComponent();
             WinFormsUtil.TranslateInterface(this, Main.CurrentLanguage);
             SAV = (SAV8BS)(Origin = sav).Clone();
+            Unlocker = new EventUnlocker8b(SAV);
 
             ReadMain();
         }
@@ -28,9 +30,14 @@ namespace PKHeX.WinForms
 
         private void ReadMain()
         {
-            B_Spiritomb.Enabled = SAV.UgSaveData.TalkedNPC < 32;
-            B_Darkrai.Enabled = SAV.Work.GetFlag(301) || !(SAV.Work.GetWork(275) == 1 && SAV.Zukan.HasNationalDex && SAV.Items.GetItemQuantity(454) == 1); // HAIHUEVENT_ID_D18, Member Card
-            B_Shaymin.Enabled = SAV.Work.GetFlag(545) || !(SAV.Work.GetWork(276) == 1 && SAV.Zukan.HasNationalDex && SAV.Items.GetItemQuantity(452) == 1 && SAV.Work.GetSystemFlag(5)); // HAIHUEVENT_ID_D30, Oak's Letter
+            B_Spiritomb.Enabled = Unlocker.UnlockReadySpiritomb;
+            B_Darkrai.Enabled = Unlocker.UnlockReadyDarkrai;
+            B_Shaymin.Enabled = Unlocker.UnlockReadyShaymin;
+            B_DialgaPalkia.Enabled = Unlocker.UnlockReadyBoxLegend;
+            B_Roamer.Enabled = Unlocker.ResetReadyRoamerMesprit || Unlocker.ResetReadyRoamerCresselia;
+
+            B_RebattleEyecatch.Enabled = SAV.BattleTrainer.AnyDefeated;
+            B_DefeatEyecatch.Enabled = SAV.BattleTrainer.AnyUndefeated;
         }
 
         private void SaveMain()
@@ -39,34 +46,59 @@ namespace PKHeX.WinForms
 
         private void B_Spiritomb_Click(object sender, EventArgs e)
         {
-            var trainers = SAV.UgSaveData.GetTrainers();
-            for (int i = 0; i < 32; i++)
-                trainers[i] = (byte)(i + 1);
+            Unlocker.UnlockSpiritomb();
             System.Media.SystemSounds.Asterisk.Play();
-            B_Spiritomb.Enabled = false;
+            B_Spiritomb.Enabled = Unlocker.UnlockReadySpiritomb;
         }
 
         private void B_Shaymin_Click(object sender, EventArgs e)
         {
-            SAV.Zukan.HasNationalDex = true; // dex
-            SAV.Work.SetSystemFlag(5, true); // clear
-            SAV.Work.SetWork(276, 1); // haihu
-            SAV.Items.SetItemQuantity(452, 1); // letter
-            SAV.Work.SetFlag(545, false); // clear vanish
-
+            Unlocker.UnlockShaymin();
             System.Media.SystemSounds.Asterisk.Play();
-            B_Shaymin.Enabled = false;
+            B_Shaymin.Enabled = Unlocker.UnlockReadyShaymin;
         }
 
         private void B_Darkrai_Click(object sender, EventArgs e)
         {
-            SAV.Zukan.HasNationalDex = true; // dex
-            SAV.Work.SetWork(275, 1); // haihu
-            SAV.Items.SetItemQuantity(454, 1); // member
-            SAV.Work.SetFlag(301, false); // clear vanish
-
+            Unlocker.UnlockDarkrai();
             System.Media.SystemSounds.Asterisk.Play();
-            B_Darkrai.Enabled = false;
+            B_Darkrai.Enabled = Unlocker.UnlockReadyDarkrai;
+        }
+
+        private void B_DialgaPalkia_Click(object sender, EventArgs e)
+        {
+            Unlocker.UnlockBoxLegend();
+            System.Media.SystemSounds.Asterisk.Play();
+            B_DialgaPalkia.Enabled = Unlocker.UnlockReadyBoxLegend;
+        }
+
+        private void B_Roamer_Click(object sender, EventArgs e)
+        {
+            Unlocker.RespawnRoamer();
+            System.Media.SystemSounds.Asterisk.Play();
+            B_Roamer.Enabled = Unlocker.ResetReadyRoamerMesprit || Unlocker.ResetReadyRoamerCresselia;
+        }
+
+        private void B_Zones_Click(object sender, EventArgs e)
+        {
+            Unlocker.UnlockZones();
+            System.Media.SystemSounds.Asterisk.Play();
+        }
+
+        private void B_DefeatEyecatch_Click(object sender, EventArgs e)
+        {
+            SAV.BattleTrainer.DefeatAll();
+            System.Media.SystemSounds.Asterisk.Play();
+            B_DefeatEyecatch.Enabled = false;
+            B_RebattleEyecatch.Enabled = true;
+        }
+
+        private void B_RebattleEyecatch_Click(object sender, EventArgs e)
+        {
+            SAV.BattleTrainer.RebattleAll();
+            System.Media.SystemSounds.Asterisk.Play();
+            B_RebattleEyecatch.Enabled = false;
+            B_DefeatEyecatch.Enabled = true;
         }
     }
 }

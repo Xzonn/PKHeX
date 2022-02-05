@@ -6,7 +6,7 @@ namespace PKHeX.Core
     /// <summary>
     /// Generation 8 <see cref="SaveFile"/> object for <see cref="GameVersion.SWSH"/> games.
     /// </summary>
-    public sealed class SAV8SWSH : SAV8, ISaveBlock8SWSH, ITrainerStatRecord, ISaveFileRevision
+    public sealed class SAV8SWSH : SAV8, ISaveBlock8SWSH, ITrainerStatRecord, ISaveFileRevision, ISCBlockArray
     {
         public SAV8SWSH(byte[] data) : base(data)
         {
@@ -66,6 +66,7 @@ namespace PKHeX.Core
         public override IReadOnlyList<ushort> HeldItems => Legal.HeldItems_SWSH;
 
         #region Blocks
+        public SCBlockAccessor Accessor => Blocks;
         public SaveBlockAccessor8SWSH Blocks { get; }
         public override Box8 BoxInfo => Blocks.BoxInfo;
         public override Party8 PartyInfo => Blocks.PartyInfo;
@@ -163,10 +164,10 @@ namespace PKHeX.Core
                 return StorageSlotFlag.None;
 
             team /= 6;
-            var val = (StorageSlotFlag)((int)StorageSlotFlag.BattleTeam1 << team);
+            var result = (StorageSlotFlag)((int)StorageSlotFlag.BattleTeam1 << team);
             if (TeamIndexes.GetIsTeamLocked(team))
-                val |= StorageSlotFlag.Locked;
-            return val;
+                result |= StorageSlotFlag.Locked;
+            return result;
         }
 
         public override int CurrentBox { get => BoxLayout.CurrentBox; set => BoxLayout.CurrentBox = value; }

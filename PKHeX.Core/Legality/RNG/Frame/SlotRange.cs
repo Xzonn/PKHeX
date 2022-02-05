@@ -83,17 +83,7 @@ namespace PKHeX.Core
             };
         }
 
-        private readonly struct Range
-        {
-            internal readonly uint Min;
-            internal readonly uint Max;
-
-            internal Range(uint min, uint max)
-            {
-                Min = min;
-                Max = max;
-            }
-        }
+        private readonly record struct Range(uint Min, uint Max);
 
         private static Range[] GetRanges(params uint[] rates)
         {
@@ -109,8 +99,8 @@ namespace PKHeX.Core
         {
             for (int i = 0; i < ranges.Length; ++i)
             {
-                var span = ranges[i];
-                if (esv >= span.Min && esv <= span.Max)
+                var (min, max) = ranges[i];
+                if (esv >= min && esv <= max)
                     return i;
             }
             return Invalid;

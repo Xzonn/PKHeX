@@ -10,7 +10,7 @@ namespace PKHeX.Core
     /// <remarks>
     /// Trade data is fixed level in all cases except for the first few generations of games.
     /// </remarks>
-    public abstract record EncounterTrade : IEncounterable, IMoveset, ILocation, IEncounterMatch, IFixedBall, IFixedAbilityNumber
+    public abstract record EncounterTrade(GameVersion Version) : IEncounterable, IMoveset, IEncounterMatch
     {
         public int Species { get; init; }
         public int Form { get; init; }
@@ -19,11 +19,10 @@ namespace PKHeX.Core
         public int LevelMax => 100;
         public IReadOnlyList<int> Moves { get; init; } = Array.Empty<int>();
         public abstract int Generation { get; }
-        public GameVersion Version { get; }
 
         public int CurrentLevel { get; init; } = -1;
         public abstract int Location { get; }
-        public int Ability { get; init; }
+        public AbilityPermission Ability { get; init; }
         public int Gender { get; init; } = -1;
         public Nature Nature { get; init; } = Nature.Random;
         public Shiny Shiny { get; init; } = Shiny.Never;
@@ -62,8 +61,6 @@ namespace PKHeX.Core
         public string GetOT(int language) => (uint)language < TrainerNames.Count ? TrainerNames[language] : string.Empty;
         public bool HasNickname => Nicknames.Count != 0 && IsNicknamed;
         public bool HasTrainerName => TrainerNames.Count != 0;
-
-        protected EncounterTrade(GameVersion game) => Version = game;
 
         public PKM ConvertToPKM(ITrainerInfo sav) => ConvertToPKM(sav, EncounterCriteria.Unrestricted);
 

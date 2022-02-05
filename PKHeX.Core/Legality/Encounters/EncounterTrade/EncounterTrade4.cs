@@ -4,15 +4,11 @@
     /// Generation 4 Trade Encounter
     /// </summary>
     /// <inheritdoc cref="EncounterTradeGB"/>
-    public abstract record EncounterTrade4 : EncounterTrade
+    public abstract record EncounterTrade4(GameVersion Version) : EncounterTrade(Version)
     {
         public sealed override int Generation => 4;
 
         protected static readonly string[] RanchOTNames = { string.Empty, "ユカリ", "Hayley", "EULALIE", "GIULIA", "EUKALIA", string.Empty, "Eulalia" };
-
-        protected EncounterTrade4(GameVersion game) : base(game)
-        {
-        }
     }
 
     /// <summary>
@@ -78,8 +74,8 @@
                 // Has German Language ID for all except German origin, which is English
                 if (Species == (int)Core.Species.Magikarp)
                     pkm.Language = (int)(pkm.Language == (int)LanguageID.German ? LanguageID.English : LanguageID.German);
-                // All other trades received: English games have a Japanese language ID instead of English.
-                else if (pkm.Language == (int)LanguageID.English)
+                // All other trades received (DP only): English games have a Japanese language ID instead of English.
+                else if (pkm.Version is not (int)GameVersion.Pt && pkm.Language == (int)LanguageID.English)
                     pkm.Language = (int)LanguageID.Japanese;
             }
             else // HGSS
@@ -97,7 +93,7 @@
             pk.PID = PID;
             pk.Nature = (int)(PID % 25);
             pk.Gender = Gender;
-            pk.RefreshAbility(Ability >> 1);
+            pk.RefreshAbility(Ability.GetSingleValue());
             SetIVs(pk);
         }
 
@@ -140,7 +136,7 @@
             pk.PID = PID;
             pk.Nature = (int)(PID % 25);
             pk.Gender = Gender;
-            pk.RefreshAbility(Ability >> 1);
+            pk.RefreshAbility(Ability.GetSingleValue());
             SetIVs(pk);
         }
     }

@@ -32,7 +32,7 @@ namespace PKHeX.Core
         public override bool IsEgg { get; set; }
         public override IReadOnlyList<int> Moves { get; set; } = Array.Empty<int>();
         public bool NotDistributed { get; init; }
-        public Shiny Shiny { get; init; } = Shiny.Random;
+        public override Shiny Shiny { get; init; } = Shiny.Random;
         public bool Fateful { get; init; } // Obedience Flag
 
         // Mystery Gift Properties
@@ -71,6 +71,8 @@ namespace PKHeX.Core
             get => _metLevel ?? (IsEgg ? 0 : Level);
             init => _metLevel = value;
         }
+
+        public override AbilityPermission Ability => AbilityPermission.Any12;
 
         public override PKM ConvertToPKM(ITrainerInfo sav, EncounterCriteria criteria)
         {
@@ -160,7 +162,7 @@ namespace PKHeX.Core
                 Moves = MoveList.GetBaseEggMoves(pk, Species, Form, (GameVersion)pk.Version, Level);
             if (Moves.Count != 4)
             {
-                var moves = Moves.ToArray();
+                int[] moves = Moves.ToArray();
                 Array.Resize(ref moves, 4);
                 Moves = moves;
             }

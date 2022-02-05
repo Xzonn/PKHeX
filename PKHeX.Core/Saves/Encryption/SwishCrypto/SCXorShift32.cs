@@ -8,7 +8,6 @@ namespace PKHeX.Core
     /// This implementation allows for yielding crypto bytes on demand.
     /// </para>
     /// </summary>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1815:Override equals and operator equals on value types", Justification = "Unused")]
     public ref struct SCXorShift32
     {
         private int Counter;
@@ -34,7 +33,7 @@ namespace PKHeX.Core
         public uint Next()
         {
             var c = Counter;
-            var val = (Seed >> (c << 3)) & 0xFF;
+            var result = (Seed >> (c << 3)) & 0xFF;
             if (c == 3)
             {
                 Seed = XorshiftAdvance(Seed);
@@ -44,7 +43,7 @@ namespace PKHeX.Core
             {
                 ++Counter;
             }
-            return val;
+            return result;
         }
 
         /// <summary>

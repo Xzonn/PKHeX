@@ -467,8 +467,8 @@ namespace PKHeX.Core
                 yield return new RibbonResult(nameof(s8.RibbonTwinklingStar));
             }
 
-            // new ribbon likely from Legends: Arceus; inaccessible until then
-            if (s8.RibbonPioneer)
+            // received when capturing photos with Pokémon in the Photography Studio
+            if (s8.RibbonPioneer && !pkm.LA)
             {
                 yield return new RibbonResult(nameof(s8.RibbonPioneer));
             }
@@ -492,7 +492,7 @@ namespace PKHeX.Core
 
                 if (enc.Version == GameVersion.GO) // Capture date is global time, and not console changeable.
                 {
-                    if (pkm.MetDate >= new DateTime(2022, 2, 1))
+                    if (pkm.MetDate > new DateTime(2022, 9, 1)) // Series 12 end date
                         return false;
                 }
             }

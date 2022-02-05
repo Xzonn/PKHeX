@@ -6,7 +6,6 @@ namespace PKHeX.Core
     /// Self-modifying RNG structure that implements xoroshiro128+
     /// </summary>
     /// <remarks>https://en.wikipedia.org/wiki/Xoroshiro128%2B</remarks>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1815:Override equals and operator equals on value types", Justification = "Unused")]
     public ref struct Xoroshiro128Plus
     {
         public const ulong XOROSHIRO_CONST = 0x82A2B175229D6A5B;
@@ -18,6 +17,15 @@ namespace PKHeX.Core
             s0 = seed;
             s1 = XOROSHIRO_CONST;
         }
+
+        public Xoroshiro128Plus(ulong s0, ulong s1)
+        {
+            this.s0 = s0;
+            this.s1 = s1;
+        }
+
+        public (ulong s0, ulong s1) GetState() => (s0, s1);
+        public string FullState => $"{s1:X16}{s0:X16}";
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static ulong RotateLeft(ulong x, int k)
@@ -40,6 +48,25 @@ namespace PKHeX.Core
             s0 = RotateLeft(_s0, 24) ^ _s1 ^ (_s1 << 16);
             s1 = RotateLeft(_s1, 37);
 
+            return result;
+        }
+
+        /// <summary>
+        /// Gets the next previous <see cref="ulong"/>.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ulong Prev()
+        {
+            var _s0 = s0;
+            var _s1 = s1;
+            _s1 = RotateLeft(_s1, 27);
+            _s0 = _s0 ^ _s1 ^ (_s1 << 16);
+            _s0 = RotateLeft(_s0, 40);
+            _s1 ^= _s0;
+            ulong result = _s0 + _s1;
+
+            s0 = _s0;
+            s1 = _s1;
             return result;
         }
 

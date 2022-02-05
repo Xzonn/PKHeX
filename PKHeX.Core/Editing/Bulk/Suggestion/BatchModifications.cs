@@ -14,13 +14,13 @@ namespace PKHeX.Core
         public static ModifyResult SetSuggestedRelearnData(BatchInfo info, string propValue)
         {
             var pk = info.Entity;
-            if (pk.Format >= 8)
+            if (pk is ITechRecord8 t)
             {
-                pk.ClearRecordFlags();
+                t.ClearRecordFlags();
                 if (IsAll(propValue))
-                    pk.SetRecordFlags(); // all
+                    t.SetRecordFlags(); // all
                 else if (!IsNone(propValue))
-                    pk.SetRecordFlags(pk.Moves); // whatever fit the current moves
+                    t.SetRecordFlags(pk.Moves); // whatever fit the current moves
             }
 
             pk.SetRelearnMoves(info.SuggestedRelearn);
@@ -64,6 +64,21 @@ namespace PKHeX.Core
         {
             pk.SetMoves(moves);
             pk.HealPP();
+            return ModifyResult.Modified;
+        }
+
+        /// <summary>
+        /// Sets the contests stats as requested.
+        /// </summary>
+        /// <param name="pk">Pokémon to modify.</param>
+        /// <param name="enc">Encounter matched to.</param>
+        /// <param name="option">Option to apply with</param>
+        public static ModifyResult SetContestStats(PKM pk, IEncounterTemplate enc, string option)
+        {
+            if (option.Length != 0 && option[BatchEditing.CONST_SUGGEST.Length..] is not "0")
+                pk.SetMaxContestStats(enc);
+            else
+                pk.SetSuggestedContestStats(enc);
             return ModifyResult.Modified;
         }
     }

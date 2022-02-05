@@ -47,7 +47,7 @@ namespace PKHeX.Core
                 m = m.Intersect(learn).ToArray();
 
             if (random && !la.pkm.IsEgg)
-                Util.Shuffle(m);
+                Util.Shuffle(m.AsSpan());
 
             const int count = 4;
             if (m.Length > count)
@@ -106,6 +106,9 @@ namespace PKHeX.Core
                     if (ug.CanBeUndergroundMove(move))
                         return new[] { move, 0, 0, 0 };
                 }
+
+                if (ug.GetBaseEggMove(out int any))
+                    return new[] { any, 0, 0, 0 };
             }
 
             var encounter = EncounterSuggestion.GetSuggestedMetInfo(legal.pkm);

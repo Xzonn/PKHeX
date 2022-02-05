@@ -7,29 +7,18 @@ namespace PKHeX.Core
     /// Wild Encounter Slot data
     /// </summary>
     /// <remarks>Wild encounter slots are found as random encounters in-game.</remarks>
-    public abstract record EncounterSlot : IEncounterable, ILocation, IEncounterMatch
+    public abstract record EncounterSlot(EncounterArea Area, int Species, int Form, int LevelMin, int LevelMax) : IEncounterable, IEncounterMatch
     {
-        public int Species { get; }
-        public int Form { get; }
-        public int LevelMin { get; }
-        public int LevelMax { get; }
         public abstract int Generation { get; }
         public bool EggEncounter => false;
         public virtual bool IsShiny => false;
 
-        protected EncounterSlot(EncounterArea area, int species, int form, int min, int max)
-        {
-            Area = area;
-            Species = species;
-            Form = form;
-            LevelMin = min;
-            LevelMax = max;
-        }
-
-        protected readonly EncounterArea Area;
+        protected readonly EncounterArea Area = Area;
         public GameVersion Version => Area.Version;
         public int Location => Area.Location;
         public int EggLocation => 0;
+        public virtual Ball FixedBall => Ball.None;
+        public virtual Shiny Shiny => Shiny.Random;
 
         public bool IsFixedLevel => LevelMin == LevelMax;
         public bool IsRandomLevel => LevelMin != LevelMax;
@@ -81,12 +70,6 @@ namespace PKHeX.Core
             }
         }
 
-        /// <summary>
-        /// Returns a required ball if the wild encounter can only be caught in certain scenarios.
-        /// </summary>
-        /// <returns><see cref="Ball.None"/> if unrestricted, otherwise, a specific ball value.</returns>
-        public virtual Ball GetRequiredBallValue() => Ball.None;
-
         public PKM ConvertToPKM(ITrainerInfo sav) => ConvertToPKM(sav, EncounterCriteria.Unrestricted);
 
         public PKM ConvertToPKM(ITrainerInfo sav, EncounterCriteria criteria)
@@ -108,8 +91,7 @@ namespace PKHeX.Core
             pk.Version = (int)version;
             pk.Nickname = SpeciesName.GetSpeciesNameGeneration(Species, lang, Generation);
 
-            var ball = GetRequiredBallValue();
-            pk.Ball = (int)(ball == Ball.None ? Ball.Poke : ball);
+            ApplyDetailsBall(pk);
             pk.Language = lang;
             pk.Form = GetWildForm(pk, Form, sav);
             pk.OT_Friendship = pk.PersonalInfo.BaseFriendship;
@@ -129,6 +111,12 @@ namespace PKHeX.Core
                 s.HeightScalar = PokeSizeUtil.GetRandomScalar();
                 s.WeightScalar = PokeSizeUtil.GetRandomScalar();
             }
+        }
+
+        protected virtual void ApplyDetailsBall(PKM pk)
+        {
+            var ball = FixedBall;
+            pk.Ball = (int)(ball == Ball.None ? Ball.Poke : ball);
         }
 
         protected virtual void SetEncounterMoves(PKM pk, GameVersion version, int level)
@@ -178,8 +166,8 @@ namespace PKHeX.Core
 
         public bool IsRandomUnspecificForm => Form >= FormDynamic;
         private const int FormDynamic = FormVivillon;
-        private const int FormVivillon = 30;
-        protected const int FormRandom = 31;
+        protected internal const int FormVivillon = 30;
+        protected internal const int FormRandom = 31;
 
         private static int GetWildForm(PKM pk, int form, ITrainerInfo sav)
         {
@@ -229,11 +217,11 @@ namespace PKHeX.Core
 
         protected virtual HiddenAbilityPermission IsHiddenAbilitySlot() => HiddenAbilityPermission.Never;
 
-        public int Ability => IsHiddenAbilitySlot() switch
+        public AbilityPermission Ability => IsHiddenAbilitySlot() switch
         {
-            HiddenAbilityPermission.Never => 0,
-            HiddenAbilityPermission.Always => 4,
-            _ => -1,
+            HiddenAbilityPermission.Never => AbilityPermission.Any12,
+            HiddenAbilityPermission.Always => AbilityPermission.OnlyHidden,
+            _ => AbilityPermission.Any12H,
         };
 
         private bool IsDeferredWurmple(PKM pkm) => Species == (int)Wurmple && pkm.Species != (int)Wurmple && !WurmpleUtil.IsWurmpleEvoValid(pkm);

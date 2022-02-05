@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using static System.Buffers.Binary.BinaryPrimitives;
 
 namespace PKHeX.Core
 {
@@ -13,23 +14,23 @@ namespace PKHeX.Core
 
         protected override IReadOnlyList<EncounterSlot> Raw => Slots;
 
-        public static EncounterArea5[] GetAreas(byte[][] input, GameVersion game)
+        public static EncounterArea5[] GetAreas(BinLinkerAccessor input, GameVersion game)
         {
             var result = new EncounterArea5[input.Length];
-            for (int i = 0; i < input.Length; i++)
+            for (int i = 0; i < result.Length; i++)
                 result[i] = new EncounterArea5(input[i], game);
             return result;
         }
 
-        private EncounterArea5(byte[] data, GameVersion game) : base(game)
+        private EncounterArea5(ReadOnlySpan<byte> data, GameVersion game) : base(game)
         {
-            Location = data[0] | (data[1] << 8);
+            Location = ReadUInt16LittleEndian(data);
             Type = (SlotType)data[2];
 
             Slots = ReadSlots(data);
         }
 
-        private EncounterSlot5[] ReadSlots(byte[] data)
+        private EncounterSlot5[] ReadSlots(ReadOnlySpan<byte> data)
         {
             const int size = 4;
             int count = (data.Length - 4) / size;
@@ -37,15 +38,21 @@ namespace PKHeX.Core
             for (int i = 0; i < slots.Length; i++)
             {
                 int offset = 4 + (size * i);
-                ushort SpecForm = BitConverter.ToUInt16(data, offset);
-                int species = SpecForm & 0x3FF;
-                int form = SpecForm >> 11;
-                int min = data[offset + 2];
-                int max = data[offset + 3];
-                slots[i] = new EncounterSlot5(this, species, form, min, max);
+                var entry = data.Slice(offset, size);
+                slots[i] = ReadSlot(entry);
             }
 
             return slots;
+        }
+
+        private EncounterSlot5 ReadSlot(ReadOnlySpan<byte> entry)
+        {
+            ushort SpecForm = ReadUInt16LittleEndian(entry);
+            int species = SpecForm & 0x3FF;
+            int form = SpecForm >> 11;
+            int min = entry[2];
+            int max = entry[3];
+            return new EncounterSlot5(this, species, form, min, max);
         }
 
         public override IEnumerable<EncounterSlot> GetMatchingSlots(PKM pkm, IReadOnlyList<EvoCriteria> chain)
@@ -60,7 +67,9 @@ namespace PKHeX.Core
                     if (!slot.IsLevelWithinRange(pkm.Met_Level))
                         break;
 
-                    if (slot.Form != evo.Form) // no wild forms can change
+                    // Deerling and Sawsbuck can change forms when seasons change, thus can be any of the [0,3] form values.
+                    // no other wild forms can change
+                    if (slot.Form != evo.Form && slot.Species is not ((int)Species.Deerling or (int)Species.Sawsbuck))
                         break;
 
                     yield return slot;

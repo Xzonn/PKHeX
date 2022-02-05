@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using static System.Buffers.Binary.BinaryPrimitives;
 
 namespace PKHeX.Core
 {
@@ -22,7 +23,7 @@ namespace PKHeX.Core
 
         public override Zukan4 Dex { get; }
 
-        protected override SAV4 CloneInternal4() => State.Exportable ? new SAV4DP(Data) : new SAV4DP();
+        protected override SAV4 CloneInternal4() => State.Exportable ? new SAV4DP((byte[])Data.Clone()) : new SAV4DP();
         public override PersonalTable Personal => PersonalTable.DP;
         public override IReadOnlyList<ushort> HeldItems => Legal.HeldItems_DP;
         public override int MaxItemID => Legal.MaxItemID_4_DP;
@@ -103,10 +104,10 @@ namespace PKHeX.Core
 
         public bool[] GetMysteryGiftDPSlotActiveFlags()
         {
-            int ofs = WondercardFlags + 0x100; // skip over flags
+            var span = General.AsSpan(WondercardFlags + 0x100); // skip over flags
             bool[] active = new bool[GiftCountMax]; // 8 PGT, 3 PCD
             for (int i = 0; i < active.Length; i++)
-                active[i] = BitConverter.ToUInt32(General, ofs + (4 * i)) == MysteryGiftDPSlotActive;
+                active[i] = ReadUInt32LittleEndian(span[(4*i)..]) == MysteryGiftDPSlotActive;
 
             return active;
         }
@@ -116,12 +117,9 @@ namespace PKHeX.Core
             if (value.Length != GiftCountMax)
                 return;
 
-            int ofs = WondercardFlags + 0x100; // skip over flags
+            var span = General.AsSpan(WondercardFlags + 0x100); // skip over flags
             for (int i = 0; i < value.Length; i++)
-            {
-                byte[] magic = BitConverter.GetBytes(value[i] ? MysteryGiftDPSlotActive : 0); // 4 bytes
-                SetData(General, magic, ofs + (4 * i));
-            }
+                WriteUInt32LittleEndian(span[(4 * i)..], value[i] ? MysteryGiftDPSlotActive : 0);
         }
 
         public override MysteryGiftAlbum GiftAlbum
@@ -142,28 +140,22 @@ namespace PKHeX.Core
             SetMysteryGiftDPSlotActiveFlags(arr);
         }
 
-        public override int M { get => BitConverter.ToUInt16(General, 0x1238); set => BitConverter.GetBytes((ushort)value).CopyTo(General, 0x1238); }
-        public override int X { get => BitConverter.ToUInt16(General, 0x1240); set => BitConverter.GetBytes((ushort)(X2 = value)).CopyTo(General, 0x1240); }
-        public override int Y { get => BitConverter.ToUInt16(General, 0x1244); set => BitConverter.GetBytes((ushort)(Y2 = value)).CopyTo(General, 0x1244); }
-
-        public override string Rival
-        {
-            get => GetString(0x25A8, OTLength * 2);
-            set => SetString(value, OTLength).CopyTo(Data, 0x25A8);
-        }
+        public override int M { get => ReadUInt16LittleEndian(General.AsSpan(0x1238)); set => WriteUInt16LittleEndian(General.AsSpan(0x1238), (ushort)value); }
+        public override int X { get => ReadUInt16LittleEndian(General.AsSpan(0x1240)); set => WriteUInt16LittleEndian(General.AsSpan(0x1240), (ushort)(X2 = value)); }
+        public override int Y { get => ReadUInt16LittleEndian(General.AsSpan(0x1244)); set => WriteUInt16LittleEndian(General.AsSpan(0x1244), (ushort)(Y2 = value)); }
 
         public override Span<byte> Rival_Trash
         {
-            get => Data.AsSpan(0x25A8, OTLength * 2);
-            set { if (value.Length == OTLength * 2) value.CopyTo(Data.AsSpan(0x25A8)); }
+            get => General.AsSpan(0x25A8, OTLength * 2);
+            set { if (value.Length == OTLength * 2) value.CopyTo(General.AsSpan(0x25A8)); }
         }
 
-        public override int X2 { get => BitConverter.ToUInt16(General, 0x25FA); set => BitConverter.GetBytes((ushort)value).CopyTo(General, 0x25FA); }
-        public override int Y2 { get => BitConverter.ToUInt16(General, 0x25FE); set => BitConverter.GetBytes((ushort)value).CopyTo(General, 0x25FE); }
-        public override int Z { get => BitConverter.ToUInt16(General, 0x2602); set => BitConverter.GetBytes((ushort)value).CopyTo(General, 0x2602); }
+        public override int X2 { get => ReadUInt16LittleEndian(General.AsSpan(0x25FA)); set => WriteUInt16LittleEndian(General.AsSpan(0x25FA), (ushort)value); }
+        public override int Y2 { get => ReadUInt16LittleEndian(General.AsSpan(0x25FE)); set => WriteUInt16LittleEndian(General.AsSpan(0x25FE), (ushort)value); }
+        public override int Z { get => ReadUInt16LittleEndian(General.AsSpan(0x2602)); set => WriteUInt16LittleEndian(General.AsSpan(0x2602), (ushort)value); }
 
-        public override uint SafariSeed { get => BitConverter.ToUInt32(General, 0x72D0); set => BitConverter.GetBytes(value).CopyTo(General, 0x72D0); }
-        public override uint SwarmSeed { get => BitConverter.ToUInt32(General, 0x72D4); set => BitConverter.GetBytes(value).CopyTo(General, 0x72D4); }
+        public override uint SafariSeed { get => ReadUInt32LittleEndian(General.AsSpan(0x53C4)); set => WriteUInt32LittleEndian(General.AsSpan(0x53C4), value); }
+        public override uint SwarmSeed { get => ReadUInt32LittleEndian(General.AsSpan(0x53C8)); set => WriteUInt32LittleEndian(General.AsSpan(0x53C8), value); }
         public override uint SwarmMaxCountModulo => 28;
     }
 }

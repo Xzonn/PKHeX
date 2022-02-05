@@ -1,4 +1,5 @@
 ﻿using System;
+using static System.Buffers.Binary.BinaryPrimitives;
 
 namespace PKHeX.Core
 {
@@ -141,7 +142,7 @@ namespace PKHeX.Core
 
             var index = species - 1;
             var offset = OFS_STATE + (sizeof(int) * index);
-            return (ZukanState8b)BitConverter.ToInt32(SAV.Data, PokeDex + offset);
+            return (ZukanState8b)ReadInt32LittleEndian(SAV.Data.AsSpan(PokeDex + offset));
         }
 
         public void SetState(int species, ZukanState8b state)
@@ -151,7 +152,7 @@ namespace PKHeX.Core
 
             var index = species - 1;
             var offset = OFS_STATE + (sizeof(int) * index);
-            BitConverter.GetBytes((int)state).CopyTo(SAV.Data, PokeDex + offset);
+            WriteInt32LittleEndian(SAV.Data.AsSpan(PokeDex + offset), (int)state);
         }
 
         private bool GetBoolean(int index, int baseOffset, int max)
@@ -160,7 +161,7 @@ namespace PKHeX.Core
                 throw new ArgumentOutOfRangeException(nameof(index));
 
             var offset = baseOffset + (ALIGN_BOOLARRAY * index);
-            return BitConverter.ToUInt32(SAV.Data, PokeDex + offset) == 1;
+            return ReadUInt32LittleEndian(SAV.Data.AsSpan(PokeDex + offset)) == 1;
         }
 
         private void SetBoolean(int index, int baseOffset, int max, bool value)
@@ -169,7 +170,7 @@ namespace PKHeX.Core
                 throw new ArgumentOutOfRangeException(nameof(index));
 
             var offset = baseOffset + (ALIGN_BOOLARRAY * index);
-            BitConverter.GetBytes((uint)(value ? 1 : 0)).CopyTo(SAV.Data, PokeDex + offset);
+            WriteUInt32LittleEndian(SAV.Data.AsSpan(PokeDex + offset), value ? 1u : 0u);
         }
 
         public void GetGenderFlags(int species, out bool m, out bool f, out bool ms, out bool fs)
@@ -198,7 +199,7 @@ namespace PKHeX.Core
 
             var index = species - 1;
             var offset = OFS_LANGUAGE + (sizeof(int) * index);
-            var current = BitConverter.ToInt32(SAV.Data, PokeDex + offset);
+            var current = ReadInt32LittleEndian(SAV.Data.AsSpan(PokeDex + offset));
             return (current & (1 << languageBit)) != 0;
         }
 
@@ -212,10 +213,10 @@ namespace PKHeX.Core
 
             var index = species - 1;
             var offset = OFS_LANGUAGE + (sizeof(int) * index);
-            var current = BitConverter.ToInt32(SAV.Data, PokeDex + offset);
+            var current = ReadInt32LittleEndian(SAV.Data.AsSpan(PokeDex + offset));
             var mask = (1 << languageBit);
             var update = value ? current | mask : current & ~(mask);
-            BitConverter.GetBytes(update).CopyTo(SAV.Data, PokeDex + offset);
+            WriteInt32LittleEndian(SAV.Data.AsSpan(PokeDex + offset), update);
         }
 
         public void SetLanguageFlags(int species, int value)
@@ -225,7 +226,7 @@ namespace PKHeX.Core
 
             var index = species - 1;
             var offset = OFS_LANGUAGE + (sizeof(int) * index);
-            BitConverter.GetBytes(value).CopyTo(SAV.Data, PokeDex + offset);
+            WriteInt32LittleEndian(SAV.Data.AsSpan(PokeDex + offset), value);
         }
 
         private static int GetLanguageBit(int language)
@@ -239,14 +240,14 @@ namespace PKHeX.Core
 
         public bool HasRegionalDex
         {
-            get => BitConverter.ToUInt32(SAV.Data, PokeDex + OFS_FLAG_REGIONAL) == 1;
-            set => BitConverter.GetBytes((uint)(value ? 1 : 0)).CopyTo(SAV.Data, PokeDex + OFS_FLAG_REGIONAL);
+            get => ReadUInt32LittleEndian(SAV.Data.AsSpan(PokeDex + OFS_FLAG_REGIONAL)) == 1;
+            set => WriteUInt32LittleEndian(SAV.Data.AsSpan(PokeDex + OFS_FLAG_REGIONAL), value ? 1u : 0u);
         }
 
         public bool HasNationalDex
         {
-            get => BitConverter.ToUInt32(SAV.Data, PokeDex + OFS_FLAG_NATIONAL) == 1;
-            set => BitConverter.GetBytes((uint)(value ? 1 : 0)).CopyTo(SAV.Data, PokeDex + OFS_FLAG_NATIONAL);
+            get => ReadUInt32LittleEndian(SAV.Data.AsSpan(PokeDex + OFS_FLAG_NATIONAL)) == 1;
+            set => WriteUInt32LittleEndian(SAV.Data.AsSpan(PokeDex + OFS_FLAG_NATIONAL), value ? 1u : 0u);
         }
 
         public bool GetHasFormFlag(int species, int form, bool shiny)
@@ -258,7 +259,7 @@ namespace PKHeX.Core
             var baseOffset = GetFormOffset(species);
             var sizeShift = shiny ? GetFormSize(species) : 0;
             var offset = baseOffset + sizeShift + (ALIGN_BOOLARRAY * form);
-            return BitConverter.ToUInt32(SAV.Data, PokeDex + offset) == 1;
+            return ReadUInt32LittleEndian(SAV.Data.AsSpan(PokeDex + offset)) == 1;
         }
 
         public void SetHasFormFlag(int species, int form, bool shiny, bool value)
@@ -270,7 +271,7 @@ namespace PKHeX.Core
             var baseOffset = GetFormOffset(species);
             var sizeShift = shiny ? GetFormSize(species) : 0;
             var offset = baseOffset + sizeShift + (ALIGN_BOOLARRAY * form);
-            BitConverter.GetBytes((uint)(value ? 1 : 0)).CopyTo(SAV.Data, PokeDex + offset);
+            WriteUInt32LittleEndian(SAV.Data.AsSpan(PokeDex + offset), value ? 1u : 0u);
         }
 
         public static int GetFormCount(int species) => species switch
@@ -339,11 +340,14 @@ namespace PKHeX.Core
             if (pkm.IsEgg) // do not add
                 return;
 
+            var originalState = GetState(species);
             bool shiny = pkm.IsShiny;
             SetState(species, ZukanState8b.Caught);
             SetGenderFlag(species, pkm.Gender, shiny);
             SetLanguageFlag(species, pkm.Language, true);
             SetHasFormFlag(species, pkm.Form, shiny, true);
+            if (species is (int)Species.Spinda)
+                ((SAV8BS)SAV).ZukanExtra.SetDex(originalState, pkm.EncryptionConstant, pkm.Gender, shiny);
         }
 
         private void SetGenderFlag(int species, int gender, bool shiny)
@@ -365,12 +369,7 @@ namespace PKHeX.Core
         public override void SeenNone()
         {
             for (int species = 1; species <= Legal.MaxSpeciesID_4; species++)
-            {
-                if (GetSeen(species))
-                    SetState(species, ZukanState8b.HeardOf);
-                SetGenderFlags(species, false, false, false, false);
-                SetLanguageFlags(species, 0);
-            }
+                ClearDexEntryAll(species);
         }
 
         public override void CaughtNone()
@@ -433,9 +432,7 @@ namespace PKHeX.Core
                 }
                 else
                 {
-                    if (GetSeen(species))
-                        SetState(species, ZukanState8b.HeardOf);
-                    SetGenderFlags(species, false, false, false, false);
+                    ClearDexEntryAll(species);
                 }
             }
         }

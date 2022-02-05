@@ -15,6 +15,8 @@ namespace PKHeX.Core
         /// <summary> Valid item IDs that may be stored in the pouch. </summary>
         public readonly ushort[] LegalItems;
 
+        public readonly Func<ushort, bool>? IsItemLegal;
+
         /// <summary> Max quantity for a given item that can be stored in the pouch. </summary>
         public readonly int MaxCount;
 
@@ -31,7 +33,7 @@ namespace PKHeX.Core
         /// <summary> Size of the backing byte array that represents the pouch. </summary>
         protected readonly int PouchDataSize;
 
-        protected InventoryPouch(InventoryType type, ushort[] legal, int maxCount, int offset, int size = -1)
+        protected InventoryPouch(InventoryType type, ushort[] legal, int maxCount, int offset, int size = -1, Func<ushort, bool>? isLegal = null)
         {
             Items = Array.Empty<InventoryItem>();
             Type = type;
@@ -39,12 +41,13 @@ namespace PKHeX.Core
             MaxCount = maxCount;
             Offset = offset;
             PouchDataSize = size > -1 ? size : legal.Length;
+            IsItemLegal = isLegal;
         }
 
         /// <summary> Reads the pouch from the backing <see cref="data"/>. </summary>
-        public abstract void GetPouch(byte[] data);
+        public abstract void GetPouch(ReadOnlySpan<byte> data);
         /// <summary> Writes the pouch to the backing <see cref="data"/>. </summary>
-        public abstract void SetPouch(byte[] data);
+        public abstract void SetPouch(Span<byte> data);
 
         /// <summary> Orders the <see cref="Items"/> based on <see cref="InventoryItem.Count"/> </summary>
         public void SortByCount(bool reverse = false) => Array.Sort(Items, (x, y) => Compare(x.Count, y.Count, reverse));
@@ -53,8 +56,9 @@ namespace PKHeX.Core
         public void SortByIndex(bool reverse = false) => Array.Sort(Items, (x, y) => Compare(x.Index, y.Index, reverse));
         public void SortByName(string[] names, bool reverse = false) => Array.Sort(Items, (x, y) => Compare(x.Index, y.Index, names, reverse));
         public void SortByEmpty() => Array.Sort(Items, (x, y) => (x.Count == 0).CompareTo(y.Count == 0));
+        public void SortBy<TItem, TCompare>(Func<TItem, TCompare> selector) where TItem : InventoryItem where TCompare : IComparable => Array.Sort(Items, (x, y) => selector((TItem)x).CompareTo(selector((TItem)y)));
 
-        private static int Compare<T>(int i1, int i2, IReadOnlyList<T> n, bool rev) where T : IComparable
+        private static int Compare<TCompare>(int i1, int i2, IReadOnlyList<TCompare> n, bool rev) where TCompare : IComparable
         {
             if (i1 == 0 || i1 >= n.Count)
                 return 1;
@@ -104,8 +108,9 @@ namespace PKHeX.Core
                 if (Items[i].Count != 0)
                     Items[ctr++] = Items[i];
             }
+
             while (ctr < Items.Length)
-                Items[ctr++].Clear();
+                Items[ctr++] = GetEmpty();
         }
 
         /// <summary>
@@ -158,7 +163,7 @@ namespace PKHeX.Core
         /// </summary>
         public void ModifyAllCount(int value, Func<InventoryItem, int, bool> modifyCriteria)
         {
-            foreach (var item in Items.Where(z => z.Count != 0).Where(modifyCriteria))
+            foreach (var item in Items.Where(z => z.Index != 0).Where(modifyCriteria))
                 item.Count = value;
         }
 
@@ -166,23 +171,23 @@ namespace PKHeX.Core
         {
             if (count <= 0)
                 count = 1;
-            foreach (var item in Items.Where(z => z.Count != 0))
+            foreach (var item in Items.Where(z => z.Index != 0))
                 item.Count = GetSuggestedItemCount(sav, item.Index, count);
         }
 
         public void ModifyAllCount(Func<InventoryItem, int> modification)
         {
-            foreach (var item in Items.Where(z => z.Count != 0))
+            foreach (var item in Items.Where(z => z.Index != 0))
                 item.Count = modification(item);
         }
 
-        public void GiveAllItems(IReadOnlyList<ushort> newItems, Func<InventoryItem, int> getSuggestedItemCount, int count = -1)
+        public void GiveAllItems(ReadOnlySpan<ushort> newItems, Func<InventoryItem, int> getSuggestedItemCount, int count = -1)
         {
             GiveAllItems(newItems, count);
             ModifyAllCount(getSuggestedItemCount);
         }
 
-        public void GiveAllItems(SaveFile sav, IReadOnlyList<ushort> items, int count = -1)
+        public void GiveAllItems(SaveFile sav, ReadOnlySpan<ushort> items, int count = -1)
         {
             GiveAllItems(items, count);
             ModifyAllCount(item => GetSuggestedItemCount(sav, item.Index, count));
@@ -190,30 +195,35 @@ namespace PKHeX.Core
 
         public void GiveAllItems(SaveFile sav, int count = -1) => GiveAllItems(sav, LegalItems, count);
 
-        private void GiveAllItems(IReadOnlyList<ushort> newItems, int count = -1)
+        private void GiveAllItems(ReadOnlySpan<ushort> newItems, int count = -1)
         {
             if (count < 0)
                 count = MaxCount;
 
             var current = (InventoryItem[]) Items.Clone();
-            var itemEnd = Math.Min(Items.Length, newItems.Count);
-            for (int i = 0; i < itemEnd; i++)
-            {
-                var item = Items[i] = new InventoryItem {Index = newItems[i]};
+            var itemEnd = Math.Min(Items.Length, newItems.Length);
+            var iterate = newItems[..itemEnd];
 
-                var match = Array.Find(current, z => z.Index == newItems[i]);
+            int ctr = 0;
+            foreach (var newItemID in iterate)
+            {
+                if (IsItemLegal?.Invoke(newItemID) == false)
+                    continue;
+
+                var item = Items[ctr++] = GetEmpty(newItemID);
+                var match = Array.Find(current, z => z.Index == newItemID);
                 if (match == null)
                 {
-                    item.Count = count;
-                    item.New = true;
+                    item.SetNewDetails(count);
                     continue;
                 }
 
                 // load old values
-                item.Count = Math.Max(item.Count, match.Count);
-                item.FreeSpace = match.FreeSpace;
-                item.New = match.New;
+                item.MergeOverwrite(match);
             }
+
+            for (int i = ctr; i < Items.Length; i++)
+                Items[i] = GetEmpty();
         }
 
         public bool IsValidItemAndCount(ITrainerInfo sav, int item, bool HasNew, bool HaX, ref int count)
@@ -256,6 +266,8 @@ namespace PKHeX.Core
                 return 1;
             return Math.Min(MaxCount, requestVal);
         }
+
+        public abstract InventoryItem GetEmpty(int itemID = 0, int count = 0);
     }
 
     public static class InventoryPouchExtensions

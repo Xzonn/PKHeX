@@ -6,7 +6,7 @@ using System.IO;
 using System.Linq;
 using Newtonsoft.Json;
 using PKHeX.Core;
-using PKHeX.Drawing;
+using PKHeX.Drawing.PokeSprite;
 
 namespace PKHeX.WinForms
 {
@@ -46,9 +46,7 @@ namespace PKHeX.WinForms
                 var lines = File.ReadAllText(configPath);
                 return JsonConvert.DeserializeObject<PKHeXSettings>(lines) ?? new PKHeXSettings();
             }
-#pragma warning disable CA1031 // Do not catch general exception types
             catch (Exception x)
-#pragma warning restore CA1031 // Do not catch general exception types
             {
                 DumpConfigError(x);
                 return new PKHeXSettings();
@@ -68,9 +66,7 @@ namespace PKHeX.WinForms
                 var text = JsonConvert.SerializeObject(cfg, settings);
                 File.WriteAllText(configPath, text);
             }
-#pragma warning disable CA1031 // Do not catch general exception types
             catch (Exception x)
-#pragma warning restore CA1031 // Do not catch general exception types
             {
                 DumpConfigError(x);
             }
@@ -82,9 +78,7 @@ namespace PKHeX.WinForms
             {
                 File.WriteAllLines("config error.txt", new[] { x.ToString() });
             }
-#pragma warning disable CA1031 // Do not catch general exception types
             catch (Exception)
-#pragma warning restore CA1031 // Do not catch general exception types
             {
                 Debug.WriteLine(x); // ???
             }
@@ -100,13 +94,11 @@ namespace PKHeX.WinForms
         [LocalizedDescription("Tracks if the \"Create Backup\" prompt has been issued to the user.")]
         public bool BAKPrompt { get; set; }
 
-#pragma warning disable CA1819 // Properties should not return arrays
         [LocalizedDescription("List of extra locations to look for Save Files.")]
         public string[] OtherBackupPaths { get; set; } = Array.Empty<string>();
 
         [LocalizedDescription("Save File file-extensions (no period) that the program should also recognize.")]
         public string[] OtherSaveFileExtensions { get; set; } = Array.Empty<string>();
-#pragma warning restore CA1819 // Properties should not return arrays
     }
 
     [Serializable]
@@ -220,13 +212,13 @@ namespace PKHeX.WinForms
     }
 
     [Serializable]
-    public class AdvancedSettings
+    public sealed class AdvancedSettings
     {
         [LocalizedDescription("Allow PKM file conversion paths that are not possible via official methods. Individual properties will be copied sequentially.")]
         public bool AllowIncompatibleConversion { get; set; }
 
-        [LocalizedDescription("Path to a dump of block hash-names. If file does not exist, only names defined within the program's code will be loaded.")]
-        public string PathBlockKeyListSWSH { get; set; } = "SCBlocks.txt";
+        [LocalizedDescription("Folder path that contains dump(s) of block hash-names. If a specific dump file does not exist, only names defined within the program's code will be loaded.")]
+        public string PathBlockKeyList { get; set; } = string.Empty;
 
         [LocalizedDescription("Hide event variables below this event type value. Removes event values from the GUI that the user doesn't care to view.")]
         public NamedEventType HideEventTypeBelow { get; set; }
@@ -265,14 +257,14 @@ namespace PKHeX.WinForms
     }
 
     [Serializable]
-    public class EntityEditorSettings
+    public sealed class EntityEditorSettings
     {
         [LocalizedDescription("When changing the Hidden Power type, automatically maximize the IVs to ensure the highest Base Power result. Otherwise, keep the IVs as close as possible to the original.")]
         public bool HiddenPowerOnChangeMaxPower { get; set; } = true;
     }
 
     [Serializable]
-    public class EncounterDatabaseSettings
+    public sealed class EncounterDatabaseSettings
     {
         [LocalizedDescription("Skips searching if the user forgot to enter Species / Move(s) into the search criteria.")]
         public bool ReturnNoneIfEmptySearch { get; set; } = true;
@@ -288,7 +280,7 @@ namespace PKHeX.WinForms
     }
 
     [Serializable]
-    public class MysteryGiftDatabaseSettings
+    public sealed class MysteryGiftDatabaseSettings
     {
         [LocalizedDescription("Hides gifts if the currently loaded save file cannot (indirectly) receive them.")]
         public bool FilterUnavailableSpecies { get; set; } = true;

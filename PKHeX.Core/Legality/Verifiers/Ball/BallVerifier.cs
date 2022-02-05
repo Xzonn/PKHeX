@@ -47,6 +47,8 @@ namespace PKHeX.Core
                 // Only Gen3 origin Shedinja can copy the wild ball.
                 // Evolution chains will indicate if it could have existed as Shedinja in Gen3.
                 // The special move verifier has a similar check!
+                if (pkm.HGSS && pkm.Ball == (int)Sport) // Can evolve in DP to retain the HG/SS ball -- not able to be captured in any other ball
+                    return VerifyBallEquals(data, (int)Sport);
                 if (Info.Generation != 3 || Info.EvoChainsAllGens[3].Count != 2)
                     return VerifyBallEquals(data, (int)Poke); // Pokeball Only
             }
@@ -80,7 +82,7 @@ namespace PKHeX.Core
 
         private CheckResult VerifyBallWild(LegalityAnalysis data, EncounterSlot w)
         {
-            var req = w.GetRequiredBallValue();
+            var req = w.FixedBall;
             if (req != None)
                 return VerifyBallEquals(data, (int) req);
 
@@ -95,7 +97,6 @@ namespace PKHeX.Core
 
             return pkm.Ball switch
             {
-                (int)Poke => GetValid(LBallEnc), // Poké Ball
                 (int)Master => GetInvalid(LBallEggMaster), // Master Ball
                 (int)Cherish => GetInvalid(LBallEggCherish), // Cherish Ball
                 _ => VerifyBallInherited(data),
@@ -113,6 +114,9 @@ namespace PKHeX.Core
         private CheckResult VerifyBallEggGen6(LegalityAnalysis data)
         {
             var pkm = data.pkm;
+            if (pkm.Ball == (int)Poke)
+                return GetValid(LBallEnc); // Poké Ball
+
             var enc = data.EncounterMatch;
             int species = enc.Species;
             if (pkm.Gender == 2 || BallBreedLegality.BreedMaleOnly6.Contains(species)) // Genderless
@@ -183,6 +187,9 @@ namespace PKHeX.Core
         private CheckResult VerifyBallEggGen7(LegalityAnalysis data)
         {
             var pkm = data.pkm;
+            if (pkm.Ball == (int)Poke)
+                return GetValid(LBallEnc); // Poké Ball
+
             int species = data.EncounterMatch.Species;
             if (species is >= 722 and <= 730) // G7 Starters
                 return VerifyBallEquals(data, (int)Poke);
@@ -259,6 +266,8 @@ namespace PKHeX.Core
             int species = data.EncounterMatch.Species;
             if (BallBreedLegality.BanInheritedBall_BDSP.Contains(species))
                 return VerifyBallEquals(data, (int)Poke);
+            if (BallBreedLegality.BanInheritedExceptSafari_BDSP.Contains(species))
+                return VerifyBallEquals(data, (int)Safari);
 
             if (data.pkm.Ball == (int)Safari)
             {
@@ -274,6 +283,9 @@ namespace PKHeX.Core
         private CheckResult VerifyBallEggGen8(LegalityAnalysis data)
         {
             var pkm = data.pkm;
+            if (pkm.Ball == (int)Poke)
+                return GetValid(LBallEnc); // Poké Ball
+
             int species = data.EncounterMatch.Species;
             if (species is >= (int)Species.Grookey and <= (int)Species.Inteleon) // G8 Starters
                 return VerifyBallEquals(data, (int)Poke);

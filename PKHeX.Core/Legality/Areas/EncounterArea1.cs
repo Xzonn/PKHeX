@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace PKHeX.Core
 {
@@ -13,15 +14,15 @@ namespace PKHeX.Core
 
         protected override IReadOnlyList<EncounterSlot> Raw => Slots;
 
-        public static EncounterArea1[] GetAreas(byte[][] input, GameVersion game)
+        public static EncounterArea1[] GetAreas(BinLinkerAccessor input, GameVersion game)
         {
             var result = new EncounterArea1[input.Length];
-            for (int i = 0; i < input.Length; i++)
+            for (int i = 0; i < result.Length; i++)
                 result[i] = new EncounterArea1(input[i], game);
             return result;
         }
 
-        private EncounterArea1(byte[] data, GameVersion game) : base(game)
+        private EncounterArea1(ReadOnlySpan<byte> data, GameVersion game) : base(game)
         {
             Location = data[0];
             // 1 byte unused
@@ -33,13 +34,19 @@ namespace PKHeX.Core
             for (int i = 0; i < slots.Length; i++)
             {
                 int offset = 4 + (4 * i);
-                int species = data[offset + 0];
-                int slotNum = data[offset + 1];
-                int min = data[offset + 2];
-                int max = data[offset + 3];
-                slots[i] = new EncounterSlot1(this, species, min, max, slotNum);
+                var entry = data.Slice(offset, 4);
+                slots[i] = ReadSlot(entry);
             }
             Slots = slots;
+        }
+
+        private EncounterSlot1 ReadSlot(ReadOnlySpan<byte> entry)
+        {
+            int species = entry[0];
+            int slotNum = entry[1];
+            int min = entry[2];
+            int max = entry[3];
+            return new EncounterSlot1(this, species, min, max, slotNum);
         }
 
         public override IEnumerable<EncounterSlot> GetMatchingSlots(PKM pkm, IReadOnlyList<EvoCriteria> chain)
@@ -60,7 +67,7 @@ namespace PKHeX.Core
                     if (rate != -1)
                     {
                         var expect = (slot.Version == GameVersion.YW ? PersonalTable.Y : PersonalTable.RB)[slot.Species].CatchRate;
-                        if (expect != rate && !GBRestrictions.IsTradebackCatchRate(rate))
+                        if (expect != rate && !(ParseSettings.AllowGen1Tradeback && GBRestrictions.IsTradebackCatchRate(rate)))
                             break;
                     }
                     yield return slot;

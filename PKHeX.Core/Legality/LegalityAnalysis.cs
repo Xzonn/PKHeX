@@ -1,4 +1,4 @@
-﻿#define SUPPRESS
+﻿//#define SUPPRESS
 
 using System;
 using System.Collections.Generic;
@@ -111,9 +111,7 @@ namespace PKHeX.Core
             }
 #if SUPPRESS
             // We want to swallow any error from malformed input data from the user. The Valid state is all that we really need.
-#pragma warning disable CA1031 // Do not catch general exception types
             catch (Exception e)
-#pragma warning restore CA1031 // Do not catch general exception types
             {
                 System.Diagnostics.Debug.WriteLine(e.Message);
                 Valid = false;
@@ -313,6 +311,7 @@ namespace PKHeX.Core
                 return;
 
             Mark.Verify(this);
+            Arceus.Verify(this);
         }
     }
 }

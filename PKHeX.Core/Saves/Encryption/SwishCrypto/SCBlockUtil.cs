@@ -73,7 +73,7 @@ namespace PKHeX.Core
             return sb.ToString();
         }
 
-        public static List<string> ImportBlocksFromFolder(string path, SAV8SWSH sav)
+        public static List<string> ImportBlocksFromFolder(string path, ISCBlockArray sav)
         {
             var failed = new List<string>();
             var files = Directory.EnumerateFiles(path);
@@ -89,7 +89,7 @@ namespace PKHeX.Core
                 var hex = Util.GetHexValue(fn);
                 try
                 {
-                    var block = sav.Blocks.GetBlock(hex);
+                    var block = sav.Accessor.GetBlock(hex);
                     var len = block.Data.Length;
                     var fi = new FileInfo(f);
                     if (fi.Length != len)
@@ -101,9 +101,7 @@ namespace PKHeX.Core
                     var data = File.ReadAllBytes(f);
                     block.ChangeData(data);
                 }
-#pragma warning disable CA1031 // Do not catch general exception types
                 catch
-#pragma warning restore CA1031 // Do not catch general exception types
                 {
                     failed.Add(fn);
                 }

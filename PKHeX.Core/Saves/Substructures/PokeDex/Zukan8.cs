@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using static System.Buffers.Binary.BinaryPrimitives;
 
 namespace PKHeX.Core
 {
@@ -195,7 +196,7 @@ namespace PKHeX.Core
             for (int i = 0; i < SeenRegionCount; i++)
             {
                 var ofs = offset + (SeenRegionSize * i);
-                if (BitConverter.ToUInt64(data, ofs) != 0)
+                if (ReadUInt64LittleEndian(data.AsSpan(ofs)) != 0)
                     return true;
             }
 
@@ -317,8 +318,8 @@ namespace PKHeX.Core
         {
             var data = GetDexBlock(entry.DexType);
             var index = entry.Offset;
-            var val = BitConverter.ToUInt32(data, index + OFS_CAUGHT);
-            return (val >> 15) & 0x1FFF; // (0x1FFF is really overkill, GameFreak)
+            var value = ReadUInt32LittleEndian(data.AsSpan(index + OFS_CAUGHT));
+            return (value >> 15) & 0x1FFF; // (0x1FFF is really overkill, GameFreak)
         }
 
         public void SetFormDisplayed(int species, uint value = 0)
@@ -333,9 +334,10 @@ namespace PKHeX.Core
         {
             var data = GetDexBlock(entry.DexType);
             var index = entry.Offset;
-            var val = BitConverter.ToUInt32(data, index + OFS_CAUGHT);
-            uint nv = (val & ~(0x1FFFu << 15)) | ((value & 0x1FFF) << 15);
-            BitConverter.GetBytes(nv).CopyTo(data, index + OFS_CAUGHT);
+            var span = data.AsSpan(index + OFS_CAUGHT);
+            var current = ReadUInt32LittleEndian(span);
+            uint update = (current & ~(0x1FFFu << 15)) | ((value & 0x1FFF) << 15);
+            WriteUInt32LittleEndian(span, update);
         }
 
         public uint GetGenderDisplayed(int species)
@@ -350,8 +352,8 @@ namespace PKHeX.Core
         {
             var data = GetDexBlock(entry.DexType);
             var index = entry.Offset;
-            var val = BitConverter.ToUInt32(data, index + OFS_CAUGHT);
-            return (val >> 29) & 3;
+            var value = ReadUInt32LittleEndian(data.AsSpan(index + OFS_CAUGHT));
+            return (value >> 29) & 3;
         }
 
         public void SetGenderDisplayed(int species, uint value = 0)
@@ -366,9 +368,10 @@ namespace PKHeX.Core
         {
             var data = GetDexBlock(entry.DexType);
             var index = entry.Offset;
-            var val = BitConverter.ToUInt32(data, index + OFS_CAUGHT);
-            uint nv = (val & ~(3u << 29)) | ((value & 3) << 29);
-            BitConverter.GetBytes(nv).CopyTo(data, index + OFS_CAUGHT);
+            var span = data.AsSpan(index + OFS_CAUGHT);
+            var current = ReadUInt32LittleEndian(span);
+            uint update = (current & ~(3u << 29)) | ((value & 3) << 29);
+            WriteUInt32LittleEndian(span, update);
         }
 
         public bool GetDisplayDynamaxInstead(int species) => GetCaughtFlagID(species, 28);
@@ -443,7 +446,7 @@ namespace PKHeX.Core
             var dex = entry.DexType;
             var index = entry.Offset;
             var data = GetDexBlock(dex);
-            return BitConverter.ToUInt32(data, index + ofs);
+            return ReadUInt32LittleEndian(data.AsSpan(index + ofs));
         }
 
         private void SetU32(int species, uint value, int ofs)
@@ -459,7 +462,7 @@ namespace PKHeX.Core
             var dex = entry.DexType;
             var index = entry.Offset;
             var data = GetDexBlock(dex);
-            BitConverter.GetBytes(value).CopyTo(data, index + ofs);
+            WriteUInt32LittleEndian(data.AsSpan(index + ofs), value);
         }
 
         #endregion
@@ -725,20 +728,11 @@ namespace PKHeX.Core
     /// <summary>
     /// Indicates which <see cref="Zukan8Type"/> block will store the entry, and at what index.
     /// </summary>
-    public readonly struct Zukan8Index
+    /// <param name="DexType">Which block stores the Pokédex entry.</param>
+    /// <param name="Index">Index that the Pokédex entry is stored at.</param>
+    public readonly record struct Zukan8Index(Zukan8Type DexType, int Index)
     {
-        /// <summary> Index that the Pokédex entry is stored at. </summary>
-        public readonly int Index;
-        /// <summary> Which block stores the Pokédex entry. </summary>
-        public readonly Zukan8Type DexType;
-
         public override string ToString() => $"{Index:000} - {DexType}";
-
-        public Zukan8Index(Zukan8Type dexType, int index)
-        {
-            DexType = dexType;
-            Index = index;
-        }
 
         private int GetSavedIndex()
         {
@@ -794,25 +788,10 @@ namespace PKHeX.Core
         {
             return $"{DexPrefix}.{Index:000} - {speciesNames[species]}";
         }
-
-        public override bool Equals(object obj) => obj is Zukan8Index x && x.Equals(this);
-        public bool Equals(Zukan8Index obj) => obj.Index == Index && obj.DexType == DexType;
-        public override int GetHashCode() => (int)DexType ^ (Index << 3);
-        public static bool operator ==(Zukan8Index left, Zukan8Index right) => left.Equals(right);
-        public static bool operator !=(Zukan8Index left, Zukan8Index right) => !(left == right);
     }
 
-    public sealed class Zukan8EntryInfo
+    public readonly record struct Zukan8EntryInfo(int Species, Zukan8Index Entry)
     {
-        public readonly int Species;
-        public readonly Zukan8Index Entry;
-
-        public Zukan8EntryInfo(int species, Zukan8Index entry)
-        {
-            Species = species;
-            Entry = entry;
-        }
-
         public string GetEntryName(IReadOnlyList<string> speciesNames) => Entry.GetEntryName(speciesNames, Species);
     }
 

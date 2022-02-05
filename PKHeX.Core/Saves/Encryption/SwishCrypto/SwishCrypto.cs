@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
 
@@ -8,7 +9,7 @@ namespace PKHeX.Core
     /// MemeCrypto V2 - The Next Generation
     /// </summary>
     /// <remarks>
-    /// A variant of <see cref="SaveFile"/> encryption and obfuscation used in <see cref="GameVersion.SWSH"/>.
+    /// A variant of <see cref="SaveFile"/> encryption and obfuscation used in <see cref="GameVersion.SWSH"/> and <see cref="GameVersion.PLA"/>.
     /// <br> Individual save blocks are stored in a hash map, with some object-type details prefixing the block's raw data. </br>
     /// <br> Once the raw save file data is dumped, the binary is hashed with SHA256 using a static Intro salt and static Outro salt. </br>
     /// <br> With the hash computed, the data is encrypted with a repeating irregular-sized static xor cipher. </br>
@@ -45,7 +46,7 @@ namespace PKHeX.Core
             0xA4, 0x48, 0xB3, 0x50, 0x9E, 0x14, 0xA0, 0x52, 0xDE, 0x7E, 0x10, 0x2B, 0x1B, 0x77, 0x6E,
         };
 
-        public static void CryptStaticXorpadBytes(byte[] data)
+        public static void CryptStaticXorpadBytes(Span<byte> data)
         {
             var xp = StaticXorpad;
             for (var i = 0; i < data.Length - SIZE_HASH; i++)
@@ -84,13 +85,23 @@ namespace PKHeX.Core
                 return false;
 
             var hash = ComputeHash(data);
-            for (int i = 0; i < hash.Length; i++)
-            {
-                if (hash[i] != data[data.Length - SIZE_HASH + i])
-                    return false;
-            }
+            var span = data.AsSpan()[^hash.Length..];
+            return span.SequenceEqual(hash);
+        }
 
-            return true;
+        /// <summary>
+        /// Checks if the file is a rough example of a save file.
+        /// </summary>
+        /// <param name="data">Encrypted save data</param>
+        /// <returns>True if hash matches</returns>
+        public static bool GetIsHashValidLA(byte[] data)
+        {
+            if (data.Length != SaveUtil.SIZE_G8LA)
+                return false;
+
+            var hash = ComputeHash(data);
+            var span = data.AsSpan()[^hash.Length..];
+            return span.SequenceEqual(hash);
         }
 
         /// <summary>
@@ -101,7 +112,7 @@ namespace PKHeX.Core
         /// <remarks>
         /// Hash is assumed to be valid before calling this method.
         /// </remarks>
-        public static IReadOnlyList<SCBlock> Decrypt(byte[] data)
+        public static IReadOnlyList<SCBlock> Decrypt(Span<byte> data)
         {
             CryptStaticXorpadBytes(data);
             return ReadBlocks(data);
@@ -110,7 +121,7 @@ namespace PKHeX.Core
         private const int BlockDataRatioEstimate1 = 777; // bytes per block, on average (generous)
         private const int BlockDataRatioEstimate2 = 555; // bytes per block, on average (stingy)
 
-        private static IReadOnlyList<SCBlock> ReadBlocks(byte[] data)
+        private static IReadOnlyList<SCBlock> ReadBlocks(ReadOnlySpan<byte> data)
         {
             var result = new List<SCBlock>(data.Length / BlockDataRatioEstimate2);
             int offset = 0;

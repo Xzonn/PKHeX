@@ -31,17 +31,7 @@ namespace PKHeX.Core
             {(int)Clobbopus,  new(9, (int)Taunt)},
         };
 
-        private readonly struct MoveEvolution
-        {
-            public readonly int ReferenceIndex;
-            public readonly int Move;
-
-            public MoveEvolution(int referenceIndex, int move)
-            {
-                ReferenceIndex = referenceIndex;
-                Move = move;
-            }
-        }
+        private readonly record struct MoveEvolution(int ReferenceIndex, int Move);
 
         private static readonly int[] FairyMoves =
         {
@@ -93,6 +83,20 @@ namespace PKHeX.Core
             new byte[] { 00, 00, 00, 00, 02, 02, 02, 02, 02 }, // Mamoswine (Piloswine with Ancient Power)
             new byte[] { 00, 00, 00, 00, 00, 00, 00, 02, 28 }, // Tsareena (Steenee with Stomp)
             new byte[] { 00, 00, 00, 00, 00, 00, 00, 00, 35 }, // Grapploct (Clobbopus with Taunt)
+        };
+
+        private static readonly byte[] MinLevelEvolutionWithMove_8LA =
+        {
+            00, // Sylveon (Eevee with Fairy Move)
+            25, // Mr. Mime (Mime Jr with Mimic)
+            29, // Sudowoodo (Bonsly with Mimic)
+            25, // Ambipom (Aipom with Double Hit)
+            34, // Lickilicky (Lickitung with Rollout)
+            34, // Tangrowth (Tangela with Ancient Power)
+            34, // Yanmega (Yanma with Ancient Power)
+            34, // Mamoswine (Piloswine with Ancient Power)
+            99, // Tsareena (Steenee with Stomp)
+            99, // Grapploct (Clobbopus with Taunt)
         };
 
         private static readonly bool[][] CanEggHatchWithEvolveMove =
@@ -163,6 +167,9 @@ namespace PKHeX.Core
 
         private static int GetMinLevelKnowRequiredMove(PKM pkm, int gen, int index)
         {
+            if (gen == 8 && pkm.LA) // No Level Up required, and different levels than mainline SW/SH.
+                return MinLevelEvolutionWithMove_8LA[index];
+
             var lvl = GetLevelLearnMove(pkm, gen, index);
 
             // If has original met location the minimum evolution level is one level after met level

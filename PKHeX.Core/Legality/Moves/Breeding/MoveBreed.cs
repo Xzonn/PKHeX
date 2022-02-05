@@ -60,7 +60,8 @@ namespace PKHeX.Core
             var table = GameData.GetPersonal(version);
             var index = table.GetFormIndex(species, form);
             var learnset = learn[index];
-            var baseMoves = learnset.GetBaseEggMoves(generation >= 4 ? 1 : 5);
+            var eggLevel = EggStateLegality.GetEggLevel(generation);
+            var baseMoves = learnset.GetBaseEggMoves(eggLevel);
 
             RebuildMoves(baseMoves, exp, reorder2);
 
@@ -101,16 +102,6 @@ namespace PKHeX.Core
                 result[i] = 0;
         }
 
-        private readonly struct MoveOrder
-        {
-            public readonly ushort Move;
-            public readonly byte Source;
-
-            public MoveOrder(ushort move, byte source)
-            {
-                Move = move;
-                Source = source;
-            }
-        }
+        private readonly record struct MoveOrder(ushort Move, byte Source);
     }
 }

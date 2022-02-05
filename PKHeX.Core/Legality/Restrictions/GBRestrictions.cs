@@ -13,13 +13,9 @@ namespace PKHeX.Core
     /// </summary>
     internal static class GBRestrictions
     {
-        private static readonly int[] G1CaterpieMoves = { 33, 81 };
-        private static readonly int[] G1WeedleMoves = { 40, 81 };
-        //private static readonly int[] G1MetapodMoves = { 33, 81, 106 };
-        private static readonly int[] G1KakunaMoves = { 40, 81, 106 };
         private static readonly int[] G1Exeggcute_IncompatibleMoves = { 78, 77, 79 };
 
-        internal static readonly int[] Stadium_CatchRate =
+        private static readonly int[] Stadium_CatchRate =
         {
             167, // Normal Box
             168, // Gorgeous Box
@@ -214,7 +210,7 @@ namespace PKHeX.Core
             if (capsuleState != TimeCapsuleEvaluation.NotTransferred) // No Move Deleter in Gen 1
                 return 1; // Move Deleter exits, slots from 2 onwards can always be empty
 
-            if (enc is IMoveset {Moves: {Count: 4}})
+            if (enc is IMoveset {Moves.Count: 4 })
                 return 4;
 
             int required = GetRequiredMoveCount(pk, moves, info.EncounterMoves.LevelUpMoves, initialmoves, enc.Species);
@@ -235,7 +231,7 @@ namespace PKHeX.Core
         private static int GetRequiredMoveCount(PK1 pk, IReadOnlyList<int> moves, IReadOnlyList<int>[] learn, IReadOnlyList<int> initialmoves, int originalSpecies)
         {
             if (SpecialMinMoveSlots.Contains(pk.Species))
-                return GetRequiredMoveCountSpecial(pk, moves, learn);
+                return GetRequiredMoveCountSpecial(pk, moves, learn, originalSpecies);
 
             // A pokemon is captured with initial moves and can't forget any until have all 4 slots used
             // If it has learn a move before having 4 it will be in one of the free slots
@@ -292,7 +288,9 @@ namespace PKHeX.Core
                     break;
                 case (int)Cubone or (int)Marowak: // Cubone & Marowak
                     if (!moves.Contains((int)Move.TailWhip) && !moves.Contains((int)Move.Headbutt)) // Initial Red
-                        usedslots-=2;
+                    {
+                        usedslots -=2;
+                    }
                     else
                     {
                         if (!moves.Contains(39)) // Initial Yellow Tail Whip
@@ -319,12 +317,12 @@ namespace PKHeX.Core
             return usedslots;
         }
 
-        private static int GetRequiredMoveCountSpecial(PKM pk, IReadOnlyList<int> moves, IReadOnlyList<int>[] learn)
+        private static int GetRequiredMoveCountSpecial(PKM pk, IReadOnlyList<int> moves, IReadOnlyList<int>[] learn, int originalSpecies)
         {
             // Species with few mandatory slots, species with stone evolutions that could evolve at lower level and do not learn any more moves
             // and Pikachu and Nidoran family, those only have mandatory the initial moves and a few have one level up moves,
             // every other move could be avoided switching game or evolving
-            var mandatory = GetRequiredMoveCountLevel(pk);
+            var mandatory = GetRequiredMoveCountLevel(pk, originalSpecies);
             switch (pk.Species)
             {
                 case (int)Exeggutor when pk.CurrentLevel >= 28: // Exeggutor
@@ -346,10 +344,9 @@ namespace PKHeX.Core
             return mandatory.Distinct().Count(z => z != 0) + moves.Where(m => m != 0).Count(m => !mandatory.Contains(m) && learn[1].Contains(m));
         }
 
-        private static List<int> GetRequiredMoveCountLevel(PKM pk)
+        private static List<int> GetRequiredMoveCountLevel(PKM pk, int basespecies)
         {
             int species = pk.Species;
-            int basespecies = EvoBase.GetBaseSpecies(pk).Species;
             int maxlevel = 1;
             int minlevel = 1;
 
@@ -493,7 +490,11 @@ namespace PKHeX.Core
         {
             // ReSharper disable once ConditionIsAlwaysTrueOrFalse
             if (moves.Any(z => z != null && z.Generation != enc.Generation && z.Generation <= 2))
+            {
+                if (pkm is PK1 {Catch_Rate: not 0} g1 && !IsTradebackCatchRate(g1.Catch_Rate))
+                    return TimeCapsuleEvaluation.BadCatchRate;
                 return enc.Generation == 2 ? TimeCapsuleEvaluation.Transferred21 : TimeCapsuleEvaluation.Transferred12;
+            }
 
             if (pkm is not GBPKM gb)
             {
@@ -518,9 +519,14 @@ namespace PKHeX.Core
 
             if (gb is PK1 pk1)
             {
+                var rate = pk1.Catch_Rate;
+                if (rate == 0)
+                    return TimeCapsuleEvaluation.Transferred12;
+
+                bool isTradebackItem = IsTradebackCatchRate(rate);
                 if (IsCatchRateMatchEncounter(enc, pk1))
-                    return IsTradebackCatchRate(pk1.Catch_Rate) ? TimeCapsuleEvaluation.Indeterminate : TimeCapsuleEvaluation.NotTransferred;
-                return IsTradebackCatchRate(pk1.Catch_Rate) ? TimeCapsuleEvaluation.Transferred12 : TimeCapsuleEvaluation.BadCatchRate;
+                    return isTradebackItem ? TimeCapsuleEvaluation.Indeterminate : TimeCapsuleEvaluation.NotTransferred;
+                return isTradebackItem ? TimeCapsuleEvaluation.Transferred12 : TimeCapsuleEvaluation.BadCatchRate;
             }
             return TimeCapsuleEvaluation.Indeterminate;
         }

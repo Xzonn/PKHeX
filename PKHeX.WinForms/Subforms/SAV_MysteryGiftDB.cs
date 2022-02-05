@@ -7,7 +7,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using PKHeX.Core;
-using PKHeX.Drawing;
+using PKHeX.Drawing.PokeSprite;
 using PKHeX.WinForms.Properties;
 using PKHeX.WinForms.Controls;
 using static PKHeX.Core.MessageStrings;
@@ -216,6 +216,8 @@ namespace PKHeX.WinForms
             {
                 db = SAV switch
                 {
+                    SAV8LA => db.Where(z => z is WA8),
+                    SAV8BS => db.Where(z => z is WB8),
                     SAV8SWSH => db.Where(z => ((PersonalInfoSWSH)PersonalTable.SWSH.GetFormEntry(z.Species, z.Form)).IsPresentInGame),
                     SAV7b => db.Where(z => z is WB7),
                     SAV7 => db.Where(z => z.Generation < 7 || z is WC7),
@@ -236,9 +238,7 @@ namespace PKHeX.WinForms
                     PopulateComboBoxes();
                 }));
             }
-#pragma warning disable CA1031 // Do not catch general exception types
             catch { /* Window Closed? */ }
-#pragma warning restore CA1031 // Do not catch general exception types
         }
 
         // IO Usage
@@ -304,11 +304,13 @@ namespace PKHeX.WinForms
             if (move3 != -1) res = res.Where(mg => mg.HasMove(move3));
             if (move4 != -1) res = res.Where(mg => mg.HasMove(move4));
 
-            if (CHK_Shiny.CheckState == CheckState.Checked) res = res.Where(pk => pk.IsShiny);
-            else if (CHK_Shiny.CheckState == CheckState.Unchecked) res = res.Where(pk => !pk.IsShiny);
+            var shiny = CHK_Shiny.CheckState;
+            if (shiny == CheckState.Checked) res = res.Where(pk => pk.IsShiny);
+            else if (shiny == CheckState.Unchecked) res = res.Where(pk => !pk.IsShiny);
 
-            if (CHK_IsEgg.CheckState == CheckState.Checked) res = res.Where(pk => pk.IsEgg);
-            else if (CHK_IsEgg.CheckState == CheckState.Unchecked) res = res.Where(pk => !pk.IsEgg);
+            var egg = CHK_IsEgg.CheckState;
+            if (egg == CheckState.Checked) res = res.Where(pk => pk.IsEgg);
+            else if (egg == CheckState.Unchecked) res = res.Where(pk => !pk.IsEgg);
 
             slotSelected = -1; // reset the slot last viewed
 

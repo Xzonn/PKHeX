@@ -141,10 +141,8 @@ namespace PKHeX.WinForms
             {
                 Error(MsgClipboardFailWrite, x);
             }
-#pragma warning disable CA1031 // Do not catch general exception types
             // Clipboard might be locked sometimes
             catch
-#pragma warning restore CA1031 // Do not catch general exception types
             {
                 Error(MsgClipboardFailWrite);
             }
@@ -282,9 +280,7 @@ namespace PKHeX.WinForms
                 {
                     sav = SaveFinder.FindMostRecentSaveFile();
                 }
-#pragma warning disable CA1031 // Do not catch general exception types
                 catch (Exception ex)
-#pragma warning restore CA1031 // Do not catch general exception types
                 {
                     Error(ex.Message);
                 }
@@ -444,9 +440,9 @@ namespace PKHeX.WinForms
             7 => GameVersion.GG.Contains(origin)
                 ? "Beluga Gift Record|*.wr7" + all
                 : "Gen7 Mystery Gift|*.wc7;*.wc7full" + all,
-            8 => GameVersion.BDSP.Contains(origin)
-                ? "BD/SP Gift|*.wb8" + all
-                : "Gen8 Mystery Gift|*.wc8" + all,
+            8 when GameVersion.BDSP.Contains(origin) => "BD/SP Gift|*.wb8" + all,
+            8 when GameVersion.PLA.Contains(origin) => "Legends: Arceus Gift|*.wa8" + all,
+            8 => "Gen8 Mystery Gift|*.wc8" + all,
             _ => string.Empty,
         };
 

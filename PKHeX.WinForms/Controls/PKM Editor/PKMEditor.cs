@@ -6,8 +6,8 @@ using System.Windows.Forms;
 using PKHeX.Core;
 using PKHeX.Drawing;
 using System.ComponentModel;
-using PKHeX.Drawing.Properties;
-
+using PKHeX.Drawing.PokeSprite;
+using PKHeX.Drawing.PokeSprite.Properties;
 using static PKHeX.Core.MessageStrings;
 
 namespace PKHeX.WinForms.Controls
@@ -52,6 +52,7 @@ namespace PKHeX.WinForms.Controls
                 new(new[] {CB_Country, CB_SubRegion}, pk => pk is PK6 or PK7, Criteria),
                 new(Relearn, pk => pk.Format >= 6, Criteria),
                 new(new[] {CB_StatNature}, pk => pk.Format >= 8, Criteria),
+                new(new[] {CB_AlphaMastered}, pk => pk is PA8, Criteria),
             };
 
             foreach (var c in WinFormsUtil.GetAllControlsOfType<ComboBox>(this))
@@ -66,7 +67,7 @@ namespace PKHeX.WinForms.Controls
             FlickerInterface();
         }
 
-        private class ValidationRequiredSet
+        private sealed class ValidationRequiredSet
         {
             private readonly Control[] Controls;
             private readonly Func<PKM, bool> ShouldCheck;
@@ -94,6 +95,7 @@ namespace PKHeX.WinForms.Controls
                 CB_Nature, CB_StatNature,
                 CB_Country, CB_SubRegion, CB_3DSReg, CB_Language, CB_Ball, CB_HeldItem, CB_Species, DEV_Ability,
                 CB_GroundTile, CB_GameOrigin, CB_BattleVersion, CB_Ability, CB_MetLocation, CB_EggLocation, CB_Language, CB_HTLanguage,
+                CB_AlphaMastered,
             };
             foreach (var cb in cbs.Concat(Moves.Concat(Relearn)))
                 cb.InitializeBinding();
@@ -254,6 +256,7 @@ namespace PKHeX.WinForms.Controls
             7 when pk is PK7 => (PopulateFieldsPK7, PreparePK7),
             7 when pk is PB7 => (PopulateFieldsPB7, PreparePB7),
             8 when pk is PK8 => (PopulateFieldsPK8, PreparePK8),
+            8 when pk is PA8 => (PopulateFieldsPA8, PreparePA8),
             8 when pk is PB8 => (PopulateFieldsPB8, PreparePB8),
             _ => throw new FormatException($"Unrecognized Type: {pk.GetType()}"),
         };
@@ -421,8 +424,8 @@ namespace PKHeX.WinForms.Controls
             }
 
             // Copy OT trash bytes for sensitive games (Gen1/2)
-                 if (tr is SAV1 s1 && Entity is PK1 p1) p1.OT_Trash = s1.OT_Trash;
-            else if (tr is SAV2 s2 && Entity is PK2 p2) p2.OT_Trash = s2.OT_Trash;
+                 if (tr is SAV1 s1 && Entity is PK1 p1) s1.OT_Trash.CopyTo(p1.OT_Trash);
+            else if (tr is SAV2 s2 && Entity is PK2 p2) s2.OT_Trash.CopyTo(p2.OT_Trash);
 
             UpdateNickname(this, EventArgs.Empty);
         }
@@ -554,6 +557,8 @@ namespace PKHeX.WinForms.Controls
                 return Properties.Resources.gen_8;
             if (pkm.BDSP)
                 return Properties.Resources.gen_bs;
+            if (pkm.LA)
+                return Properties.Resources.gen_la;
 
             return null;
         }
@@ -727,7 +732,8 @@ namespace PKHeX.WinForms.Controls
             UpdateLegality(skipMoveRepop: true);
             if (sender == GB_CurrentMoves)
             {
-                if (!SetSuggestedMoves(random: ModifierKeys == Keys.Control))
+                bool random = ModifierKeys == Keys.Control;
+                if (!SetSuggestedMoves(random))
                     return;
             }
             else if (sender == GB_RelearnMoves)
@@ -973,9 +979,9 @@ namespace PKHeX.WinForms.Controls
                 return;
             if (Util.ToInt32(tb.Text) > byte.MaxValue)
                 tb.Text = "255";
-            if (sender == TB_Friendship && int.TryParse(TB_Friendship.Text, out var val))
+            if (sender == TB_Friendship && int.TryParse(TB_Friendship.Text, out var value))
             {
-                UpdateFromFriendshipTextBox(Entity, val);
+                UpdateFromFriendshipTextBox(Entity, value);
                 UpdateStats();
             }
         }
@@ -1294,6 +1300,15 @@ namespace PKHeX.WinForms.Controls
             TB_ExtraByte.Text = Entity.Data[offset].ToString();
         }
 
+        public void ChangeNature(int newNature)
+        {
+            if (Entity.Format < 3)
+                return;
+
+            var cb = Entity.Format >= 8 ? CB_StatNature : CB_Nature;
+            cb.SelectedValue = newNature;
+        }
+
         private void UpdateNatureModification(ComboBox cb, int nature)
         {
             string text = Stats.UpdateNatureModification(nature);
@@ -1367,26 +1382,29 @@ namespace PKHeX.WinForms.Controls
             if (tb == TB_Nickname)
             {
                 Entity.Nickname = tb.Text;
-                var d = new TrashEditor(tb, Entity.Nickname_Trash, sav);
+                var span = Entity.Nickname_Trash;
+                var d = new TrashEditor(tb, span, sav);
                 d.ShowDialog();
                 tb.Text = d.FinalString;
-                Entity.Nickname_Trash = d.FinalBytes;
+                d.FinalBytes.CopyTo(span);
             }
             else if (tb == TB_OT)
             {
                 Entity.OT_Name = tb.Text;
-                var d = new TrashEditor(tb, Entity.OT_Trash, sav);
+                var span = Entity.OT_Trash;
+                var d = new TrashEditor(tb, span, sav);
                 d.ShowDialog();
                 tb.Text = d.FinalString;
-                Entity.OT_Trash = d.FinalBytes;
+                d.FinalBytes.CopyTo(span);
             }
             else if (tb == TB_OTt2)
             {
                 Entity.HT_Name = tb.Text;
-                var d = new TrashEditor(tb, Entity.HT_Trash, sav);
+                var span = Entity.HT_Trash;
+                var d = new TrashEditor(tb, span, sav);
                 d.ShowDialog();
                 tb.Text = d.FinalString;
-                Entity.HT_Trash = d.FinalBytes;
+                d.FinalBytes.CopyTo(span);
             }
         }
 
@@ -1457,9 +1475,15 @@ namespace PKHeX.WinForms.Controls
 
                 if (CB_EggLocation.SelectedIndex == 0)
                 {
+                    CAL_MetDate.Value = DateTime.Now;
                     CAL_EggDate.Value = new DateTime(2000, 01, 01);
                     CHK_AsEgg.Checked = false;
                     GB_EggConditions.Enabled = false;
+                }
+                else
+                {
+                    CAL_MetDate.Value = CAL_EggDate.Value;
+                    CB_MetLocation.SelectedValue = EncounterSuggestion.GetSuggestedEggMetLocation(Entity);
                 }
 
                 if (TB_Nickname.Text == SpeciesName.GetSpeciesNameGeneration(0, WinFormsUtil.GetIndex(CB_Language), Entity.Format))
@@ -1696,6 +1720,8 @@ namespace PKHeX.WinForms.Controls
                 Entity.RelearnMove3 = WinFormsUtil.GetIndex(CB_RelearnMove3);
                 Entity.RelearnMove4 = WinFormsUtil.GetIndex(CB_RelearnMove4);
             }
+            if (Entity is PA8 pa8)
+                pa8.AlphaMove = WinFormsUtil.GetIndex(CB_AlphaMastered);
             UpdateLegality(skipMoveRepop: true);
         }
 
@@ -1783,14 +1809,36 @@ namespace PKHeX.WinForms.Controls
 
         private void B_Records_Click(object sender, EventArgs e)
         {
+            if (Entity is not ITechRecord8 t)
+                return;
+
             if (ModifierKeys == Keys.Shift)
             {
-                Entity.SetRecordFlags(Entity.Moves);
+                t.SetRecordFlags(Entity.Moves);
                 UpdateLegality();
                 return;
             }
 
-            using var form = new TechRecordEditor(Entity);
+            using var form = new TechRecordEditor(t, Entity);
+            form.ShowDialog();
+            UpdateLegality();
+        }
+
+        private void B_MoveShop_Click(object sender, EventArgs e)
+        {
+            if (Entity is not IMoveShop8Mastery m)
+                return;
+
+            if (ModifierKeys == Keys.Shift)
+            {
+                m.ClearMoveShopFlags();
+                m.SetMoveShopFlags(Entity.Moves);
+                m.SetMoveShopFlagsMastered();
+                UpdateLegality();
+                return;
+            }
+
+            using var form = new MoveShopEditor(m, m, Entity);
             form.ShowDialog();
             UpdateLegality();
         }
@@ -1823,8 +1871,10 @@ namespace PKHeX.WinForms.Controls
             BTN_Medals.Visible = gen is 6 or 7 && !pb7;
             FLP_Country.Visible = FLP_SubRegion.Visible = FLP_3DSRegion.Visible = t is IRegionOrigin;
             FLP_OriginalNature.Visible = gen >= 8;
-            B_Records.Visible = gen >= 8;
+            B_Records.Visible = t is ITechRecord8;
+            B_MoveShop.Visible = t is IMoveShop8Mastery;
             CB_HTLanguage.Visible = gen >= 8;
+            L_AlphaMastered.Visible = CB_AlphaMastered.Visible = t is PA8;
 
             ToggleInterface(Entity.Format);
         }
@@ -1926,6 +1976,7 @@ namespace PKHeX.WinForms.Controls
         {
             // Recenter PKM SubEditors
             FLP_PKMEditors.Location = new Point((tabMain.TabPages[0].Width - FLP_PKMEditors.Width) / 2, FLP_PKMEditors.Location.Y);
+            FLP_MoveFlags.Location = new Point((tabMain.TabPages[0].Width - FLP_MoveFlags.Width) / 2, FLP_MoveFlags.Location.Y);
         }
 
         public void EnableDragDrop(DragEventHandler enter, DragEventHandler drop)
@@ -2053,6 +2104,8 @@ namespace PKHeX.WinForms.Controls
             LegalMoveSource.ReloadMoves(source.Moves);
             foreach (var cb in Moves.Concat(Relearn))
                 SetIfDifferentCount(source.Moves, cb, force);
+            if (sav is SAV8LA)
+                SetIfDifferentCount(source.Moves, CB_AlphaMastered, force);
         }
     }
 }

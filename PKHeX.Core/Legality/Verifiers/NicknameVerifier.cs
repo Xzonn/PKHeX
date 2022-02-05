@@ -164,16 +164,15 @@ namespace PKHeX.Core
                     data.AddLine(Get(msg, ParseSettings.NicknamedAnotherSpecies));
                     return true;
                 }
-                if (pkm.Format <= 7 && StringConverter.HasEastAsianScriptCharacters(nickname) && pkm is not PB7) // East Asian Scripts
+                if (pkm.Format <= 7 && StringConverter.HasEastAsianScriptCharacters(nickname.AsSpan()) && pkm is not PB7) // East Asian Scripts
                 {
                     data.AddLine(GetInvalid(LNickInvalidChar));
                     return true;
                 }
                 if (nickname.Length > Legal.GetMaxLengthNickname(data.Info.Generation, (LanguageID)pkm.Language))
                 {
-                    var severe = pkm.Format >= 8 || (data.EncounterOriginal.EggEncounter && pkm.WasTradedEgg && nickname.Length <= Legal.GetMaxLengthNickname(data.Info.Generation, English))
-                            ? Severity.Fishy
-                            : Severity.Invalid;
+                    int length = GetForeignNicknameLength(pkm, data.Info.EncounterOriginal, data.Info.Generation);
+                    var severe = (length != 0 && nickname.Length <= length) ? Severity.Fishy : Severity.Invalid;
                     data.AddLine(Get(LNickLengthLong, severe));
                     return true;
                 }
@@ -192,6 +191,26 @@ namespace PKHeX.Core
                 data.AddLine(result);
             }
             return false;
+        }
+
+        private static int GetForeignNicknameLength(PKM pkm, IEncounterTemplate match, int origin)
+        {
+            // HOME gifts already verified prior to reaching here.
+            System.Diagnostics.Debug.Assert(match is not WC8 {IsHOMEGift:true});
+
+            int length = 0;
+            if (origin is (4 or 5 or 6 or 7) && match.EggEncounter && pkm.WasTradedEgg)
+                length = Legal.GetMaxLengthNickname(origin, English);
+
+            if (pkm.FatefulEncounter)
+                return length;
+
+            if (pkm.Format < 8 || pkm.BDSP)
+                return length;
+
+            // Can only nickname if the language matches.
+            var future = Legal.GetMaxLengthNickname(pkm.Format, (LanguageID)pkm.Language);
+            return Math.Max(length, future);
         }
 
         private static bool IsNicknameValid(PKM pkm, IEncounterTemplate enc, string nickname)
@@ -234,25 +253,13 @@ namespace PKHeX.Core
         {
             var Info = data.Info;
             var pkm = data.pkm;
-            var format = pkm.Format;
-            switch (format)
-            {
-                case 4:
-                    if (pkm.IsNicknamed) // gen4 doesn't use the nickname flag for eggs
-                        data.AddLine(GetInvalid(LNickFlagEggNo, CheckIdentifier.Egg));
-                    break;
-                case 7:
-                    if (pkm.IsNicknamed == Info.EncounterMatch is EncounterStatic7) // gen7 doesn't use for ingame gifts
-                        data.AddLine(GetInvalid(pkm.IsNicknamed ? LNickFlagEggNo : LNickFlagEggYes, CheckIdentifier.Egg));
-                    break;
-                default:
-                    if (pkm.IsNicknamed == Info.EncounterMatch is (EncounterStatic8b or WB8)) // bdsp doesn't use for ingame gifts
-                        data.AddLine(GetInvalid(pkm.IsNicknamed ? LNickFlagEggNo : LNickFlagEggYes, CheckIdentifier.Egg));
-                    break;
-            }
+
+            bool flagState = EggStateLegality.IsNicknameFlagSet(Info.EncounterMatch, pkm);
+            if (pkm.IsNicknamed != flagState)
+                data.AddLine(GetInvalid(flagState ? LNickFlagEggYes : LNickFlagEggNo, CheckIdentifier.Egg));
 
             var nick = pkm.Nickname;
-            if (format == 2 && !SpeciesName.IsNicknamedAnyLanguage(0, nick, 2))
+            if (pkm.Format == 2 && !SpeciesName.IsNicknamedAnyLanguage(0, nick, 2))
                 data.AddLine(GetValid(LNickMatchLanguageEgg, CheckIdentifier.Egg));
             else if (nick != SpeciesName.GetSpeciesNameGeneration(0, pkm.Language, Info.Generation))
                 data.AddLine(GetInvalid(LNickMatchLanguageEggFail, CheckIdentifier.Egg));
@@ -264,6 +271,8 @@ namespace PKHeX.Core
         {
             switch (data.Info.Generation)
             {
+                case 8 when t is EncounterTrade8b b: VerifyTrade8b(data, b); return;
+
                 case 1: VerifyTrade12(data, t); return;
                 case 2: return; // already checked all relevant properties when fetching with getValidEncounterTradeVC2
                 case 3: VerifyTrade3(data, t); return;
@@ -271,7 +280,6 @@ namespace PKHeX.Core
                 case 5: VerifyTrade5(data, t); return;
                 case 6:
                 case 7:
-                case 8 when t is EncounterTrade8b: VerifyTrade8b(data, t); return;
                 case 8:
                     VerifyTrade(data, t, data.pkm.Language); return;
             }
@@ -360,13 +368,48 @@ namespace PKHeX.Core
             VerifyTrade(data, t, lang);
         }
 
-        private static void VerifyTrade8b(LegalityAnalysis data, EncounterTrade t)
+        private static void VerifyTrade8b(LegalityAnalysis data, EncounterTrade8b t)
         {
             var pkm = data.pkm;
             int lang = pkm.Language;
             if (t.Species == (int)Species.Magikarp)
-                lang = DetectTradeLanguageG4MeisterMagikarp(pkm, t, lang);
+            {
+                // Japanese 
+                if (pkm.Language == (int)Japanese && pkm.OT_Name is "Diamond." or "Pearl.")
+                {
+                    // Traded between players, the original OT is replaced with the above OT (version dependent) as the original OT is >6 chars in length.
+                    VerifyTradeNickname(data, t, t.Nicknames[(int)German], pkm);
+                    return;
+                }
+
+                lang = DetectTradeLanguageG8MeisterMagikarp(pkm, t, lang);
+                if (lang == 0) // err
+                    data.AddLine(GetInvalid(string.Format(LOTLanguage, $"{Japanese}/{German}", $"{(LanguageID)pkm.Language}"), CheckIdentifier.Language));
+            }
             VerifyTrade(data, t, lang);
+        }
+
+        private static int DetectTradeLanguageG8MeisterMagikarp(PKM pkm, EncounterTrade8b t, int currentLanguageID)
+        {
+            // Receiving the trade on a German game -> Japanese LanguageID.
+            // Receiving the trade on any other language -> German LanguageID.
+            if (currentLanguageID is not ((int)Japanese or (int)German))
+                return 0;
+
+            var nick = pkm.Nickname;
+            var ot = pkm.OT_Name;
+            for (int i = 1; i < (int)ChineseT; i++)
+            {
+                if (t.Nicknames[i] != nick)
+                    continue;
+                if (t.TrainerNames[i] != ot)
+                    continue;
+
+                // Language gets flipped to another language ID; can't be equal.
+                var shouldNotBe = currentLanguageID == (int)German ? German : Japanese;
+                return i != (int)shouldNotBe ? i : 0;
+            }
+            return 0;
         }
 
         private static void FlagKoreanIncompatibleSameGenTrade(LegalityAnalysis data, PKM pkm, int lang)
@@ -480,13 +523,18 @@ namespace PKHeX.Core
         {
             var pkm = data.pkm;
             // trades that are not nicknamed (but are present in a table with others being named)
-            var result = IsNicknameMatch(nick, pkm, t)
-                ? GetValid(LEncTradeUnchanged, CheckIdentifier.Nickname)
-                : Get(LEncTradeChangedNickname, ParseSettings.NicknamedTrade, CheckIdentifier.Nickname);
-            data.AddLine(result);
+            VerifyTradeNickname(data, t, nick, pkm);
 
             if (OT != pkm.OT_Name)
                 data.AddLine(GetInvalid(LEncTradeChangedOT, CheckIdentifier.Trainer));
+        }
+
+        private static void VerifyTradeNickname(LegalityAnalysis data, EncounterTrade t, string expectedNickname, PKM pkm)
+        {
+            var result = IsNicknameMatch(expectedNickname, pkm, t)
+                ? GetValid(LEncTradeUnchanged, CheckIdentifier.Nickname)
+                : Get(LEncTradeChangedNickname, ParseSettings.NicknamedTrade, CheckIdentifier.Nickname);
+            data.AddLine(result);
         }
 
         private static bool IsNicknameMatch(string nick, ILangNick pkm, EncounterTrade enc)
