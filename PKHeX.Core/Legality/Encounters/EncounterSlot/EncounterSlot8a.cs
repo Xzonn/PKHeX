@@ -37,7 +37,11 @@ public sealed record EncounterSlot8a : EncounterSlot, IAlpha
             if (pk is IScaledSize s)
                 s.HeightScalar = s.WeightScalar = byte.MaxValue;
             if (Type is not SlotType.Landmark && pk is PA8 pa)
-                pa.SetMasteryFlagMove(pa.AlphaMove = pa.GetRandomAlphaMove());
+            {
+                var extra = pa.AlphaMove = pa.GetRandomAlphaMove();
+                pa.SetMasteryFlagMove(extra);
+                pk.PushMove(extra);
+            }
         }
         if (pk is IScaledSizeValue v)
         {
@@ -83,10 +87,8 @@ public sealed record EncounterSlot8a : EncounterSlot, IAlpha
 
         var alphaMove = pa.AlphaMove;
         bool hasAlphaMove = alphaMove != 0;
-        if (!pa.IsAlpha)
+        if (!pa.IsAlpha || Type is SlotType.Landmark)
             return !hasAlphaMove ? EncounterMatchRating.Match : EncounterMatchRating.DeferredErrors;
-        if (Type is SlotType.Landmark == hasAlphaMove)
-            return EncounterMatchRating.DeferredErrors;
 
         var pi = PersonalTable.LA.GetFormEntry(Species, Form);
         var tutors = pi.SpecialTutors[0];
