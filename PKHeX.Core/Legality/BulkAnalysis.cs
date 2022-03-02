@@ -27,11 +27,23 @@ namespace PKHeX.Core
             Trainer = sav;
             var list = new List<SlotCache>(sav.BoxSlotCount + (sav.HasParty ? 6 : 0) + 5);
             SlotInfoLoader.AddFromSaveFile(sav, list);
+            list.RemoveAll(IsEmptyData);
             AllData = list;
             AllAnalysis = GetIndividualAnalysis(AllData);
             CloneFlags = new bool[AllData.Count];
 
             Valid = ScanAll();
+        }
+
+        // Remove things that aren't actual stored data, or already flagged by legality checks.
+        private static bool IsEmptyData(SlotCache obj)
+        {
+            var pkm = obj.Entity;
+            if ((uint)(pkm.Species - 1) >= pkm.MaxSpeciesID)
+                return true;
+            if (!pkm.ChecksumValid)
+                return true;
+            return false;
         }
 
         private bool ScanAll()
@@ -88,7 +100,7 @@ namespace PKHeX.Core
                         else
                             Trackers.Add(tracker, cs);
                     }
-                    else if (ca.Info.Generation < 8)
+                    else if (ca.Info.Generation is (< 8 and not -1))
                     {
                         AddLine(cs, "Missing tracker.", Encounter);
                     }

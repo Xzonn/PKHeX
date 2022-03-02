@@ -30,7 +30,7 @@ namespace PKHeX.Core
             var table = gameSource switch
             {
                 RD or GN or BU or YW => StaticRBY.Where(z => z.Version.Contains(gameSource)),
-                GD or SV => StaticGS.Where(z => z.Version.Contains(gameSource)),
+                GD or SI => StaticGS.Where(z => z.Version.Contains(gameSource)),
                 C => StaticC,
                 _ => GetEncounterStaticTable(pkm, gameSource),
             };
@@ -118,7 +118,7 @@ namespace PKHeX.Core
             }
         }
 
-        internal static EncounterStatic? GetStaticLocation(PKM pkm)
+        internal static EncounterStatic? GetStaticLocation(PKM pkm, IReadOnlyList<EvoCriteria> chain)
         {
             switch (pkm.Generation)
             {
@@ -127,7 +127,6 @@ namespace PKHeX.Core
                 case 2:
                     return EncounterStatic7.GetVC2(MaxSpeciesID_2, pkm.Met_Level);
                 default:
-                    var chain = EvolutionChain.GetValidPreEvolutions(pkm, maxLevel: 100, skipChecks: true);
                     return GetPossible(pkm, chain)
                         .OrderBy(z => !chain.Any(s => s.Species == z.Species && s.Form == z.Form))
                         .ThenBy(z => z.LevelMin)
@@ -140,7 +139,7 @@ namespace PKHeX.Core
         {
             RBY or RD or BU or GN or YW => StaticRBY,
 
-            GSC or GD or SV or C => GetEncounterStaticTableGSC(pkm),
+            GSC or GD or SI or C => GetEncounterStaticTableGSC(pkm),
 
             R => StaticR,
             S => StaticS,

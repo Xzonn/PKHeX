@@ -37,7 +37,7 @@ namespace PKHeX.Core
             YW => SlotsYW,
 
             GD => SlotsGD,
-            SV => SlotsSV,
+            SI => SlotsSV,
             C => SlotsC,
 
             _ => GetEncounterSlots(pkm, gameSource),
@@ -104,9 +104,8 @@ namespace PKHeX.Core
             return slots.Where(z => z.IsMatchLocation(metLocation));
         }
 
-        internal static EncounterSlot? GetCaptureLocation(PKM pkm)
+        internal static EncounterSlot? GetCaptureLocation(PKM pkm, IReadOnlyList<EvoCriteria> chain)
         {
-            var chain = EvolutionChain.GetValidPreEvolutions(pkm, maxLevel: 100, skipChecks: true);
             return GetPossible(pkm, chain)
                 .OrderBy(z => !chain.Any(s => s.Species == z.Species && s.Form == z.Form))
                 .ThenBy(z => z.LevelMin)
@@ -117,7 +116,7 @@ namespace PKHeX.Core
         {
             RBY or RD or BU or GN or YW => pkm.Japanese ? SlotsRGBY : SlotsRBY,
 
-            GSC or GD or SV or C => GetEncounterTableGSC(pkm),
+            GSC or GD or SI or C => GetEncounterTableGSC(pkm),
 
             R => SlotsR,
             S => SlotsS,

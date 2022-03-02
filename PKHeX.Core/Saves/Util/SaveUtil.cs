@@ -16,9 +16,11 @@ namespace PKHeX.Core
         public const int BEEF = 0x42454546;
 
         public const int SIZE_G8LA = 0x136DDE;
+        public const int SIZE_G8LA_1 = 0x13AD06;
 
         public const int SIZE_G8BDSP = 0xE9828;
         public const int SIZE_G8BDSP_1 = 0xEDC20;
+        public const int SIZE_G8BDSP_2 = 0xEED8C;
 
         public const int SIZE_G8SWSH = 0x1716B3; // 1.0
         public const int SIZE_G8SWSH_1 = 0x17195E; // 1.0 -> 1.1
@@ -99,7 +101,7 @@ namespace PKHeX.Core
 
         private static readonly HashSet<int> Sizes = new(SizesGen2.Concat(SizesSWSH))
         {
-            SIZE_G8LA, SIZE_G8BDSP, SIZE_G8BDSP_1,
+            SIZE_G8LA, SIZE_G8LA_1, SIZE_G8BDSP, SIZE_G8BDSP_1, SIZE_G8BDSP_2,
             // SizesSWSH covers gen8 sizes since there's so many
             SIZE_G7SM, SIZE_G7USUM, SIZE_G7GG,
             SIZE_G6XY, SIZE_G6ORAS, SIZE_G6ORASDEMO,
@@ -501,7 +503,7 @@ namespace PKHeX.Core
 
         private static GameVersion GetIsG8SAV_BDSP(ReadOnlySpan<byte> data)
         {
-            if (data.Length is not SIZE_G8BDSP && data.Length is not SIZE_G8BDSP_1)
+            if (data.Length is not (SIZE_G8BDSP or SIZE_G8BDSP_1 or SIZE_G8BDSP_2))
                 return Invalid;
 
             return BDSP;
@@ -509,7 +511,7 @@ namespace PKHeX.Core
 
         private static GameVersion GetIsG8SAV_LA(byte[] data)
         {
-            if (data.Length is not SIZE_G8LA)
+            if (data.Length is not (SIZE_G8LA or SIZE_G8LA_1))
                 return Invalid;
 
             return SwishCrypto.GetIsHashValidLA(data) ? PLA : Invalid;
@@ -729,7 +731,7 @@ namespace PKHeX.Core
             StadiumJ => new SAV1StadiumJ(),
             Stadium => new SAV1Stadium(language == LanguageID.Japanese),
 
-            GD or SV or GS => new SAV2(version: GS, lang: language),
+            GD or SI or GS => new SAV2(version: GS, lang: language),
             C or GSC => new SAV2(version: C, lang: language),
             Stadium2 => new SAV2Stadium(language == LanguageID.Japanese),
 
@@ -813,7 +815,7 @@ namespace PKHeX.Core
             }
         }
 
-        public static bool IsBackup(string path) => Path.GetFileName(path) is "backup" || Path.GetExtension(path) is ".bak";
+        public static bool IsBackup(string path) => Path.GetFileNameWithoutExtension(path).Equals("backup", StringComparison.InvariantCultureIgnoreCase) || Path.GetExtension(path) is ".bak";
 
         /// <summary>
         /// Determines whether the save data size is valid for automatically detecting saves.

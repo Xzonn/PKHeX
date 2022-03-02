@@ -19,6 +19,7 @@ public sealed class SaveBlockAccessor8LA : SCBlockAccessor, ISaveBlock8LA
     public LastSaved8a LastSaved { get; }
     public PlayerFashion8a FashionPlayer { get; }
     public PlayTime8a Played { get; }
+    public AreaSpawnerSet8a AreaSpawners { get; }
 
     public SaveBlockAccessor8LA(SAV8LA sav)
     {
@@ -34,10 +35,10 @@ public sealed class SaveBlockAccessor8LA : SCBlockAccessor, ISaveBlock8LA
         Played = new PlayTime8a(sav, GetBlock(KPlayTime));
         Coordinates = new Coordinates8a(sav, GetBlock(KCoordinates));
         FashionPlayer = new PlayerFashion8a(sav, GetBlock(KFashionPlayer));
-        // Misc = new Misc8(sav, GetBlock(KMisc));
-        // TrainerCard = new TrainerCard8(sav, GetBlock(KTrainerCard));
-        // Fashion = new FashionUnlock8(sav, GetBlock(KFashionUnlock));
+        AreaSpawners = new AreaSpawnerSet8a(GetBlock(KSpawners));
     }
+
+    public int DetectRevision() => HasBlock(0x8184EFB4) ? 1 : 0;
 
     // Arrays (Blocks)
     private const uint KBoxLayout = 0x19722c89; // Box Names
@@ -58,6 +59,7 @@ public sealed class SaveBlockAccessor8LA : SCBlockAccessor, ISaveBlock8LA
     private const uint KMyStatus = 0xf25c070e; // Trainer Details
     private const uint KLastSaved = 0x1B1E3D8B; // Last Saved
     private const uint KCoordinates = 0x267DD9DA; // Coordinates
+    private const uint KSpawners = 0x511622B3; // Spawner data
     private const uint KFashionPlayer = 0x6B35BADB; // Player's Current Fashion
     private const uint KFashionUnlockedHat = 0x3ADB8A98;
     private const uint KFashionUnlockedTop = 0x82D57F17;
@@ -67,9 +69,9 @@ public sealed class SaveBlockAccessor8LA : SCBlockAccessor, ISaveBlock8LA
     private const uint KFashionUnlockedGlasses = 0x58AB6233;
     private const uint KSwarm = 0x1E0F1BA3; // 5 entries, 0x50 each
     private const uint KCaptureRecords = 0x6506EE96; // 1000 entries, 0x1C each
-    private const uint KOverworld = 0x511622B3; // 0x100 entries, 0x880 each
-    private const uint KOtherPlayerSatchels = 0x05E7EBEB;
+    private const uint KOtherPlayerLostSatchels = 0x05E7EBEB;
     private const uint KMyLostSatchels = 0xC5D7112B;
+    private const uint KNobleRematchRecords = 0xB9252862; // Best times of Noble rematches
 
     // Values
     public const uint KCurrentBox = 0x017C3CBB; // U8 Box Index
@@ -112,6 +114,8 @@ public sealed class SaveBlockAccessor8LA : SCBlockAccessor, ISaveBlock8LA
     private const uint KRecordLostSatchelsFound = 0x4AAF7FBE; // U32 Satchels retrieved for NPCs and other players
     private const uint KRecordOwnSatchelRetrieved = 0x8C46768E; // U32 Satchels other players retrieved for you
     private const uint KStarterChoice = 0x6960C6EF; // U32 0=Rowlet, 1=Cyndaquil, 2=Oshawott
+    
+    private const uint KRecordEternalBattleReverie = 0xEB550C12; // U32 Highest streak for Eternal Battle Reverie
 
     // Flags
     private const uint KEnableSpawnerSpiritomb = 0x2DC7E4CC; // FSYS_MKRG_100_SPAWN
@@ -179,6 +183,17 @@ public sealed class SaveBlockAccessor8LA : SCBlockAccessor, ISaveBlock8LA
     private const uint KHasPlayRecordsBDSP = 0x52CE2052; // FSYS_SAVEDATA_LINKAGE_DEL_01
     private const uint KHasPlayRecordsSWSH = 0x530EF0B9; // FSYS_SAVEDATA_LINKAGE_ORI_01
     private const uint KHasPlayRecordsLGPE = 0x6CFA9468; // FSYS_SAVEDATA_LINKAGE_BEL_01
+
+    private const uint KChoseDiamondClanLeader = 0x669B325F; // Choice of Adaman over Irida
+    private const uint KHasElectricFan = 0xC734C80F; // Access to Fan-Rotom
+    private const uint KHasWashingMachine = 0x62872639; // Access to Wash-Rotom
+    private const uint KHasLawnMower = 0xFB87E941; // Access to Mow-Rotom
+    private const uint KHasMicrowaveOven = 0xD9A315A0; // Access to Heat-Rotom
+    private const uint KHasRefrigerator = 0xAE868040; // Access to Frost-Rotom
+    private const uint KReceivedRemainderStarters = 0x8D45EB90; // Got Starters that weren't chosen
+    private const uint KReceivedRemainderStarterRowlet = 0x4570A16B; // Combine with other 2 and KReceivedRemainderStarers to re-activate
+    private const uint KReceivedRemainderStarterCyndaquil = 0x602C2CD6; // Combine with other 2 and KReceivedRemainderStarers to re-activate
+    private const uint KReceivedRemainderStarterOshawott = 0xAFCE7320; // Combine with other 2 and KReceivedRemainderStarers to re-activate
 
     public const uint KUnlockedSecretBox01 = 0xF224CA8E; // FSYS_SECRET_BOX_01_OPEN
     public const uint KUnlockedSecretBox02 = 0x06924515; // FSYS_SECRET_BOX_02_OPEN

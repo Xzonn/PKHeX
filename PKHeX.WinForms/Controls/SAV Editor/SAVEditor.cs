@@ -716,21 +716,6 @@ namespace PKHeX.WinForms.Controls
 
         private void ClickVerifyCHK(object sender, EventArgs e)
         {
-            if (ModifierKeys == Keys.Control)
-            {
-                var bulk = new BulkAnalysis(SAV);
-                if (bulk.Parse.Count == 0)
-                {
-                    WinFormsUtil.Alert("Clean!");
-                    return;
-                }
-                var lines = bulk.Parse.Select(z => $"{z.Judgement}: {z.Comment}");
-                var msg = string.Join(Environment.NewLine, lines);
-                WinFormsUtil.SetClipboardText(msg);
-                SystemSounds.Asterisk.Play();
-                return;
-            }
-
             if (SAV.State.Edited)
             {
                 WinFormsUtil.Alert(MsgSaveChecksumFailEdited);
@@ -744,6 +729,24 @@ namespace PKHeX.WinForms.Controls
 
             if (DialogResult.Yes == WinFormsUtil.Prompt(MessageBoxButtons.YesNo, MsgSaveChecksumFailExport))
                 WinFormsUtil.SetClipboardText(SAV.ChecksumInfo);
+        }
+
+        private void ClickVerifyStoredEntities(object sender, EventArgs e)
+        {
+            var bulk = new BulkAnalysis(SAV);
+            if (bulk.Parse.Count == 0)
+            {
+                WinFormsUtil.Alert("Clean!");
+                return;
+            }
+
+            if (WinFormsUtil.Prompt(MessageBoxButtons.YesNo, MsgClipboardLegalityExport) != DialogResult.Yes)
+                return;
+
+            var lines = bulk.Parse.Select(z => $"{z.Judgement}: {z.Comment}");
+            var msg = string.Join(Environment.NewLine, lines);
+            WinFormsUtil.SetClipboardText(msg);
+            SystemSounds.Asterisk.Play();
         }
 
         // File I/O
@@ -780,11 +783,24 @@ namespace PKHeX.WinForms.Controls
         {
             if (!SAV.State.Exportable || SAV.Metadata.FilePath is not { } file)
                 return false;
-            using var sfd = new SaveFileDialog {FileName = Util.CleanFileName(SAV.Metadata.BAKName)};
+
+            if (!File.Exists(file))
+            {
+                WinFormsUtil.Error(MsgSaveBackupNotFound, file);
+                return false;
+            }
+
+            var suggestion = Util.CleanFileName(SAV.Metadata.BAKName);
+            using var sfd = new SaveFileDialog {FileName = suggestion};
             if (sfd.ShowDialog() != DialogResult.OK)
                 return false;
 
             string path = sfd.FileName;
+            if (!File.Exists(file)) // did they move it again?
+            {
+                WinFormsUtil.Error(MsgSaveBackupNotFound, file);
+                return false;
+            }
             File.Copy(file, path);
             WinFormsUtil.Alert(MsgSaveBackup, path);
 

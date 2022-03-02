@@ -6,7 +6,7 @@ namespace PKHeX.Core;
 /// <summary>
 /// Generation 8 <see cref="SaveFile"/> object for <see cref="GameVersion.PLA"/> games.
 /// </summary>
-public sealed class SAV8LA : SaveFile, ISaveBlock8LA, ISCBlockArray
+public sealed class SAV8LA : SaveFile, ISaveBlock8LA, ISCBlockArray, ISaveFileRevision
 {
     protected internal override string ShortSummary => $"{OT} ({Version}) - {LastSaved.LastSavedTime}";
     public override string Extension => string.Empty;
@@ -16,6 +16,7 @@ public sealed class SAV8LA : SaveFile, ISaveBlock8LA, ISCBlockArray
         Data = Array.Empty<byte>();
         AllBlocks = SwishCrypto.Decrypt(data);
         Blocks = new SaveBlockAccessor8LA(this);
+        SaveRevision = Blocks.DetectRevision();
         Initialize();
     }
 
@@ -23,6 +24,7 @@ public sealed class SAV8LA : SaveFile, ISaveBlock8LA, ISCBlockArray
     {
         AllBlocks = blocks;
         Blocks = new SaveBlockAccessor8LA(this);
+        SaveRevision = Blocks.DetectRevision();
         Initialize();
     }
 
@@ -30,9 +32,18 @@ public sealed class SAV8LA : SaveFile, ISaveBlock8LA, ISCBlockArray
     {
         AllBlocks = Meta8.GetBlankDataLA();
         Blocks = new SaveBlockAccessor8LA(this);
+        SaveRevision = Blocks.DetectRevision();
         Initialize();
         ClearBoxes();
     }
+
+    public int SaveRevision { get; }
+    public string SaveRevisionString => SaveRevision switch
+    {
+        0 => "-Base", // Vanilla
+        1 => "-DB", // DLC 1: Daybreak
+        _ => throw new ArgumentOutOfRangeException(nameof(SaveRevision)),
+    };
 
     public override string GetString(ReadOnlySpan<byte> data) => StringConverter8.GetString(data);
     public override int SetString(Span<byte> destBuffer, ReadOnlySpan<char> value, int maxLength, StringConverterOption option) => StringConverter8.SetString(destBuffer, value, maxLength, option);
@@ -44,7 +55,7 @@ public sealed class SAV8LA : SaveFile, ISaveBlock8LA, ISCBlockArray
         var mine = AllBlocks;
         var newB = z.AllBlocks;
         for (int i = 0; i < mine.Count; i++)
-            newB[i].Data.CopyTo(mine[i].Data, 0);
+            mine[i].CopyFrom(newB[i]);
         State.Edited = true;
     }
 
@@ -130,6 +141,8 @@ public sealed class SAV8LA : SaveFile, ISaveBlock8LA, ISCBlockArray
     public AdventureStart8a AdventureStart => Blocks.AdventureStart;
     public LastSaved8a LastSaved => Blocks.LastSaved;
     public PlayTime8a Played => Blocks.Played;
+    public AreaSpawnerSet8a AreaSpawners => Blocks.AreaSpawners;
+
     public override uint SecondsToStart { get => (uint)AdventureStart.Seconds; set => AdventureStart.Seconds = value; }
     public override uint Money { get => (uint)Blocks.GetBlockValue(SaveBlockAccessor8LA.KMoney); set => Blocks.SetBlockValue(SaveBlockAccessor8LA.KMoney, value); }
     public override int MaxMoney => 9_999_999;
@@ -202,20 +215,12 @@ public sealed class SAV8LA : SaveFile, ISaveBlock8LA, ISCBlockArray
         };
         set
         {
-            if (value.Length != 1)
+            if (value.Length != 3)
                 return;
 
-            var blocks = new[]
-            {
-                Blocks.GetBlock(SaveBlockAccessor8LA.KUnlockedSecretBox01),
-                Blocks.GetBlock(SaveBlockAccessor8LA.KUnlockedSecretBox02),
-                Blocks.GetBlock(SaveBlockAccessor8LA.KUnlockedSecretBox03),
-            };
-
-            foreach (var block in blocks)
-            {
-                block.ChangeBooleanType((SCTypeCode)(value[0] & 1) + 1);
-            }
+            Blocks.GetBlock(SaveBlockAccessor8LA.KUnlockedSecretBox01).ChangeBooleanType((SCTypeCode)(value[0] & 1) + 1);
+            Blocks.GetBlock(SaveBlockAccessor8LA.KUnlockedSecretBox02).ChangeBooleanType((SCTypeCode)(value[1] & 1) + 1);
+            Blocks.GetBlock(SaveBlockAccessor8LA.KUnlockedSecretBox03).ChangeBooleanType((SCTypeCode)(value[2] & 1) + 1);
         }
     }
 

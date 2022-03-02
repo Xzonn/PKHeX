@@ -51,7 +51,7 @@ namespace PKHeX.Core
         // Gen 8
         internal static readonly EggMoves7[] EggMovesSWSH = EggMoves7.GetArray(Get(Util.GetBinaryResource("eggmove_swsh.pkl"), "ss"));
         internal static readonly Learnset[] LevelUpSWSH = LearnsetReader.GetArray(Get(Util.GetBinaryResource("lvlmove_swsh.pkl"), "ss"));
-        internal static readonly EggMoves7[] EggMovesBDSP = EggMoves7.GetArray(Get(Util.GetBinaryResource("eggmove_bdsp.pkl"), "bs"));
+        internal static readonly EggMoves6[] EggMovesBDSP = EggMoves6.GetArray(Get(Util.GetBinaryResource("eggmove_bdsp.pkl"), "bs"));
         internal static readonly Learnset[] LevelUpBDSP = LearnsetReader.GetArray(Get(Util.GetBinaryResource("lvlmove_bdsp.pkl"), "bs"));
         internal static readonly Learnset[] LevelUpLA = LearnsetReader.GetArray(Get(Util.GetBinaryResource("lvlmove_la.pkl"), "la"));
 
@@ -91,6 +91,23 @@ namespace PKHeX.Core
                 return GetMaxSpeciesOrigin(2);
             return GetMaxSpeciesOrigin(pkm.Generation);
         }
+
+        internal static int GetMaxSpeciesOrigin(int generation, GameVersion version) => generation switch
+        {
+            1 => MaxSpeciesID_1,
+            2 => MaxSpeciesID_2,
+            3 => MaxSpeciesID_3,
+            4 => MaxSpeciesID_4,
+            5 => MaxSpeciesID_5,
+            6 => MaxSpeciesID_6,
+            7 when GameVersion.GG.Contains(version) => MaxSpeciesID_7b,
+            7 when GameVersion.USUM.Contains(version) => MaxSpeciesID_7_USUM,
+            7 => MaxSpeciesID_7,
+            8 when version is GameVersion.PLA => MaxSpeciesID_8a,
+            8 when GameVersion.BDSP.Contains(version) => MaxSpeciesID_8b,
+            8 => MaxSpeciesID_8_R2,
+            _ => -1,
+        };
 
         internal static int GetMaxSpeciesOrigin(int generation) => generation switch
         {
@@ -190,7 +207,6 @@ namespace PKHeX.Core
                 return true;
             return false;
         }
-
 
         /// <summary>
         /// Indicates if PP Ups are available for use.

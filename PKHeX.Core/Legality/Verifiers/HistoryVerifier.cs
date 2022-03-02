@@ -74,7 +74,9 @@ namespace PKHeX.Core
 
         private void VerifyOTFriendship(LegalityAnalysis data, bool neverOT, int origin, PKM pkm)
         {
-            if ((uint)origin <= 2)
+            if (origin < 0)
+                return;
+            if (origin <= 2)
             {
                 // Verify the original friendship value since it cannot change from the value it was assigned in the original generation.
                 // Since some evolutions have different base friendship values, check all possible evolutions for a match.
@@ -196,7 +198,12 @@ namespace PKHeX.Core
         private static int GetBaseFriendship(IEncounterTemplate enc, int generation) => enc switch
         {
             IFixedOTFriendship f => f.OT_Friendship,
-            { Version: GameVersion.BD or GameVersion.SP } => PersonalTable.SWSH.GetFormEntry(enc.Species, enc.Form).BaseFriendship,
+
+            { Version: GameVersion.BDSP or GameVersion.BD or GameVersion.SP }
+                => PersonalTable.BDSP.GetFormEntry(enc.Species, enc.Form).BaseFriendship,
+            { Version: GameVersion.PLA }
+                => PersonalTable.LA  .GetFormEntry(enc.Species, enc.Form).BaseFriendship,
+
             _ => GetBaseFriendship(generation, enc.Species, enc.Form),
         };
 

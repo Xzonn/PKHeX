@@ -21,15 +21,18 @@ namespace PKHeX.Core
             if (pkm.WasEgg)
                 return GetSuggestedEncounterEgg(pkm, loc);
 
-            var w = EncounterSlotGenerator.GetCaptureLocation(pkm);
-            if (w != null)
-                return GetSuggestedEncounterWild(pkm, w, loc);
+            var chain = EvolutionChain.GetValidPreEvolutions(pkm, maxLevel: 100, skipChecks: true);
+            var w = EncounterSlotGenerator.GetCaptureLocation(pkm, chain);
+            var s = EncounterStaticGenerator.GetStaticLocation(pkm, chain);
+            if (w is null)
+                return s is null ? null : GetSuggestedEncounter(pkm, s, loc);
+            if (s is null)
+                return GetSuggestedEncounter(pkm, w, loc);
 
-            var s = EncounterStaticGenerator.GetStaticLocation(pkm);
-            if (s != null)
-                return GetSuggestedEncounterStatic(pkm, s, loc);
-
-            return null;
+            bool isDefinitelySlot = chain.Any(z => z.Species == w.Species && z.Form == w.Form);
+            bool isDefinitelyStatic = chain.Any(z => z.Species == s.Species && z.Form == s.Form);
+            IEncounterable obj = (isDefinitelySlot || !isDefinitelyStatic) ? w : s;
+            return GetSuggestedEncounter(pkm, obj, loc);
         }
 
         private static EncounterSuggestionData GetSuggestedEncounterEgg(PKM pkm, int loc = -1)
@@ -62,48 +65,14 @@ namespace PKHeX.Core
             _ => traded ? Locations.LinkTrade6 : Locations.Daycare5,
         };
 
-        private static EncounterSuggestionData GetSuggestedEncounterWild(PKM pkm, EncounterSlot first, int loc = -1)
+        private static EncounterSuggestionData GetSuggestedEncounter(PKM pkm, IEncounterable enc, int loc = -1)
         {
-            var met = loc != -1 ? loc : first.Location;
-            return new EncounterSuggestionData(pkm, first, met);
+            var met = loc != -1 ? loc : enc.Location;
+            return new EncounterSuggestionData(pkm, enc, met);
         }
 
-        private static EncounterSuggestionData GetSuggestedEncounterStatic(PKM pkm, EncounterStatic s, int loc = -1)
-        {
-            var met = loc != -1 ? loc : s.Location;
-            return new EncounterSuggestionData(pkm, s, met);
-        }
-
-        /// <summary>
-        /// Gets a valid Egg hatch location for the origin game.
-        /// </summary>
-        /// <param name="pkm">Pokémon data to suggest for</param>
-        public static int GetSuggestedEggMetLocation(PKM pkm) => (GameVersion)pkm.Version switch
-        {
-            R or S or E or FR or LG => pkm.Format switch
-            {
-                3 => (pkm.FRLG ? Locations.HatchLocationFRLG : Locations.HatchLocationRSE),
-                4 => Locations.Transfer3, // Pal Park
-                _ => Locations.Transfer4,
-            },
-
-            D or P or Pt => pkm.Format > 4 ? Locations.Transfer4 : Locations.HatchLocationDPPt,
-            HG or SS => pkm.Format > 4 ? Locations.Transfer4 : Locations.HatchLocationHGSS,
-
-            B or W or B2 or W2 => Locations.HatchLocation5,
-
-            X or Y => Locations.HatchLocation6XY,
-            AS or OR => Locations.HatchLocation6AO,
-
-            SN or MN or US or UM => Locations.HatchLocation7,
-            RD or BU or GN or YW => Locations.Transfer1,
-            GD or SV or C => Locations.Transfer2,
-            GSC or RBY => pkm.Met_Level == 0 ? 0 : Locations.HatchLocationC,
-
-            SW or SH => Locations.HatchLocation8,
-            BD or SP => Locations.HatchLocation8b,
-            _ => -1,
-        };
+        /// <inheritdoc cref="EggStateLegality.GetEggHatchLocation"/>
+        public static int GetSuggestedEggMetLocation(PKM pkm) => EggStateLegality.GetEggHatchLocation((GameVersion)pkm.Version, pkm.Format);
 
         /// <summary>
         /// Gets the correct Transfer Met location for the origin game.
