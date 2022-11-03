@@ -1,6 +1,6 @@
 ﻿using System;
-using System.Buffers.Binary;
 using System.ComponentModel;
+using static System.Buffers.Binary.BinaryPrimitives;
 
 namespace PKHeX.Core;
 
@@ -8,17 +8,17 @@ namespace PKHeX.Core;
 /// Stores the <see cref="Timestamp"/> when the player created their save data.
 /// </summary>
 [TypeConverter(typeof(ExpandableObjectConverter))]
-public sealed class AdventureStart8a : SaveBlock
+public sealed class AdventureStart8a : SaveBlock<SAV8LA>
 {
-    public AdventureStart8a(SaveFile sav, SCBlock block) : base(sav, block.Data) { }
+    public AdventureStart8a(SAV8LA sav, SCBlock block) : base(sav, block.Data) { }
 
     /// <summary>
     /// time_t (seconds since 1970 Epoch)
     /// </summary>
     public ulong Seconds
     {
-        get => BinaryPrimitives.ReadUInt64LittleEndian(Data.AsSpan(Offset));
-        set => BinaryPrimitives.WriteUInt64LittleEndian(Data.AsSpan(Offset), value);
+        get => ReadUInt64LittleEndian(Data.AsSpan(Offset));
+        set => WriteUInt64LittleEndian(Data.AsSpan(Offset), value);
     }
 
     private static DateTime Epoch => new(1970, 1, 1);

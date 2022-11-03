@@ -1,44 +1,50 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 
-namespace PKHeX.Core
+namespace PKHeX.Core;
+
+/// <summary>
+/// Generation 6 Memory parameters &amp; validation
+/// </summary>
+public static class Memories
 {
-    /// <summary>
-    /// Generation 6 Memory parameters &amp; validation
-    /// </summary>
-    public static class Memories
+    private static readonly byte[] ArgTypes =
     {
-        public static readonly MemoryContext6 Memory6 = new();
-        public static readonly MemoryContext8 Memory8 = new();
+        0, 1, 1, 1, 1, 5, 2, 3, 0, 3,
+        0, 0, 4, 3, 3, 5, 4, 3, 3, 1,
+        0, 3, 0, 0, 1, 3, 5, 0, 0, 3,
+        0, 1, 1, 1, 5, 1, 1, 1, 1, 1,
+        5, 0, 1, 0, 3, 3, 0, 0, 4, 4,
+        3, 5, 1, 0, 0, 0, 0, 0, 0, 1,
+        3, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        1, 3, 3, 0, 0, 3, 0, 0, 0, 0,
+        4, 4, 3, 3, 5, 0, 1, 3, 5, 4,
+    };
 
-        internal static readonly HashSet<int> MemoryGeneral = new() { 1, 2, 3, 4, 19, 24, 31, 32, 33, 35, 36, 37, 38, 39, 42, 52, 59, 70, 86 };
-        private static readonly HashSet<int> MemorySpecific = new() { 6 };
-        private static readonly HashSet<int> MemoryMove = new() { 12, 16, 48, 49, 80, 81, 89 };
-        private static readonly HashSet<int> MemoryItem = new() { 5, 15, 26, 34, 40, 51, 84, 88 };
-        private static readonly HashSet<int> MemorySpecies = new() { 7, 9, 13, 14, 17, 21, 18, 25, 29, 44, 45, 50, 60, 70, 71, 72, 75, 82, 83, 87 };
-
-        public static MemoryArgType GetMemoryArgType(int memory, int memoryGen)
-        {
-            if (MemoryGeneral.Contains(memory)) return MemoryArgType.GeneralLocation;
-            if (MemorySpecific.Contains(memory))
-            {
-                if (memoryGen <= 7)
-                    return MemoryArgType.SpecificLocation;
-                return MemoryArgType.GeneralLocation;
-            }
-
-            if (MemoryItem.Contains(memory)) return MemoryArgType.Item;
-            if (MemoryMove.Contains(memory)) return MemoryArgType.Move;
-            if (MemorySpecies.Contains(memory)) return MemoryArgType.Species;
-
+    public static MemoryArgType GetMemoryArgType(byte memory, int memoryGen)
+    {
+        var arr = ArgTypes;
+        if (memory >= arr.Length)
             return MemoryArgType.None;
-        }
 
-        public static MemoryContext GetContext(int memoryGen) => memoryGen switch
-        {
-            <=7 => Memory6,
-            _ => Memory8,
-        };
-
-        public static IEnumerable<ushort> GetMemoryItemParams(int memoryGen) => GetContext(memoryGen).GetMemoryItemParams();
+        var type = arr[memory];
+        if (memoryGen > 6 && type == (int)MemoryArgType.SpecificLocation)
+            return MemoryArgType.GeneralLocation;
+        return (MemoryArgType)type;
     }
+
+    public static EntityContext GetContextHandler(EntityContext current) => current switch
+    {
+        EntityContext.Gen7 => EntityContext.Gen6,
+        EntityContext.Gen8a => EntityContext.Gen8,
+        EntityContext.Gen8b => EntityContext.Gen8,
+        _ => current,
+    };
+
+    public static MemoryContext GetContext(EntityContext context) => context.Generation() switch
+    {
+        <=7 => MemoryContext6.Instance,
+        _ => MemoryContext8.Instance,
+    };
+
+    public static IEnumerable<ushort> GetMemoryItemParams(EntityContext context) => GetContext(context).GetMemoryItemParams();
 }

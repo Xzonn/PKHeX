@@ -1,6 +1,6 @@
 ﻿using System;
-using System.Buffers.Binary;
 using System.ComponentModel;
+using static System.Buffers.Binary.BinaryPrimitives;
 
 namespace PKHeX.Core;
 
@@ -8,20 +8,20 @@ namespace PKHeX.Core;
 /// Stores data about the player.
 /// </summary>
 [TypeConverter(typeof(ExpandableObjectConverter))]
-public sealed class MyStatus8a : SaveBlock
+public sealed class MyStatus8a : SaveBlock<SAV8LA>
 {
     public MyStatus8a(SAV8LA sav, SCBlock block) : base(sav, block.Data) { }
 
     public int TID
     {
-        get => BinaryPrimitives.ReadUInt16LittleEndian(Data.AsSpan(0x10));
-        set => BinaryPrimitives.WriteUInt16LittleEndian(Data.AsSpan(0x10), (ushort)value);
+        get => ReadUInt16LittleEndian(Data.AsSpan(0x10));
+        set => WriteUInt16LittleEndian(Data.AsSpan(0x10), (ushort)value);
     }
 
     public int SID
     {
-        get => BinaryPrimitives.ReadUInt16LittleEndian(Data.AsSpan(0x12));
-        set => BinaryPrimitives.WriteUInt16LittleEndian(Data.AsSpan(0x12), (ushort)value);
+        get => ReadUInt16LittleEndian(Data.AsSpan(0x12));
+        set => WriteUInt16LittleEndian(Data.AsSpan(0x12), (ushort)value);
     }
 
     public int Game
@@ -49,7 +49,7 @@ public sealed class MyStatus8a : SaveBlock
             // For runtime language, the game shifts all languages above Language 6 (unused) down one.
             if (value >= 6)
                 value--;
-            ((SAV8LA)SAV).SetValue(SaveBlockAccessor8LA.KGameLanguage, (uint)value);
+            SAV.SetValue(SaveBlockAccessor8LA.KGameLanguage, (uint)value);
         }
     }
 

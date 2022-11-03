@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+using System;
+using System.Collections.Generic;
 
 namespace PKHeX.Core;
 
@@ -27,6 +28,8 @@ public sealed class PB8 : G8PKM
 
     public override IReadOnlyList<ushort> ExtraBytes => Unused;
     public override PersonalInfo PersonalInfo => PersonalTable.BDSP.GetFormEntry(Species, Form);
+    public override bool IsNative => BDSP;
+    public override EntityContext Context => EntityContext.Gen8b;
 
     public PB8()
     {
@@ -48,7 +51,7 @@ public sealed class PB8 : G8PKM
         if (IsEgg)
         {
             // Apply link trade data, only if it left the OT (ignore if dumped & imported, or cloned, etc)
-            if ((tr.OT != OT_Name) || (tr.TID != TID) || (tr.SID != SID) || (tr.Gender != OT_Gender))
+            if ((tr.TID != TID) || (tr.SID != SID) || (tr.Gender != OT_Gender) || (tr.OT != OT_Name))
                 SetLinkTradeEgg(Day, Month, Year, Locations.LinkTrade6NPC);
 
             // Unfortunately, BDSP doesn't return if it's an egg, and can update the HT details & handler.
@@ -77,14 +80,14 @@ public sealed class PB8 : G8PKM
             // Clear Handler
             if (!IsTradedEgg)
             {
-                HT_Friendship = HT_Language = HT_Gender = 0;
+                HT_Friendship = HT_Gender = HT_Language = 0;
                 HT_Trash.Clear();
             }
             return;
         }
 
         if (IsUntraded)
-            HT_Language = HT_Friendship = HT_TextVar = HT_Memory = HT_Intensity = HT_Feeling = HT_Gender = 0;
+            HT_Gender = HT_Friendship = HT_TextVar = HT_Memory = HT_Intensity = HT_Feeling = HT_Language = 0;
 
         int gen = Generation;
         if (gen < 6)
@@ -96,7 +99,7 @@ public sealed class PB8 : G8PKM
     private bool TradeOT(ITrainerInfo tr)
     {
         // Check to see if the OT matches the SAV's OT info.
-        if (!(tr.OT == OT_Name && tr.TID == TID && tr.SID == SID && tr.Gender == OT_Gender))
+        if (!(tr.TID == TID && tr.SID == SID && tr.Gender == OT_Gender && tr.OT == OT_Name))
             return false;
 
         CurrentHandler = 0;
@@ -112,15 +115,61 @@ public sealed class PB8 : G8PKM
         }
         CurrentHandler = 1;
         HT_Gender = tr.Gender;
-        HT_Language = tr.Language;
+        HT_Language = (byte)tr.Language;
         //this.SetTradeMemoryHT8();
     }
 
     // Maximums
-    public override int MaxMoveID => Legal.MaxMoveID_8b;
-    public override int MaxSpeciesID => Legal.MaxSpeciesID_8b;
+    public override ushort MaxMoveID => Legal.MaxMoveID_8b;
+    public override ushort MaxSpeciesID => Legal.MaxSpeciesID_8b;
     public override int MaxAbilityID => Legal.MaxAbilityID_8b;
     public override int MaxItemID => Legal.MaxItemID_8b;
     public override int MaxBallID => Legal.MaxBallID_8b;
     public override int MaxGameID => Legal.MaxGameID_8b;
+
+    public override bool WasEgg => IsEgg || Egg_Day != 0;
+
+    public PK8 ConvertToPK8()
+    {
+        var pk = ConvertTo<PK8>();
+        pk.SanitizeImport();
+        pk.Egg_Location = GetEggLocationPK8();
+        return pk;
+    }
+
+    private int GetEggLocationPK8()
+    {
+        var egg = Egg_Location;
+        if (egg == Locations.Default8bNone)
+            return 0;
+        return Version switch
+        {
+            (int)GameVersion.BD => egg is Locations.LinkTrade6NPC ? Locations.HOME_SWBD : Locations.HOME_SWSHBDSPEgg,
+            (int)GameVersion.SH => egg is Locations.LinkTrade6NPC ? Locations.HOME_SHSP : Locations.HOME_SWSHBDSPEgg,
+            _ => egg,
+        };
+    }
+
+    public override PA8 ConvertToPA8()
+    {
+        var pk = base.ConvertToPA8();
+        if (pk.Egg_Location == Locations.Default8bNone)
+            pk.Egg_Location = 0;
+        return pk;
+    }
+
+    public override bool HasOriginalMetLocation => base.HasOriginalMetLocation && !(LA && Met_Location == Locations.HOME_SWLA);
+
+    public override void ResetMoves()
+    {
+        var learnsets = Legal.LevelUpBDSP;
+        var table = PersonalTable.BDSP;
+
+        var index = table.GetFormIndex(Species, Form);
+        var learn = learnsets[index];
+        Span<ushort> moves = stackalloc ushort[4];
+        learn.SetEncounterMoves(CurrentLevel, moves);
+        SetMoves(moves);
+        this.SetMaximumPPCurrent(moves);
+    }
 }

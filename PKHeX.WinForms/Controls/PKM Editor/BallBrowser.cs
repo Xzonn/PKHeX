@@ -1,59 +1,85 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Windows.Forms;
 
 using PKHeX.Core;
 using PKHeX.Drawing.PokeSprite;
 
-namespace PKHeX.WinForms
+namespace PKHeX.WinForms;
+
+public partial class BallBrowser : Form
 {
-    public partial class BallBrowser : Form
+    public BallBrowser() => InitializeComponent();
+
+    public int BallChoice { get; private set; } = -1;
+
+    public void LoadBalls(PKM pk)
     {
-        public BallBrowser() => InitializeComponent();
+        var legal = BallApplicator.GetLegalBalls(pk);
+        LoadBalls(legal, pk.MaxBallID + 1);
+    }
 
-        public int BallChoice { get; private set; } = -1;
+    private void LoadBalls(IEnumerable<Ball> legal, int max)
+    {
+        Span<bool> flags = stackalloc bool[max];
+        foreach (var ball in legal)
+            flags[(int)ball] = true;
 
-        public void LoadBalls(Ball[] poss, ICollection<Ball> legal, IReadOnlyList<ComboItem> names)
+        int countLegal = 0;
+        List<PictureBox> controls = new();
+        var names = GameInfo.BallDataSource;
+        for (int ballID = 1; ballID < flags.Length; ballID++)
         {
-            for (int i = 0; i < poss.Length; i++)
-            {
-                var pb = GetBallView(poss[i], legal, names);
-                flp.Controls.Add(pb);
-                const int width = 5; // balls wide
-                if (i % width == width - 1)
-                    flp.SetFlowBreak(pb, true);
-            }
+            var name = GetBallName(ballID, names);
+            var pb = GetBallView(ballID, name, flags[ballID]);
+            if (Main.Settings.EntityEditor.ShowLegalBallsFirst && flags[ballID])
+                controls.Insert(countLegal++, pb);
+            else
+                controls.Add(pb);
         }
 
-        public void LoadBalls(PKM pkm)
+        int countInRow = 0;
+        var container = flp.Controls;
+        foreach (var pb in controls)
         {
-            var legal = BallApplicator.GetLegalBalls(pkm).ToArray();
-            var poss = ((Ball[])Enum.GetValues(typeof(Ball))).Skip(1)
-                .TakeWhile(z => (int)z <= pkm.MaxBallID).ToArray();
-            var names = GameInfo.BallDataSource;
-            LoadBalls(poss, legal, names);
+            container.Add(pb);
+            const int width = 5; // balls wide
+            if (++countInRow != width)
+                continue;
+            flp.SetFlowBreak(pb, true);
+            countInRow = 0;
         }
+    }
 
-        private PictureBox GetBallView(Ball b, ICollection<Ball> legal, IReadOnlyList<ComboItem> names)
+    private static string GetBallName(int ballID, IEnumerable<ComboItem> names)
+    {
+        foreach (var x in names)
         {
-            var img = SpriteUtil.GetBallSprite((int)b);
-            var pb = new PictureBox
-            {
-                Size = img.Size,
-                Image = img,
-                BackgroundImage = legal.Contains(b) ? SpriteUtil.Spriter.Set : SpriteUtil.Spriter.Delete,
-                BackgroundImageLayout = ImageLayout.Tile,
-            };
-            pb.MouseEnter += (_, __) => Text = names.First(z => z.Value == (int)b).Text;
-            pb.Click += (_, __) => SelectBall(b);
-            return pb;
+            if (x.Value == ballID)
+                return x.Text;
         }
+        throw new ArgumentOutOfRangeException(nameof(ballID));
+    }
 
-        private void SelectBall(Ball b)
+    private PictureBox GetBallView(int ballID, string name, bool valid)
+    {
+        var img = SpriteUtil.GetBallSprite(ballID);
+        var pb = new PictureBox
         {
-            BallChoice = (int)b;
-            Close();
-        }
+            Size = img.Size,
+            Image = img,
+            BackgroundImage = valid ? SpriteUtil.Spriter.Set : SpriteUtil.Spriter.Delete,
+            BackgroundImageLayout = ImageLayout.Tile,
+        };
+
+        pb.MouseEnter += (_, _) => Text = name;
+        pb.Click += (_, _) => SelectBall(ballID);
+        return pb;
+    }
+
+    private void SelectBall(int b)
+    {
+        BallChoice = b;
+        Close();
     }
 }

@@ -1,7 +1,12 @@
-﻿namespace PKHeX.Core
+namespace PKHeX.Core;
+
+/// <summary>
+/// Exposes details about an encounter with a specific ability index permitted.
+/// </summary>
+public interface IFixedAbilityNumber
 {
-    public interface IFixedAbilityNumber
-    {
-        AbilityPermission Ability { get; }
-    }
+    /// <summary>
+    /// Specific ability index(es) that can be acquired from this object.
+    /// </summary>
+    AbilityPermission Ability { get; }
 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace PKHeX.Core;
@@ -11,14 +11,7 @@ public sealed class SAV8LA : SaveFile, ISaveBlock8LA, ISCBlockArray, ISaveFileRe
     protected internal override string ShortSummary => $"{OT} ({Version}) - {LastSaved.LastSavedTime}";
     public override string Extension => string.Empty;
 
-    public SAV8LA(byte[] data) : base(data)
-    {
-        Data = Array.Empty<byte>();
-        AllBlocks = SwishCrypto.Decrypt(data);
-        Blocks = new SaveBlockAccessor8LA(this);
-        SaveRevision = Blocks.DetectRevision();
-        Initialize();
-    }
+    public SAV8LA(byte[] data) : this(SwishCrypto.Decrypt(data)) { }
 
     private SAV8LA(IReadOnlyList<SCBlock> blocks) : base(Array.Empty<byte>())
     {
@@ -69,11 +62,10 @@ public sealed class SAV8LA : SaveFile, ISaveBlock8LA, ISCBlockArray, ISaveFileRe
     public override Type PKMType => typeof(PA8);
     public override int MaxEV => 252;
     public override int Generation => 8;
+    public override EntityContext Context => EntityContext.Gen8a;
     public override int OTLength => 12;
     public override int NickLength => 12;
 
-    public SCBlockAccessor Accessor => Blocks;
-    public IReadOnlyList<SCBlock> AllBlocks { get; }
     public override bool ChecksumsValid => true;
     public override string ChecksumInfo => string.Empty;
     public override int BoxCount => BoxLayout8a.BoxCount; // 32
@@ -93,30 +85,9 @@ public sealed class SAV8LA : SaveFile, ISaveBlock8LA, ISCBlockArray, ISaveFileRe
     protected override void SetChecksums() { } // None!
     protected override byte[] GetFinalData() => SwishCrypto.Encrypt(AllBlocks);
 
-    public override PersonalTable Personal => PersonalTable.LA;
-    public override IReadOnlyList<ushort> HeldItems => Legal.HeldItems_SWSH;
+    public override IPersonalTable Personal => PersonalTable.LA;
+    public override IReadOnlyList<ushort> HeldItems => Legal.HeldItems_LA;
 
-    #region Blocks
-    public SaveBlockAccessor8LA Blocks { get; }
-
-    public T GetValue<T>(uint key) where T : struct
-    {
-        if (!State.Exportable)
-            return default;
-        var value = Blocks.GetBlockValue(key);
-        if (value is T v)
-            return v;
-        throw new ArgumentException($"Incorrect type request! Expected {typeof(T).Name}, received {value.GetType().Name}", nameof(T));
-    }
-
-    public void SetValue<T>(uint key, T value) where T : struct
-    {
-        if (!State.Exportable)
-            return;
-        Blocks.SetBlockValue(key, value);
-    }
-
-    #endregion
     protected override SaveFile CloneInternal()
     {
         var blockCopy = new SCBlock[AllBlocks.Count];
@@ -125,13 +96,19 @@ public sealed class SAV8LA : SaveFile, ISaveBlock8LA, ISCBlockArray, ISaveFileRe
         return new SAV8LA(blockCopy);
     }
 
-    public override int MaxMoveID => Legal.MaxMoveID_8a;
-    public override int MaxSpeciesID => Legal.MaxSpeciesID_8a;
+    public override ushort MaxMoveID => Legal.MaxMoveID_8a;
+    public override ushort MaxSpeciesID => Legal.MaxSpeciesID_8a;
     public override int MaxItemID => Legal.MaxItemID_8a;
     public override int MaxBallID => Legal.MaxBallID_8a;
     public override int MaxGameID => Legal.MaxGameID_8a;
     public override int MaxAbilityID => Legal.MaxAbilityID_8a;
 
+    #region Blocks
+    public SCBlockAccessor Accessor => Blocks;
+    public SaveBlockAccessor8LA Blocks { get; }
+    public IReadOnlyList<SCBlock> AllBlocks { get; }
+    public T GetValue<T>(uint key) where T : struct => Blocks.GetBlockValueSafe<T>(key);
+    public void SetValue<T>(uint key, T value) where T : struct => Blocks.SetBlockValueSafe(key, value);
     public Box8 BoxInfo => Blocks.BoxInfo;
     public Party8a PartyInfo => Blocks.PartyInfo;
     public MyStatus8a MyStatus => Blocks.MyStatus;
@@ -141,7 +118,8 @@ public sealed class SAV8LA : SaveFile, ISaveBlock8LA, ISCBlockArray, ISaveFileRe
     public AdventureStart8a AdventureStart => Blocks.AdventureStart;
     public LastSaved8a LastSaved => Blocks.LastSaved;
     public PlayTime8a Played => Blocks.Played;
-    public AreaSpawnerSet8a AreaSpawners => Blocks.AreaSpawners;
+    public AreaSpawnerSet8a AreaSpawners => new(Blocks.GetBlock(SaveBlockAccessor8LA.KSpawners));
+    #endregion
 
     public override uint SecondsToStart { get => (uint)AdventureStart.Seconds; set => AdventureStart.Seconds = value; }
     public override uint Money { get => (uint)Blocks.GetBlockValue(SaveBlockAccessor8LA.KMoney); set => Blocks.SetBlockValue(SaveBlockAccessor8LA.KMoney, value); }
@@ -168,25 +146,33 @@ public sealed class SAV8LA : SaveFile, ISaveBlock8LA, ISCBlockArray, ISaveFileRe
         protected set => PartyInfo.PartyCount = value;
     }
 
+    protected override void SetPKM(PKM pk, bool isParty = false)
+    {
+        var pa8 = (PA8)pk;
+        // Apply to this Save File
+        pa8.Trade(this);
+        pa8.RefreshChecksum();
+    }
+
     // Zukan
-    protected override void SetDex(PKM pkm)
+    protected override void SetDex(PKM pk)
     {
         // TODO: Seen in wild?
-        // Accessor.SetPokeSeenInWild(pkm);
+        // Accessor.SetPokeSeenInWild(pk);
 
         // TODO: Should this update research? What research should it be updating?
         // TODO: Should this be passing "caught=true" to set caught flags and not just obtain flags?
-        // For now, if we have never obtained the poke, treat this pkm as obtained-via-trade.
-        PokedexSave.OnPokeGet_TradeWithoutEvolution(pkm);
+        // For now, if we have never obtained the poke, treat this pk as obtained-via-trade.
+        PokedexSave.OnPokeGet_TradeWithoutEvolution(pk);
     }
 
-    public override bool GetCaught(int species)
+    public override bool GetCaught(ushort species)
     {
         if (species > Personal.MaxSpeciesID)
             return false;
 
         var formCount = Personal[species].FormCount;
-        for (var form = 0; form < formCount; form++)
+        for (byte form = 0; form < formCount; form++)
         {
             if (PokedexSave.HasAnyPokeObtainFlags(species, form))
                 return true;
@@ -194,7 +180,7 @@ public sealed class SAV8LA : SaveFile, ISaveBlock8LA, ISCBlockArray, ISaveFileRe
         return false;
     }
 
-    public override bool GetSeen(int species) => PokedexSave.HasPokeEverBeenUpdated(species);
+    public override bool GetSeen(ushort species) => PokedexSave.HasPokeEverBeenUpdated(species);
 
     // Inventory
     public override IReadOnlyList<InventoryPouch> Inventory { get => Items.Inventory; set => Items.Inventory = value; }

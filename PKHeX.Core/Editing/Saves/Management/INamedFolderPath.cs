@@ -1,9 +1,11 @@
-﻿namespace PKHeX.Core
+namespace PKHeX.Core;
+
+/// <summary>
+/// Describes details about a folder and other special metadata.
+/// </summary>
+public interface INamedFolderPath
 {
-    public interface INamedFolderPath
-    {
-        string Path { get; }
-        string DisplayText { get; }
-        bool Custom { get; }
-    }
+    string Path { get; }
+    string DisplayText { get; }
+    bool Custom { get; }
 }

@@ -1,41 +1,59 @@
-﻿using static PKHeX.Core.LegalityCheckStrings;
+using static PKHeX.Core.LegalityCheckStrings;
 
-namespace PKHeX.Core
+namespace PKHeX.Core;
+
+/// <summary>
+/// Verifies the specific origin data of <see cref="GameVersion.CXD"/> encounters.
+/// </summary>
+public sealed class CXDVerifier : Verifier
 {
-    /// <summary>
-    /// Verifies the specific origin data of <see cref="GameVersion.CXD"/> encounters.
-    /// </summary>
-    public sealed class CXDVerifier : Verifier
+    protected override CheckIdentifier Identifier => CheckIdentifier.Misc;
+
+    public override void Verify(LegalityAnalysis data)
     {
-        protected override CheckIdentifier Identifier => CheckIdentifier.Misc;
+        var pk = data.Entity;
+        if (data.EncounterMatch is EncounterStatic3 s3)
+            VerifyCXDStarterCorrelation(data, s3);
+        else if (pk.Egg_Location != 0 && pk is not PB8 {Egg_Location: Locations.Default8bNone}) // can't obtain eggs in CXD
+            data.AddLine(GetInvalid(LEncInvalid, CheckIdentifier.Encounter)); // invalid encounter
 
-        public override void Verify(LegalityAnalysis data)
+        if (pk.OT_Gender == 1)
+            data.AddLine(GetInvalid(LG3OTGender, CheckIdentifier.Trainer));
+    }
+
+    private static void VerifyCXDStarterCorrelation(LegalityAnalysis data, EncounterStatic3 enc)
+    {
+        var (type, seed) = data.Info.PIDIV;
+        if (type is not (PIDType.CXD or PIDType.CXDAnti or PIDType.CXD_ColoStarter))
+            return; // already flagged as invalid
+
+        bool valid;
+        if (enc.Species is (int)Species.Espeon or (int)Species.Umbreon)
         {
-            var pkm = data.pkm;
-            if (data.EncounterMatch is EncounterStatic)
-                VerifyCXDStarterCorrelation(data);
-            else if (pkm.Egg_Location != 0) // can't obtain eggs in CXD
-                data.AddLine(GetInvalid(LEncInvalid, CheckIdentifier.Encounter)); // invalid encounter
-
-            if (pkm.OT_Gender == 1)
-                data.AddLine(GetInvalid(LG3OTGender, CheckIdentifier.Trainer));
+            valid = type == PIDType.CXD_ColoStarter;
         }
-
-        private static void VerifyCXDStarterCorrelation(LegalityAnalysis data)
+        else if (enc.Species == (int)Species.Eevee)
         {
-            var pidiv = data.Info.PIDIV;
-            if (pidiv.Type is not (PIDType.CXD or PIDType.CXDAnti))
-                return; // already flagged as invalid
-
-            var pkm = data.pkm;
-            bool valid = data.EncounterMatch.Species switch
+            var pk = data.Entity;
+            if (type == PIDType.CXD_ColoStarter && pk.Species == (int)Species.Umbreon)
             {
-                (int)Species.Eevee => LockFinder.IsXDStarterValid(pidiv.OriginSeed, pkm.TID, pkm.SID),
-                (int)Species.Espeon or (int)Species.Umbreon => pidiv.Type == PIDType.CXD_ColoStarter,
-                _ => true,
-            };
-            if (!valid)
-                data.AddLine(GetInvalid(LEncConditionBadRNGFrame, CheckIdentifier.PID));
+                // reset pidiv type to be CXD -- ColoStarter is same correlation as Eevee->Umbreon
+                data.Info.PIDIV = new PIDIV(PIDType.CXD, seed);
+                valid = true;
+            }
+            else
+            {
+                valid = LockFinder.IsXDStarterValid(seed, pk.TID, pk.SID);
+                if (valid) // unroll seed to origin that generated TID/SID->pkm
+                    data.Info.PIDIV = new PIDIV(PIDType.CXD, XDRNG.Prev4(seed));
+            }
         }
+        else
+        {
+            return;
+        }
+
+        if (!valid)
+            data.AddLine(GetInvalid(LEncConditionBadRNGFrame, CheckIdentifier.PID));
     }
 }

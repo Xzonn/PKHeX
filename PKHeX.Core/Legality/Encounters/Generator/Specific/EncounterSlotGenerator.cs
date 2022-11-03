@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -19,181 +19,172 @@ using static PKHeX.Core.EncountersGO;
 
 using static PKHeX.Core.GameVersion;
 
-namespace PKHeX.Core
+namespace PKHeX.Core;
+
+public static class EncounterSlotGenerator
 {
-    public static class EncounterSlotGenerator
+    public static IEnumerable<EncounterSlot> GetPossible(PKM pk, EvoCriteria[] chain, GameVersion gameSource)
     {
-        public static IEnumerable<EncounterSlot> GetPossible(PKM pkm, IReadOnlyList<DexLevel> chain, GameVersion gameSource = Any)
+        var possibleAreas = GetAreasByGame(pk, gameSource);
+        foreach (var area in possibleAreas)
         {
-            var possibleAreas = GetAreasByGame(pkm, gameSource);
-            return possibleAreas.SelectMany(z => z.GetSpecies(chain));
+            foreach (var result in area.GetSpecies(chain))
+                yield return result;
         }
+    }
 
-        private static IEnumerable<EncounterArea> GetAreasByGame(PKM pkm, GameVersion gameSource) => gameSource switch
+    private static IEnumerable<EncounterArea> GetAreasByGame(PKM pk, GameVersion gameSource) => gameSource switch
+    {
+        RD => SlotsRD,
+        GN => SlotsGN,
+        BU => SlotsBU,
+        YW => SlotsYW,
+
+        GD => SlotsGD,
+        SI => SlotsSV,
+        C => SlotsC,
+
+        _ => GetEncounterTable(pk, gameSource),
+    };
+
+    private static IEnumerable<EncounterSlot> GetRawEncounterSlots(PKM pk, EvoCriteria[] chain, GameVersion gameSource)
+    {
+        if (pk.IsEgg)
+            yield break;
+        if (IsMetAsEgg(pk))
+            yield break;
+
+        var possibleAreas = GetEncounterAreas(pk, gameSource);
+        foreach (var area in possibleAreas)
         {
-            RD => SlotsRD,
-            GN => SlotsGN,
-            BU => SlotsBU,
-            YW => SlotsYW,
-
-            GD => SlotsGD,
-            SI => SlotsSV,
-            C => SlotsC,
-
-            _ => GetEncounterSlots(pkm, gameSource),
-        };
-
-        private static IEnumerable<EncounterSlot> GetRawEncounterSlots(PKM pkm, IReadOnlyList<EvoCriteria> chain, GameVersion gameSource)
-        {
-            if (!Locations.IsNoneLocation(gameSource, pkm.Egg_Location) || pkm.IsEgg)
-                yield break;
-
-            var possibleAreas = GetEncounterAreas(pkm, gameSource);
-            foreach (var area in possibleAreas)
-            {
-                var slots = area.GetMatchingSlots(pkm, chain);
-                foreach (var s in slots)
-                    yield return s;
-            }
+            var slots = area.GetMatchingSlots(pk, chain);
+            foreach (var s in slots)
+                yield return s;
         }
+    }
 
-        public static IEnumerable<EncounterSlot> GetValidWildEncounters34(PKM pkm, IReadOnlyList<EvoCriteria> chain, GameVersion gameSource = Any)
+    public static IEnumerable<EncounterSlot> GetValidWildEncounters12(PKM pk, EvoCriteria[] chain, GameVersion gameSource)
+    {
+        return GetRawEncounterSlots(pk, chain, gameSource);
+    }
+
+    public static IEnumerable<EncounterSlot> GetValidWildEncounters(PKM pk, EvoCriteria[] chain, GameVersion gameSource)
+    {
+        return GetRawEncounterSlots(pk, chain, gameSource);
+    }
+
+    public static IEnumerable<EncounterSlot> GetValidWildEncounters(PKM pk, EvoCriteria[] chain)
+    {
+        var gameSource = (GameVersion)pk.Version;
+        return GetRawEncounterSlots(pk, chain, gameSource);
+    }
+
+    private static IEnumerable<EncounterArea> GetEncounterAreas(PKM pk, GameVersion gameSource)
+    {
+        var slots = GetEncounterTable(pk, gameSource);
+        bool noMet = !pk.HasOriginalMetLocation || (pk.Format == 2 && gameSource != C);
+        if (noMet)
+            return slots;
+        return GetIsMatchLocation(pk, slots);
+    }
+
+    private static IEnumerable<EncounterArea> GetIsMatchLocation(PKM pk, IEnumerable<EncounterArea> areas)
+    {
+        var metLocation = pk.Met_Location;
+        foreach (var area in areas)
         {
-            if (gameSource == Any)
-                gameSource = (GameVersion)pkm.Version;
-
-            var slots = GetRawEncounterSlots(pkm, chain, gameSource);
-
-            return slots; // defer deferrals to the method consuming this collection
+            if (area.IsMatchLocation(metLocation))
+                yield return area;
         }
+    }
 
-        public static IEnumerable<EncounterSlot> GetValidWildEncounters12(PKM pkm, IReadOnlyList<EvoCriteria> chain, GameVersion gameSource = Any)
-        {
-            if (gameSource == Any)
-                gameSource = (GameVersion)pkm.Version;
+    internal static EncounterSlot? GetCaptureLocation(PKM pk, EvoCriteria[] chain)
+    {
+        var possible = GetPossible(pk, chain, (GameVersion)pk.Version);
+        return EncounterUtil.GetMinByLevel(chain, possible);
+    }
 
-            return GetRawEncounterSlots(pkm, chain, gameSource);
-        }
+    private static IEnumerable<EncounterArea> GetEncounterTable(PKM pk, GameVersion game) => game switch
+    {
+        RBY or RD or BU or GN or YW => pk.Japanese ? SlotsRGBY : SlotsRBY,
 
-        public static IEnumerable<EncounterSlot> GetValidWildEncounters(PKM pkm, IReadOnlyList<EvoCriteria> chain, GameVersion gameSource = Any)
-        {
-            if (gameSource == Any)
-                gameSource = (GameVersion)pkm.Version;
+        GSC or GD or SI or C => GetEncounterTableGSC(pk),
 
-            return GetRawEncounterSlots(pkm, chain, gameSource);
-        }
+        R => SlotsR,
+        S => SlotsS,
+        E => SlotsE,
+        FR => SlotsFR,
+        LG => SlotsLG,
+        CXD => SlotsXD,
 
-        public static IEnumerable<EncounterArea> GetEncounterSlots(PKM pkm, GameVersion gameSource = Any)
-        {
-            if (gameSource == Any)
-                gameSource = (GameVersion)pkm.Version;
+        D => SlotsD,
+        P => SlotsP,
+        Pt => SlotsPt,
+        HG => SlotsHG,
+        SS => SlotsSS,
 
-            return GetEncounterTable(pkm, gameSource);
-        }
+        B => SlotsB,
+        W => SlotsW,
+        B2 => SlotsB2,
+        W2 => SlotsW2,
 
-        private static IEnumerable<EncounterArea> GetEncounterAreas(PKM pkm, GameVersion gameSource = Any)
-        {
-            if (gameSource == Any)
-                gameSource = (GameVersion)pkm.Version;
+        X => SlotsX,
+        Y => SlotsY,
+        AS => SlotsA,
+        OR => SlotsO,
 
-            var slots = GetEncounterSlots(pkm, gameSource: gameSource);
-            bool noMet = !pkm.HasOriginalMetLocation || (pkm.Format == 2 && gameSource != C);
-            if (noMet)
-                return slots;
-            var metLocation = pkm.Met_Location;
-            return slots.Where(z => z.IsMatchLocation(metLocation));
-        }
+        SN => SlotsSN,
+        MN => SlotsMN,
+        US => SlotsUS,
+        UM => SlotsUM,
+        GP => SlotsGP,
+        GE => SlotsGE,
 
-        internal static EncounterSlot? GetCaptureLocation(PKM pkm, IReadOnlyList<EvoCriteria> chain)
-        {
-            return GetPossible(pkm, chain)
-                .OrderBy(z => !chain.Any(s => s.Species == z.Species && s.Form == z.Form))
-                .ThenBy(z => z.LevelMin)
-                .FirstOrDefault();
-        }
+        GO => GetEncounterTableGO(pk),
+        SW => SlotsSW,
+        SH => SlotsSH,
+        BD => SlotsBD,
+        SP => SlotsSP,
+        PLA => SlotsLA,
+        _ => Array.Empty<EncounterArea>(),
+    };
 
-        private static IEnumerable<EncounterArea> GetEncounterTable(PKM pkm, GameVersion game) => game switch
-        {
-            RBY or RD or BU or GN or YW => pkm.Japanese ? SlotsRGBY : SlotsRBY,
+    private static EncounterArea[] GetEncounterTableGSC(PKM pk)
+    {
+        if (!ParseSettings.AllowGen2Crystal(pk))
+            return SlotsGS;
 
-            GSC or GD or SI or C => GetEncounterTableGSC(pkm),
-
-            R => SlotsR,
-            S => SlotsS,
-            E => SlotsE,
-            FR => SlotsFR,
-            LG => SlotsLG,
-            CXD => SlotsXD,
-
-            D => SlotsD,
-            P => SlotsP,
-            Pt => SlotsPt,
-            HG => SlotsHG,
-            SS => SlotsSS,
-
-            B => SlotsB,
-            W => SlotsW,
-            B2 => SlotsB2,
-            W2 => SlotsW2,
-
-            X => SlotsX,
-            Y => SlotsY,
-            AS => SlotsA,
-            OR => SlotsO,
-
-            SN => SlotsSN,
-            MN => SlotsMN,
-            US => SlotsUS,
-            UM => SlotsUM,
-            GP => SlotsGP,
-            GE => SlotsGE,
-
-            GO => GetEncounterTableGO(pkm),
-            SW => SlotsSW,
-            SH => SlotsSH,
-            BD => SlotsBD,
-            SP => SlotsSP,
-            PLA => SlotsLA,
-            _ => Array.Empty<EncounterArea>(),
-        };
-
-        private static IEnumerable<EncounterArea> GetEncounterTableGSC(PKM pkm)
-        {
-            if (!ParseSettings.AllowGen2Crystal(pkm))
-                return SlotsGS;
-
-            // Gen 2 met location is lost outside gen 2 games
-            if (pkm.Format != 2)
-                return SlotsGSC;
-
-            // Format 2 with met location, encounter should be from Crystal
-            if (pkm.HasOriginalMetLocation)
-                return SlotsC;
-
-            // Format 2 without met location but pokemon could not be tradeback to gen 1,
-            // encounter should be from gold or silver
-            if (pkm.Species > MaxSpeciesID_1 && !EvolutionLegality.FutureEvolutionsGen1.Contains(pkm.Species))
-                return SlotsGS;
-
-            // Encounter could be any gen 2 game, it can have empty met location for have a g/s origin
-            // or it can be a Crystal pokemon that lost met location after being tradeback to gen 1 games
+        // Gen 2 met location is lost outside gen 2 games
+        if (pk.Format != 2)
             return SlotsGSC;
-        }
 
-        private static IEnumerable<EncounterArea> GetEncounterTableGO(PKM pkm)
+        // Format 2 with met location, encounter should be from Crystal
+        if (pk.HasOriginalMetLocation)
+            return SlotsC;
+
+        // Format 2 without met location but pokemon could not be tradeback to gen 1,
+        // encounter should be from gold or silver
+        if (pk.Species > MaxSpeciesID_1 && !EvolutionLegality.FutureEvolutionsGen1.Contains(pk.Species))
+            return SlotsGS;
+
+        // Encounter could be any gen 2 game, it can have empty met location for have a g/s origin
+        // or it can be a Crystal pokemon that lost met location after being tradeback to gen 1 games
+        return SlotsGSC;
+    }
+
+    private static IEnumerable<EncounterArea> GetEncounterTableGO(PKM pk)
+    {
+        if (pk.Format < 8)
+            return SlotsGO_GG;
+
+        // If we know the met location, return the specific area list.
+        // If we're just getting all encounters (lack of met location is kinda bad...), just return everything.
+        var met = pk.Met_Location;
+        return met switch
         {
-            if (pkm.Format < 8)
-                return SlotsGO_GG;
-
-            // If we know the met location, return the specific area list.
-            // If we're just getting all encounters (lack of met location is kinda bad...), just return everything.
-            var met = pkm.Met_Location;
-            return met switch
-            {
-                Locations.GO8 => SlotsGO,
-                Locations.GO7 => SlotsGO_GG,
-                _ => SlotsGO_GG.Concat<EncounterArea>(SlotsGO),
-            };
-        }
+            Locations.GO8 => SlotsGO,
+            Locations.GO7 => SlotsGO_GG,
+            _ => SlotsGO_GG.Concat<EncounterArea>(SlotsGO),
+        };
     }
 }

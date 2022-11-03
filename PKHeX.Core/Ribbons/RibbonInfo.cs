@@ -1,62 +1,73 @@
-﻿using System.Collections.Generic;
+using System;
+using System.Collections.Generic;
 
-namespace PKHeX.Core
+namespace PKHeX.Core;
+
+/// <summary>
+/// Provides ribbon information about the state of a given ribbon.
+/// </summary>
+public sealed class RibbonInfo
 {
-    /// <summary>
-    /// Provides ribbon information about the state of a given ribbon.
-    /// </summary>
-    public sealed class RibbonInfo
+    public const string PropertyPrefix = "Ribbon";
+
+    public readonly string Name;
+    public readonly RibbonValueType Type;
+
+    public bool HasRibbon { get; set; }
+    public byte RibbonCount { get; set; }
+
+    private RibbonInfo(string name, bool hasRibbon)
     {
-        public const string PropertyPrefix = "Ribbon";
+        Name = name;
+        HasRibbon = hasRibbon;
+        Type = RibbonValueType.Boolean;
+    }
 
-        public readonly string Name;
-        public bool HasRibbon { get; set; }
-        public int RibbonCount { get; set; }
+    private RibbonInfo(string name, byte count)
+    {
+        Name = name;
+        Type = RibbonValueType.Byte;
+        RibbonCount = count;
+    }
 
-        private RibbonInfo(string name, bool hasRibbon)
+    public int MaxCount
+    {
+        get
         {
-            Name = name;
-            HasRibbon = hasRibbon;
-            RibbonCount = -1;
-        }
+            if (Type is RibbonValueType.Boolean)
+                throw new ArgumentOutOfRangeException(nameof(Type));
 
-        private RibbonInfo(string name, int count)
-        {
-            Name = name;
-            HasRibbon = false;
-            RibbonCount = count;
-        }
-
-        public int MaxCount
-        {
-            get
+            return Name switch
             {
-                if (RibbonCount < 0)
-                    return -1;
-                return Name switch
-                {
-                    nameof(IRibbonSetCommon6.RibbonCountMemoryContest) => 40,
-                    nameof(IRibbonSetCommon6.RibbonCountMemoryBattle) => 8,
-                    _ => 4,
-                };
-            }
-        }
-
-        public static IReadOnlyList<RibbonInfo> GetRibbonInfo(PKM pkm)
-        {
-            // Get a list of all Ribbon Attributes in the PKM
-            var riblist = new List<RibbonInfo>();
-            var names = ReflectUtil.GetPropertiesStartWithPrefix(pkm.GetType(), PropertyPrefix);
-            foreach (var name in names)
-            {
-                object? RibbonValue = ReflectUtil.GetValue(pkm, name);
-                if (RibbonValue is int x)
-                    riblist.Add(new RibbonInfo(name, x));
-                if (RibbonValue is bool b)
-                    riblist.Add(new RibbonInfo(name, b));
-            }
-
-            return riblist;
+                nameof(IRibbonSetMemory6.RibbonCountMemoryContest) => 40,
+                nameof(IRibbonSetMemory6.RibbonCountMemoryBattle) => 8,
+                _ => 4, // Gen3/4 Contest Ribbons
+            };
         }
     }
+
+    public static List<RibbonInfo> GetRibbonInfo(PKM pk)
+    {
+        // Get a list of all Ribbon Attributes in the PKM
+        var riblist = new List<RibbonInfo>();
+        var names = ReflectUtil.GetPropertiesStartWithPrefix(pk.GetType(), PropertyPrefix);
+        foreach (var name in names)
+        {
+            object? RibbonValue = ReflectUtil.GetValue(pk, name);
+            if (RibbonValue is bool b)
+                riblist.Add(new RibbonInfo(name, b));
+            else if (RibbonValue is byte x)
+                riblist.Add(new RibbonInfo(name, x));
+        }
+        return riblist;
+    }
+}
+
+/// <summary>
+/// Type of Ribbon Value
+/// </summary>
+public enum RibbonValueType
+{
+    Boolean,
+    Byte,
 }

@@ -1,4 +1,4 @@
-﻿using System.Drawing;
+using System.Drawing;
 using PKHeX.Core;
 using PKHeX.Drawing.PokeSprite.Properties;
 
@@ -48,28 +48,34 @@ public abstract class SpriteBuilder : ISpriteBuilder<Image>
     private const double ShinyTransparency = 0.7;
     private const double EggUnderLayerTransparency = 0.33;
 
-    protected abstract string GetSpriteStringSpeciesOnly(int species);
+    protected abstract string GetSpriteStringSpeciesOnly(ushort species);
 
-    protected abstract string GetSpriteAll(int species, int form, int gender, uint formarg, bool shiny, int generation);
-    protected abstract string GetSpriteAllSecondary(int species, int form, int gender, uint formarg, bool shiny, int generation);
+    protected abstract string GetSpriteAll(ushort species, byte form, int gender, uint formarg, bool shiny, int generation);
+    protected abstract string GetSpriteAllSecondary(ushort species, byte form, int gender, uint formarg, bool shiny, int generation);
     protected abstract string GetItemResourceName(int item);
     protected abstract Bitmap Unknown { get; }
-    protected abstract Bitmap GetEggSprite(int species);
+    protected abstract Bitmap GetEggSprite(ushort species);
     public abstract Bitmap ShadowLugia { get; }
 
+    /// <summary>
+    /// Ensures all data is set up to generate sprites for the save file.
+    /// </summary>
+    /// <param name="sav"></param>
     public void Initialize(SaveFile sav)
     {
         if (sav.Generation != 3)
             return;
 
+        // If the game is indeterminate, we might have different form sprites.
+        // Currently, this only applies to Gen3's FireRed / LeafGreen
         Game = sav.Version;
         if (Game == GameVersion.FRLG)
-            Game = sav.Personal == PersonalTable.FR ? GameVersion.FR : GameVersion.LG;
+            Game = ReferenceEquals(sav.Personal, PersonalTable.FR) ? GameVersion.FR : GameVersion.LG;
     }
 
     private GameVersion Game;
 
-    private static int GetDeoxysForm(GameVersion game) => game switch
+    private static byte GetDeoxysForm(GameVersion game) => game switch
     {
         GameVersion.FR => 1, // Attack
         GameVersion.LG => 2, // Defense
@@ -77,14 +83,26 @@ public abstract class SpriteBuilder : ISpriteBuilder<Image>
         _ => 0,
     };
 
-    private static int GetArceusForm4(int form) => form switch
+    private static byte GetArceusForm4(byte form) => form switch
     {
-        > 9 => form - 1, // Realign to Gen5+ type indexes
-        9 => 999, // Curse, make it show as unrecognized form since we don't have a sprite.
+        > 9 => --form, // Realign to Gen5+ type indexes
+        9 => byte.MaxValue, // Curse, make it show as unrecognized form since we don't have a sprite.
         _ => form,
     };
 
-    public Image GetSprite(int species, int form, int gender, uint formarg, int heldItem, bool isEgg, bool isShiny, int generation = -1, bool isBoxBGRed = false, bool isAltShiny = false)
+    /// <summary>
+    /// Builds a new sprite image with the requested parameters.
+    /// </summary>
+    /// <param name="species">Entity Species ID</param>
+    /// <param name="form">Entity Form index</param>
+    /// <param name="gender">Entity gender</param>
+    /// <param name="formarg">Entity <see cref="IFormArgument.FormArgument"/> raw value</param>
+    /// <param name="heldItem">Entity held item ID</param>
+    /// <param name="isEgg">Is currently in an egg</param>
+    /// <param name="shiny">Is it shiny</param>
+    /// <param name="generation"></param>
+    /// <param name="tweak"></param>
+    public Image GetSprite(ushort species, byte form, int gender, uint formarg, int heldItem, bool isEgg, Shiny shiny = Shiny.Never, int generation = -1, SpriteBuilderTweak tweak = SpriteBuilderTweak.None)
     {
         if (species == 0)
             return None;
@@ -94,22 +112,22 @@ public abstract class SpriteBuilder : ISpriteBuilder<Image>
         else if (generation == 4 && species == (int)Species.Arceus) // Curse type's existence in Gen4
             form = GetArceusForm4(form);
 
-        var baseImage = GetBaseImage(species, form, gender, formarg, isShiny, generation);
-        return GetSprite(baseImage, species, heldItem, isEgg, isShiny, generation, isBoxBGRed, isAltShiny);
+        var baseImage = GetBaseImage(species, form, gender, formarg, shiny.IsShiny(), generation);
+        return GetSprite(baseImage, species, heldItem, isEgg, shiny, generation, tweak);
     }
 
-    public Image GetSprite(Image baseSprite, int species, int heldItem, bool isEgg, bool isShiny, int generation = -1, bool isBoxBGRed = false, bool isAltShiny = false)
+    public Image GetSprite(Image baseSprite, ushort species, int heldItem, bool isEgg, Shiny shiny, int generation = -1, SpriteBuilderTweak tweak = SpriteBuilderTweak.None)
     {
         if (isEgg)
             baseSprite = LayerOverImageEgg(baseSprite, species, heldItem != 0);
         if (heldItem > 0)
             baseSprite = LayerOverImageItem(baseSprite, heldItem, generation);
-        if (isShiny)
-            baseSprite = LayerOverImageShiny(baseSprite, isBoxBGRed, generation >= 8 && isAltShiny);
+        if (shiny.IsShiny())
+            baseSprite = LayerOverImageShiny(baseSprite, tweak, generation >= 8 && shiny == Shiny.AlwaysSquare ? Shiny.AlwaysSquare : Shiny.Always);
         return baseSprite;
     }
 
-    private Image GetBaseImage(int species, int form, int gender, uint formarg, bool shiny, int generation)
+    private Image GetBaseImage(ushort species, byte form, int gender, uint formarg, bool shiny, int generation)
     {
         var img = FormInfo.IsTotemForm(species, form, generation)
             ? GetBaseImageTotem(species, form, gender, formarg, shiny, generation)
@@ -117,7 +135,7 @@ public abstract class SpriteBuilder : ISpriteBuilder<Image>
         return img ?? GetBaseImageFallback(species, form, gender, formarg, shiny, generation);
     }
 
-    private Image? GetBaseImageTotem(int species, int form, int gender, uint formarg, bool shiny, int generation)
+    private Image? GetBaseImageTotem(ushort species, byte form, int gender, uint formarg, bool shiny, int generation)
     {
         var baseform = FormInfo.GetTotemBaseForm(species, form);
         var baseImage = GetBaseImageDefault(species, baseform, gender, formarg, shiny, generation);
@@ -126,7 +144,7 @@ public abstract class SpriteBuilder : ISpriteBuilder<Image>
         return ImageUtil.ToGrayscale(baseImage);
     }
 
-    private Image? GetBaseImageDefault(int species, int form, int gender, uint formarg, bool shiny, int generation)
+    private Image? GetBaseImageDefault(ushort species, byte form, int gender, uint formarg, bool shiny, int generation)
     {
         var file = GetSpriteAll(species, form, gender, formarg, shiny, generation);
         var resource = (Image?)Resources.ResourceManager.GetObject(file);
@@ -138,7 +156,7 @@ public abstract class SpriteBuilder : ISpriteBuilder<Image>
         return resource;
     }
 
-    private Image GetBaseImageFallback(int species, int form, int gender, uint formarg, bool shiny, int generation)
+    private Image GetBaseImageFallback(ushort species, byte form, int gender, uint formarg, bool shiny, int generation)
     {
         if (shiny) // try again without shiny
         {
@@ -170,23 +188,27 @@ public abstract class SpriteBuilder : ISpriteBuilder<Image>
         return ImageUtil.LayerImage(baseImage, itemimg, x, y);
     }
 
-    private static Image LayerOverImageShiny(Image baseImage, bool isBoxBGRed, bool altShiny)
+    private static Image LayerOverImageShiny(Image baseImage, SpriteBuilderTweak tweak, Shiny shiny)
     {
         // Add shiny star to top left of image.
-        var rare = isBoxBGRed ? Resources.rare_icon_alt : Resources.rare_icon;
-        if (altShiny)
+        Bitmap rare;
+        if (shiny is Shiny.AlwaysSquare)
             rare = Resources.rare_icon_2;
+        else if (tweak.HasFlagFast(SpriteBuilderTweak.BoxBackgroundRed))
+            rare = Resources.rare_icon_alt;
+        else
+            rare = Resources.rare_icon;
         return ImageUtil.LayerImage(baseImage, rare, 0, 0, ShinyTransparency);
     }
 
-    private Image LayerOverImageEgg(Image baseImage, int species, bool hasItem)
+    private Image LayerOverImageEgg(Image baseImage, ushort species, bool hasItem)
     {
         if (ShowEggSpriteAsItem && !hasItem)
             return LayerOverImageEggAsItem(baseImage, species);
         return LayerOverImageEggTransparentSpecies(baseImage, species);
     }
 
-    private Image LayerOverImageEggTransparentSpecies(Image baseImage, int species)
+    private Image LayerOverImageEggTransparentSpecies(Image baseImage, ushort species)
     {
         // Partially transparent species.
         baseImage = ImageUtil.ChangeOpacity(baseImage, EggUnderLayerTransparency);
@@ -195,7 +217,7 @@ public abstract class SpriteBuilder : ISpriteBuilder<Image>
         return ImageUtil.LayerImage(baseImage, egg, 0, 0);
     }
 
-    private Image LayerOverImageEggAsItem(Image baseImage, int species)
+    private Image LayerOverImageEggAsItem(Image baseImage, ushort species)
     {
         var egg = GetEggSprite(species);
         return ImageUtil.LayerImage(baseImage, egg, EggItemShiftX, EggItemShiftY); // similar to held item, since they can't have any

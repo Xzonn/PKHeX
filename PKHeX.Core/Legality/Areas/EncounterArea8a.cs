@@ -20,9 +20,9 @@ public sealed record EncounterArea8a : EncounterArea
         return Array.IndexOf(Locations, (byte)location) != -1;
     }
 
-    public override IEnumerable<EncounterSlot> GetMatchingSlots(PKM pkm, IReadOnlyList<EvoCriteria> chain) => GetMatches(chain, pkm.Met_Level);
+    public override IEnumerable<EncounterSlot> GetMatchingSlots(PKM pk, EvoCriteria[] chain) => GetMatches(chain, pk.Met_Level);
 
-    private IEnumerable<EncounterSlot8a> GetMatches(IReadOnlyList<EvoCriteria> chain, int metLevel)
+    private IEnumerable<EncounterSlot8a> GetMatches(EvoCriteria[] chain, int metLevel)
     {
         foreach (var slot in Slots)
         {
@@ -79,8 +79,8 @@ public sealed record EncounterArea8a : EncounterArea
             var entry = areaData.Slice(ofs, bpe);
             byte flawless = entry[7];
             var gender = (Gender)entry[6];
-            int max = entry[5];
-            int min = entry[4];
+            byte max = entry[5];
+            byte min = entry[4];
             var alpha = entry[3];
             var form = entry[2];
             var species = ReadUInt16LittleEndian(entry);
