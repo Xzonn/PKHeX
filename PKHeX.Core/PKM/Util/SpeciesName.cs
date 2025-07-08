@@ -32,7 +32,7 @@ public static class SpeciesName
     /// <remarks>Indexing matches <see cref="SpeciesLang"/>.</remarks>
     private static string GetEggName(int language) => language switch
     {
-        1 => "タマゴ",
+        1 => "蛋",
         2 => "Egg",
         3 => "Œuf",
         4 => "Uovo",
